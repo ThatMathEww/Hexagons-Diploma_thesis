@@ -1,0 +1,78 @@
+
+Spuštìní programu pro detekci fotek. 
+
+	Nastavení: 
+		Aktuální složka: " photos " 
+		Velikost elementù: 1000 
+		Minimální poèet bodù: 15 
+		Pøesnost nalezených bodù: 0.65 
+
+
+================================================================= 
+================================================================= 
+Aktuální proces:  [ 1 / 2 ]	  Fotografie: IMG_0385.JPG
+
+	Triangulation is done.
+
+	Vytvoøeno 34 elementù.
+
+	Nalezená oblast.
+		Pøesnost: 100 %
+
+	Vytváøení hledaných bodù.
+	Hledané body vytvoøeny.
+
+		Element 1 hotov.		[ 1 / 34 ]
+		Element 34 hotov.		[ 34 / 34 ]
+
+	Hledání elementù dokonèeno.
+
+Vyhodnocování výsledkù.
+
+	Úspìšnì nalezeno  { 34 / 34 }  elementù.
+
+	Poèet špatných bodù: 0 
+		-     Indexy: [] 
+		- Vzdálenost: []
+
+================================================================= 
+================================================================= 
+Aktuální proces:  [ 2 / 2 ]	  Fotografie: IMG_0417.JPG
+
+	Triangulation is done.
+
+	Vytvoøeno 34 elementù.
+
+	Nalezená oblast.
+		Pøesnost: 98.0 %
+
+	Vytváøení hledaných bodù.
+	Hledané body vytvoøeny.
+
+		Element 1 hotov.		[ 1 / 34 ]
+		Element 34 hotov.		[ 34 / 34 ]
+
+	Hledání elementù dokonèeno.
+
+Vyhodnocování výsledkù.
+
+	Úspìšnì nalezeno  { 34 / 34 }  elementù.
+
+	Poèet špatných bodù: 0 
+		-     Indexy: [] 
+		- Vzdálenost: []
+
+
+Vykreslení výsledkù: Fotografie - 2: IMG_0417.JPG
+
+================================================================= 
+=================================================================
+
+Jemné prohledávání není implementováno.
+
+_________________________________________________________________ 
+-----------------------------------------------------------------
+
+Dokonèení výpoètù.
+
+Ukonèení programu.

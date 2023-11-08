@@ -1,0 +1,6 @@
+person:
+  address:
+    city: Springfield
+    street: 123 Main St
+  age: 30
+  name: John

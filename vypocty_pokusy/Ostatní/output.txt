@@ -1,0 +1,9 @@
+Komentáø: První vıpoèet
+	Hodnota: 42.0
+
+Komentáø: Druhı vıpoèet
+	Hodnota: 15.3
+
+Komentáø: Tøetí vıpoèet
+	Hodnota: None
+
