@@ -7,8 +7,8 @@ import cv2
 import os
 
 # Text nebo data, která chcete zakódovat do QR kódu
-data = ".*CP*._N#1"  # "H02_01_12s"  # ".*CP*._N#3"
-name = "calibration_point01_L"  # "Measurement_" + data  # "calibration_point05"
+# data = ".*CP*._N#1"  # "H02_01_12s"  # ".*CP*._N#3"
+# name = "calibration_point01_L"  # "Measurement_" + data  # "calibration_point05"
 
 make_frame = True
 square_size = 10
@@ -64,35 +64,39 @@ qr = qrcode.QRCode(
     border=0,  # Šířka okraje QR kódu
 )
 
-qr.add_data(data)
-qr.make(fit=True)
+for i in range(1, 20):
+    data = f"T01_{i:02d}-I_1s"
+    name = data
 
-# Vytvoření obrázku QR kódu
-img = qr.make_image(fill_color="black", back_color="white")
+    qr.add_data(data)
+    qr.make(fit=True)
 
-if make_frame:
-    img = np.array(img)
-    h, w = img.shape
-    framed_img = np.ones((h + square_size * 6, w + square_size * 6), dtype=bool)
-    framed_img[:, :square_size] = framed_img[:, -square_size:] = framed_img[:square_size,
-                                                                 :] = framed_img[-square_size:, :] = False
-    framed_img[square_size * 3:-square_size * 3, square_size * 3:-square_size * 3] = img
-    img = Image.fromarray(framed_img)
+    # Vytvoření obrázku QR kódu
+    img = qr.make_image(fill_color="black", back_color="white")
 
-if error_correction == qrcode.constants.ERROR_CORRECT_H and use_logo:
-    try:
-        # Otevření logo obrázku
-        logo = Image.open("logo.png")
+    if make_frame:
+        img = np.array(img)
+        h, w = img.shape
+        framed_img = np.ones((h + square_size * 6, w + square_size * 6), dtype=bool)
+        framed_img[:, :square_size] = framed_img[:, -square_size:] = framed_img[:square_size,
+                                                                     :] = framed_img[-square_size:, :] = False
+        framed_img[square_size * 3:-square_size * 3, square_size * 3:-square_size * 3] = img
+        img = Image.fromarray(framed_img)
 
-        # Výpočet pozice, kam umístit logo (zde upravte podle svých potřeb)
-        logo_size = (img.size[0] // 4, img.size[1] // 4)
-        logo_position = ((img.size[0] - logo_size[0]) // 2, (img.size[1] - logo_size[1]) // 2)
+    if error_correction == qrcode.constants.ERROR_CORRECT_H and use_logo:
+        try:
+            # Otevření logo obrázku
+            logo = Image.open("logo.png")
 
-        # Přidání loga do QR kódu
-        img.paste(logo.resize(logo_size), logo_position)
-    except FileNotFoundError:
-        pass
+            # Výpočet pozice, kam umístit logo (zde upravte podle svých potřeb)
+            logo_size = (img.size[0] // 4, img.size[1] // 4)
+            logo_position = ((img.size[0] - logo_size[0]) // 2, (img.size[1] - logo_size[1]) // 2)
 
-img.show()
-# Uložení obrázku QR kódu s logem do souboru
-img.save(f"qr_code_{name}.png")
+            # Přidání loga do QR kódu
+            img.paste(logo.resize(logo_size), logo_position)
+        except FileNotFoundError:
+            pass
+
+    img.show()
+    # Uložení obrázku QR kódu s logem do souboru
+    img.save(f"qr_code_{name}.png")
