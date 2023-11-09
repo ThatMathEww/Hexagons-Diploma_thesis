@@ -13,6 +13,8 @@ import os
 make_frame = True
 square_size = 10
 
+output_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\tension\_qr_names'
+
 file_type = "YAML"
 
 """matrix = np.random.rand(3, 3)
@@ -54,19 +56,19 @@ data = ((name, photo), (os.path.getmtime(path), os.path.getctime(path)))"""
 use_logo = False
 
 # Vytvoření QR kódu s určenou úrovní korekce chyb
-error_correction = qrcode.constants.ERROR_CORRECT_L
+error_correction = qrcode.constants.ERROR_CORRECT_M
 
-# Vytvoření QR kódu
-qr = qrcode.QRCode(
-    version=1,  # Velikost QR kódu (1-40, čím vyšší číslo, tím větší QR kód)
-    error_correction=error_correction,  # Oprava chyb: L (Low), M (Medium), Q (Quartile), H (High)
-    box_size=square_size,  # Velikost jednoho bloku QR kódu
-    border=0,  # Šířka okraje QR kódu
-)
-
-for i in range(1, 20):
-    data = f"T01_{i:02d}-I_1s"
+for i in range(1, 31):
+    data = f"T01_{i:02d}-III_1s"
     name = data
+
+    # Vytvoření QR kódu
+    qr = qrcode.QRCode(
+        version=1,  # Velikost QR kódu (1-40, čím vyšší číslo, tím větší QR kód)
+        error_correction=error_correction,  # Oprava chyb: L (Low), M (Medium), Q (Quartile), H (High)
+        box_size=square_size,  # Velikost jednoho bloku QR kódu
+        border=0,  # Šířka okraje QR kódu
+    )
 
     qr.add_data(data)
     qr.make(fit=True)
@@ -97,6 +99,11 @@ for i in range(1, 20):
         except FileNotFoundError:
             pass
 
-    img.show()
+    # img.show()
+
+    img_name = f"qr_code_{name}.png"
+    if os.path.isdir(output_folder):
+        img_name = os.path.join(output_folder, img_name)
+
     # Uložení obrázku QR kódu s logem do souboru
-    img.save(f"qr_code_{name}.png")
+    img.save(img_name)
