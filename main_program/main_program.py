@@ -1701,7 +1701,7 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
         elif counter + 1 == length:
             print("\t\tElement", counter + 1, "hotov.\t\t[", counter + 1, "/", length, "]")"""
 
-        if counter % 20 == 0:
+        if counter % 20 == 0 or counter + 1 == length:
             print_progress_bar(counter + 1, length, 1, 20, "\t\t\t")
 
         counter += 1
@@ -1887,7 +1887,7 @@ def results(result, old_center, limit, mesh, upper_area_cor=None):
         data = np.zeros((3, 2))
         for k in range(3):
             if success:
-                data[k] = cv2.perspectiveTransform(tri_cor_old[i, k, :].reshape(-1, 1, 2), M).reshape(1, 2)
+                data[k] = cv2.perspectiveTransform(tri_cor_old[i, k, :].reshape(-1, 1, 2), matrix).reshape(1, 2)
             else:
                 # Definice kružnic
                 inputs = np.zeros((size_segment, 3))
@@ -2363,7 +2363,7 @@ def fast_fine_calculation(mesh_size=10):
                 current_end_marks_all = end_marks_all[i]
                 current_key_points = key_points_all[i][current_end_marks_all[j]:current_end_marks_all[j + 1]]
 
-                M, _ = cv2.findHomography(current_key_points[:, :2], current_key_points[:, 2:], cv2.RANSAC, 5.0)
+                mat, _ = cv2.findHomography(current_key_points[:, :2], current_key_points[:, 2:], cv2.RANSAC, 5.0)
 
                 fine_mesh, fine_mesh_centers = divide_image(triangle_points[j], mesh_size=mesh_size,
                                                             show_graph=False, printout=False)
@@ -2374,10 +2374,10 @@ def fast_fine_calculation(mesh_size=10):
                 for p in range(len(fine_triangle_points)):
                     for k in range(3):
                         data[k] = cv2.perspectiveTransform(
-                            fine_triangle_points[p, k].reshape(-1, 1, 2), M).reshape(1, 2)
+                            fine_triangle_points[p, k].reshape(-1, 1, 2), mat).reshape(1, 2)
                     current_photo_fine_points = np.append(current_photo_fine_points, [data], axis=0)
 
-                transformed_data = cv2.perspectiveTransform(fine_mesh_centers.reshape(-1, 1, 2), M).reshape(-1, 2)
+                transformed_data = cv2.perspectiveTransform(fine_mesh_centers.reshape(-1, 1, 2), mat).reshape(-1, 2)
                 current_photo_fine_centers = np.append(current_photo_fine_centers, transformed_data, axis=0)
 
             fine_points_all.append(current_photo_fine_points)
@@ -4244,7 +4244,7 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
             top_pad = 0.86
             try:
                 if not tot_im >= 2:
-                    raise MyException("Minimální počet fotek pro tvorbu casových razítek je 2.")
+                    raise MyException("Minimální počet fotek pro tvorbu časových razítek je 2.")
 
                 # Převod času z GMT na lokální čas změny fotek v ZIPu a uložení do seznamu
                 time_stamps = [np.int16(time.mktime(
@@ -5511,13 +5511,13 @@ def predict_time(folders):
         print("Chyba při získávání informací o stavu napájení.")
 
     if do_just_correlation:
-        duration += 8
+        duration += 5.5
     else:
-        duration += 44  # - CORRELATION + ROUGH CALCULATION
+        duration += 25  # - CORRELATION + ROUGH CALCULATION
         if do_calculations['Do Fine detection']:
             duration += 5  # - FINE CALCULATION
         if do_calculations['Do Point detection']:
-            duration += 25  # - FIND POINTS
+            duration += 15  # - FIND POINTS
 
     for folder in folders:
         # Vytvoření cesty k cílovým fotografiím
@@ -5742,7 +5742,7 @@ def main():
 
     print(f"\n\033[32mVše je nastaveno.\n\t➤ Spuštení výpočtu:\033[0m")
 
-    # cyklus mezi složkami
+    # cyklus mezi složkami - HLAVNÍ CYKLUS
     for current_image_folder in images_folders:
         current_image_folder = str(current_image_folder)
         print(f"\033[32;1;21m{'☰' * 50}\033[0m\n\nAktuální výpočet pro: \033[96m{current_image_folder}\033[0m "
@@ -5863,7 +5863,7 @@ def main():
 
                 if (calculations_statuses['Rough detection']) and (dataset_2['data_rough_detect'] is not None):
                     if dataset_2['data_rough_detect'] is not None:
-                        [triangle_vertices_all, triangle_centers_all, triangle_indexes_all, _,
+                        [triangle_vertices_all, triangle_centers_all, triangle_indexes_all,
                          wrong_points_indexes_all, end_marks_all, key_points_all] = dataset_2['data_rough_detect']
                         triangle_points_all = [triangle_vertices_all[i][triangle_indexes_all[i]] for i in
                                                range(len(triangle_vertices_all))]
@@ -5924,7 +5924,13 @@ def main():
                             # Přesměrování standardního výstupu na objekt Tee
                             sys.stdout = Tee(sys.stdout, out)
 
-                            perform_calculations()
+                            try:
+                                perform_calculations()
+                            except Exception as e:
+                                print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
+                                out.close()
+                                del out
+                                continue
 
                             out.close()
                             del out
@@ -5940,7 +5946,11 @@ def main():
                         except (Exception, MyException) as e:
                             print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba při ukládání dat.\n\t\tPOPIS: {e}")
                     else:
-                        perform_calculations()
+                        try:
+                            perform_calculations()
+                        except Exception as e:
+                            print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
+                            continue
 
                         while True:
                             print("\nOpravdu nechcete uložit spočítaná data?")
@@ -6124,7 +6134,7 @@ def main():
                 image_files = image_files[start:end]  # načátání snímků (první je 0) př: "image_files[2:5] od 2 do 5"
                 """image_files = [image_files[0], image_files[7], image_files[14], image_files[21],
                                image_files[-1]]"""  # TODO ############ potom změnit počet fotek
-                # image_files = [image_files[0]]
+                image_files = [image_files[0], image_files[-1]]
 
                 if preload_photos:
                     preloaded_images = [load_photo(i, photo_type) for i in range(len(image_files))]
@@ -6223,7 +6233,12 @@ def main():
                     # Přesměrování standardního výstupu na objekt Tee
                     sys.stdout = Tee(sys.stdout, out)
 
-                    calculate()
+                    try:
+                        calculate()
+                    except Exception as e:
+                        print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
+                        out.close()
+                        continue
 
                     out.close()
                     del out
@@ -6243,7 +6258,11 @@ def main():
 
                     scale, second_callout, saved_data_name = 1, False, saved_data
             else:
-                calculate()
+                try:
+                    calculate()
+                except Exception as e:
+                    print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
+                    continue
                 while True:
                     print("\nOpravdu nechcete uložit spočítaná data?")
                     if super_speed:
@@ -6393,10 +6412,10 @@ if __name__ == '__main__':
     do_auto_mark = True
     mark_points_by_hand = True
 
-    do_calculations = {'Do Correlation': False,
-                       'Do Rough detection': False,
+    do_calculations = {'Do Correlation': True,
+                       'Do Rough detection': True,
                        'Do Fine detection': False,
-                       'Do Point detection': False}
+                       'Do Point detection': True}
 
     main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 
@@ -6406,9 +6425,9 @@ if __name__ == '__main__':
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'data_testing'
+    saved_data = 'data_pokus'
     save_calculated_data = False
-    load_calculated_data = False
+    load_calculated_data = True
     do_finishing_calculation = False
     make_temporary_savings = False
 
@@ -6461,7 +6480,7 @@ if __name__ == '__main__':
 
     scale, second_callout = 1, False
     calculations_statuses = {'Correlation': False, 'Rough detection': False,
-                             'Fine detection': False, 'Point detection': True}
+                             'Fine detection': False, 'Point detection': False}
 
     # list(do_calculations.values())[0] is True and all(value is False for value in list(do_calculations.values())[1:]):
     if do_calculations["Do Correlation"] and all(

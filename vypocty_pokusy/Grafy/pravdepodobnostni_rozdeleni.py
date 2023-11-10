@@ -28,8 +28,8 @@ std_dev = 1  # Směrodatná odchylka
 # Generování dat z gausovského rozdělení
 # data = np.random.normal(mean_dev, std_dev, 1000)  # Generuje 1000 vzorků
 # data = [15, 15.5, 14.9, 10.3, 18.9, 15.1, 12, 23]
-data = np.array([21.44, 27.09, 23.85, 27.03, 21.74, 24.88, 21.28, 18.28, 23.64, 23.43, 23.14, 20.3, 22.88, 22.79, 28.3,
-                 27.08, 20.67, 24.46, 37.74, 21.87])
+data = np.array([27.12, 21.44, 27.09, 23.85, 27.03, 21.74, 24.88, 21.28, 18.28, 23.64, 23.43, 23.14, 20.3, 22.88, 22.79,
+                 28.3, 27.08, 20.67, 24.46, 37.74, 21.87])
 std = np.std(data)
 mean = np.mean(data)
 
@@ -43,16 +43,19 @@ gradient_bars(bar[2])
 # x = np.linspace(mean - 3 * std, mean + 3 * std, 100)
 x = np.linspace(np.min(data), np.max(data), 1000)
 pdf = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / std) ** 2)
-a, b = np.max(bar[0]), np.min(bar[0])
 # pdf = (((pdf - np.min(pdf)) / (np.max(pdf) - np.min(pdf)))) * np.max(bar[0])
-pdf = pdf * (np.max(bar[0]) / np.max(pdf))
+pdf *= (np.max(bar[0]) / np.max(pdf))
+
+median_value = x[np.argmax(pdf)]
+print(f"\nStřední hodnota křivky: {median_value:.4f}\n"
+      f"Medián dat: {np.median(data):.4f}")
 
 plt.plot(x, pdf, '#28418C', label='Teoretická hustota pravděpodobnosti')
 
 # Přidání popisků
 plt.title('Gausovské pravděpodobnostní rozdělení')
 plt.xlabel('Hodnota')
-plt.ylabel('Hustota pravděpodobnosti')
+plt.ylabel('Četnost')  # 'Hustota pravděpodobnosti'
 box = ax.get_position()
 ax.set_position([box.x0, box.y0 + box.height * 0.15, box.width, box.height * 0.85])
 
@@ -74,6 +77,7 @@ addition_x = (max_x - min_x) * 0.05
 addition_y = (max_y - min_y) * 0.05
 ax.set_xlim(min_x - addition_x, max_x + addition_x)
 ax.set_ylim(0 if min_y == 0 else min_y - addition_y, max_y + addition_y)
+plt.yticks(np.arange(min_ax_y, max_ax_y + 1, 1.0))
 
 # Zobrazení grafu
 plt.show()
