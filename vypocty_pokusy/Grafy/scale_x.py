@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Definice vrcholů polygonu (zde předpokládáme, že máte seznam vrcholů polygonu)
-original_points = np.array([[100, 100], [150, 110], [200, 100], [150, 200], [120, 120]], dtype=np.float32) * 2
+original_points = np.array([[100, 100], [150, 110], [200, 100], [150, 200], [120, 120]], dtype=np.float64) * 2
 
 moved_points = original_points + (1000, 500)
 
@@ -12,7 +12,7 @@ center = np.mean(moved_points, axis=0)
 # Přesuňte vrcholy tak, aby střed byl v počátku
 translated_points = moved_points - center
 
-angle = 5
+angle = 45
 
 # Úhel rotace v radiánech
 angle_rad = np.deg2rad(angle)
@@ -96,7 +96,7 @@ print("Odhadnutý úhel rotace:", rotation_angle_degrees)
 # Aktualizace polygonu s novými souřadnicemi
 plt.gca().add_patch(plt.Polygon(current_verts, closed=True, fill=False, edgecolor='blue', label='Polygon transform'))
 
-im = cv2.imread(r"C:\Users\matej\Downloads\IMG_0385.JPG", 1)
+im = cv2.imread(r"C:\Users\matej\Downloads\IMG_0487.JPG", 1)
 h, w = im.shape[:2]
 rotated_image = cv2.warpAffine(im, transform_matrix, (w * 3, h * 3))
 # rotated_image = cv2.warpPerspective(im, translation_homo, (w*3, h*3))
