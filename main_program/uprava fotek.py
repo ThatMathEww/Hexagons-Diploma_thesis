@@ -255,6 +255,218 @@ def get_photos_from_folder(folder, img_types=(".jpg", ".jpeg", ".jpe", ".JPG", "
             sys.exit("Různé typy fotek.")
 
 
+def create_image_window(name, image):
+    cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(name, int(0.1 * width), int(0.1 * height))
+    cv2.imshow(name, image)
+
+
+def create_param_bar():
+    cv2.namedWindow("Parameters")
+    cv2.resizeWindow("Parameters", 700, 0)
+    cv2.createTrackbar(names[0], "Parameters", int((brightness / 5 + 50)), 100, bar1)
+    cv2.createTrackbar(names[1], "Parameters", int(contrast * 50), 100, bar2)
+    # cv2.createTrackbar(names[2], "Parameters", 50, 100, bar3)
+    cv2.createTrackbar(names[3], "Parameters", int(temp / -2 + 50), 100, bar4)
+    cv2.createTrackbar(names[4], "Parameters", int(saturate * 50), 100, bar5)
+    cv2.createTrackbar(names[5], "Parameters", int(bgr[2] * 100), 100, bar6)
+    cv2.createTrackbar(names[6], "Parameters", int(bgr[1] * 100), 100, bar7)
+    cv2.createTrackbar(names[7], "Parameters", int(bgr[0] * 100), 100, bar8)
+    cv2.resizeWindow("Parameters", 350, 150)
+
+
+def create_other_set_bar():
+    cv2.namedWindow("Other settings")
+    cv2.resizeWindow("Other settings", 700, 0)
+    cv2.createTrackbar("HSV - V", "Other settings", int(V * 50), 100, bar13)
+    cv2.createTrackbar("LAB - L", "Other settings", int(L * 50), 100, bar14)
+    cv2.createTrackbar("A", "Other settings", int(A * 50), 100, bar15)
+    cv2.createTrackbar("B", "Other settings", int(B * 50), 100, bar16)
+    cv2.createTrackbar("YUV - Y", "Other settings", int(Y * 50), 100, bar17)
+    cv2.createTrackbar("U", "Other settings", int(U * 50), 100, bar18)
+    cv2.createTrackbar("V", "Other settings", int(V2 * 50), 100, bar19)
+    cv2.resizeWindow("Other settings", 350, 150)
+
+
+def create_crop_bar():
+    cv2.namedWindow("Crop")
+    cv2.resizeWindow("Crop", 700, 0)
+    cv2.createTrackbar(names[8], "Crop", int(left), int(width / 2) - 1, bar9)
+    cv2.createTrackbar(names[9], "Crop", width - right, int(width / 2) - 1, bar10)
+    cv2.createTrackbar(names[10], "Crop", int(top), int(height / 2) - 1, bar11)
+    cv2.createTrackbar(names[11], "Crop", height - down, int(height / 2) - 1, bar12)
+    cv2.resizeWindow("Crop", 350, 85)
+
+
+def create_zoom_crop_bar():
+    cv2.namedWindow("Zoom")
+    cv2.resizeWindow("Zoom", 700, 0)
+    cv2.createTrackbar(names[8], "Zoom", int(left_z), int(width), bar_lz)
+    cv2.createTrackbar(names[10], "Zoom", int(top_z), int(height), bar_tz)
+    cv2.resizeWindow("Zoom", 350, 40)
+
+
+def change_image(image, last_image):
+    global image1, yuv_to_bgr_image, hsv_to_bgr_image, lab_to_bgr_image, names, restart, first_load_profile
+    global brightness, contrast, temp, saturate, left, right, top, down, V, L, A, B, Y, V, U, V2
+    global bgr, red, green, blue, red_channel, green_channel, blue_channel, width, height, profile
+    global left_z, top_z
+
+    image1 = image.copy()
+    height, width = image1.shape[:2]
+
+    names = ["Jas", "Kontrast", "Gama", "Teplota", "Sytost", "Red", "Green", "Blue", "Vlevo", "Vpravo", "Nahore",
+             "Dole"]
+
+    close = False
+    while True:
+        brightness = contrast = saturate = V = L = A = B = Y = U = V2 = 1
+        temp = 0
+        left, right, top, down = 0, width, 0, height
+        left_z, top_z = 0, 0
+
+        blue_channel, green_channel, red_channel = image1[:, :, 0], image1[:, :, 1], image1[:, :, 2]
+        blue, green, red = blue_channel, green_channel, red_channel
+        bgr = np.array([1, 1, 1], dtype=np.float64)
+
+        yuv_to_bgr_image, hsv_to_bgr_image, lab_to_bgr_image = image1.copy(), image1.copy(), image1.copy()
+
+        # Načtení profilu
+        if (os.path.exists(profile + '.txt') or restart) and first_load_profile:
+            if os.path.exists(profile + '.txt'):
+                try:
+                    loaded_profile = np.loadtxt(profile + '.txt', dtype=float)
+                    brightness, contrast, temp, saturate, V, L, A, B, Y, V, U, V2 = loaded_profile[0:12]
+                    bgr = loaded_profile[12:15]
+                    left, right, top, down = map(int, loaded_profile[15:19])
+                    del loaded_profile
+                except ValueError:
+                    print("Profil se nepovedlo načíst")
+                    pass
+            if restart:
+                if os.path.exists('profile.txt'):
+                    try:
+                        loaded_profile = np.loadtxt('profile.txt', dtype=float)
+                        brightness, contrast, temp, saturate, V, L, A, B, Y, V, U, V2 = loaded_profile[0:12]
+                        bgr = loaded_profile[12:15]
+                        left, right, top, down = map(int, loaded_profile[15:19])
+                        del loaded_profile
+                        print("\nProfil načten.")
+
+                    except ValueError:
+                        print("Profil se nepovedlo načíst")
+                else:
+                    print('Profil "profile.txt" nenalezen.')
+
+        first_load_profile = True
+        restart = False
+
+        cv2.namedWindow("Original image", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Original image", int(0.1 * width), int(0.1 * height))
+
+        cv2.namedWindow("Modified image", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Modified image", int(0.1 * width), int(0.1 * height))
+
+        cv2.namedWindow("Modified gray image", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Modified gray image", int(0.1 * width), int(0.1 * height))
+
+        cv2.namedWindow("Modified last gray image", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Modified last gray image", int(0.1 * width), int(0.1 * height))
+
+        cv2.namedWindow("Modified zoomed gray image", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Modified zoomed gray image", int(0.1 * width), int(0.1 * width))
+
+        create_param_bar()
+
+        create_other_set_bar()
+
+        create_crop_bar()
+
+        create_zoom_crop_bar()
+
+        while True:
+            if keyboard.is_pressed('escape') or keyboard.is_pressed('enter') and keyboard.is_pressed('space') or \
+                    keyboard.is_pressed('r') and keyboard.is_pressed('shift') or \
+                    keyboard.is_pressed('s') and keyboard.is_pressed('shift') or \
+                    keyboard.is_pressed('l') and keyboard.is_pressed('shift'):
+
+                if keyboard.is_pressed('escape') or keyboard.is_pressed('enter') and keyboard.is_pressed('space'):
+                    close = True
+                    cv2.destroyAllWindows()
+                    break
+
+                elif keyboard.is_pressed('r') and keyboard.is_pressed('shift'):
+                    cv2.destroyAllWindows()
+                    break
+
+                elif keyboard.is_pressed('s') and keyboard.is_pressed('shift'):
+                    data = [brightness, contrast, temp, saturate, V, L, A, B, Y, V, U, V2]
+                    data.extend(bgr)
+                    data.extend([left, right, top, down])
+                    np.savetxt(profile + '.txt', data)
+                    print("\nProfil uložen.")
+
+                elif keyboard.is_pressed('l') and keyboard.is_pressed('shift'):
+                    if os.path.exists(profile + '.txt'):
+                        print("\nZahajuji načítání profilu.")
+                        restart, close = True, True
+                        cv2.destroyAllWindows()
+                        break
+                    else:
+                        print('Profil "profile.txt" nenalezen.')
+
+            fin_img = cv2.convertScaleAbs(
+                np.minimum(np.concatenate((blue[top:down, left:right, np.newaxis],
+                                           green[top:down, left:right, np.newaxis],
+                                           red[top:down, left:right, np.newaxis]), axis=2),
+                           np.minimum(hsv_to_bgr_image[top:down, left:right],
+                                      np.minimum(yuv_to_bgr_image[top:down, left:right],
+                                                 lab_to_bgr_image[top:down, left:right]))),
+                alpha=contrast, beta=brightness)
+
+            modified_img_gray = cv2.cvtColor(fin_img, cv2.COLOR_BGR2GRAY)
+
+            # Kontrola, zda bylo okno zavřeno
+            if cv2.getWindowProperty("Original image", cv2.WND_PROP_VISIBLE) < 1 or \
+                    cv2.getWindowProperty("Modified image", cv2.WND_PROP_VISIBLE) < 1 or \
+                    cv2.getWindowProperty("Modified gray image", cv2.WND_PROP_VISIBLE) < 1 or \
+                    cv2.getWindowProperty("Modified last gray image", cv2.WND_PROP_VISIBLE) < 1 or \
+                    cv2.getWindowProperty("Modified zoomed gray image", cv2.WND_PROP_VISIBLE) < 1 or \
+                    cv2.getWindowProperty("Parameters", cv2.WND_PROP_VISIBLE) < 1 or \
+                    cv2.getWindowProperty("Other settings", cv2.WND_PROP_VISIBLE) < 1 or \
+                    cv2.getWindowProperty("Crop", cv2.WND_PROP_VISIBLE) < 1:
+
+                if cv2.getWindowProperty("Original image", cv2.WND_PROP_VISIBLE) < 1:
+                    create_image_window("Original image", image1)
+                if cv2.getWindowProperty("Modified image", cv2.WND_PROP_VISIBLE) < 1:
+                    create_image_window("Modified image", modified_img_gray)
+                if cv2.getWindowProperty("Modified last gray image", cv2.WND_PROP_VISIBLE) < 1:
+                    create_image_window("Modified last gray image", last_image[top:down, left:right])
+                if cv2.getWindowProperty("Modified zoomed gray image", cv2.WND_PROP_VISIBLE) < 1:
+                    create_image_window("Modified zoomed gray image",
+                                        modified_img_gray[top_z:top_z + 100, left_z:left_z + 100])
+                    cv2.resizeWindow("Modified zoomed gray image", int(0.1 * width), int(0.1 * width))
+                if cv2.getWindowProperty("Modified gray image", cv2.WND_PROP_VISIBLE) < 1:
+                    create_image_window("Modified gray image", fin_img)
+                if cv2.getWindowProperty("Parameters", cv2.WND_PROP_VISIBLE) < 1:
+                    create_param_bar()
+                if cv2.getWindowProperty("Other settings", cv2.WND_PROP_VISIBLE) < 1:
+                    create_other_set_bar()
+                if cv2.getWindowProperty("Crop", cv2.WND_PROP_VISIBLE) < 1:
+                    create_crop_bar()
+
+            cv2.imshow("Modified image", fin_img)
+            cv2.imshow("Modified gray image", modified_img_gray)
+            cv2.imshow("Original image", image1)
+            cv2.imshow("Modified last gray image", last_image[top:down, left:right])
+            cv2.imshow("Modified zoomed gray image", modified_img_gray[top_z:top_z + 100, left_z:left_z + 100])
+
+            cv2.waitKey(1)
+
+        if close:
+            break
+
+
 def main():
     global restart, profile, image_folder, folder_measurement, left, right, top, down, make_gray
     print("\n")
@@ -508,218 +720,6 @@ def main():
             print("Špatně volená možnost, zadejte znovu.")
 
 
-def create_image_window(name, image):
-    cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(name, int(0.1 * width), int(0.1 * height))
-    cv2.imshow(name, image)
-
-
-def create_param_bar():
-    cv2.namedWindow("Parameters")
-    cv2.resizeWindow("Parameters", 700, 0)
-    cv2.createTrackbar(names[0], "Parameters", int((brightness / 5 + 50)), 100, bar1)
-    cv2.createTrackbar(names[1], "Parameters", int(contrast * 50), 100, bar2)
-    # cv2.createTrackbar(names[2], "Parameters", 50, 100, bar3)
-    cv2.createTrackbar(names[3], "Parameters", int(temp / -2 + 50), 100, bar4)
-    cv2.createTrackbar(names[4], "Parameters", int(saturate * 50), 100, bar5)
-    cv2.createTrackbar(names[5], "Parameters", int(bgr[2] * 100), 100, bar6)
-    cv2.createTrackbar(names[6], "Parameters", int(bgr[1] * 100), 100, bar7)
-    cv2.createTrackbar(names[7], "Parameters", int(bgr[0] * 100), 100, bar8)
-    cv2.resizeWindow("Parameters", 350, 150)
-
-
-def create_other_set_bar():
-    cv2.namedWindow("Other settings")
-    cv2.resizeWindow("Other settings", 700, 0)
-    cv2.createTrackbar("HSV - V", "Other settings", int(V * 50), 100, bar13)
-    cv2.createTrackbar("LAB - L", "Other settings", int(L * 50), 100, bar14)
-    cv2.createTrackbar("A", "Other settings", int(A * 50), 100, bar15)
-    cv2.createTrackbar("B", "Other settings", int(B * 50), 100, bar16)
-    cv2.createTrackbar("YUV - Y", "Other settings", int(Y * 50), 100, bar17)
-    cv2.createTrackbar("U", "Other settings", int(U * 50), 100, bar18)
-    cv2.createTrackbar("V", "Other settings", int(V2 * 50), 100, bar19)
-    cv2.resizeWindow("Other settings", 350, 150)
-
-
-def create_crop_bar():
-    cv2.namedWindow("Crop")
-    cv2.resizeWindow("Crop", 700, 0)
-    cv2.createTrackbar(names[8], "Crop", int(left), int(width / 2) - 1, bar9)
-    cv2.createTrackbar(names[9], "Crop", width - right, int(width / 2) - 1, bar10)
-    cv2.createTrackbar(names[10], "Crop", int(top), int(height / 2) - 1, bar11)
-    cv2.createTrackbar(names[11], "Crop", height - down, int(height / 2) - 1, bar12)
-    cv2.resizeWindow("Crop", 350, 85)
-
-
-def create_zoom_crop_bar():
-    cv2.namedWindow("Zoom")
-    cv2.resizeWindow("Zoom", 700, 0)
-    cv2.createTrackbar(names[8], "Zoom", int(left_z), int(width), bar_lz)
-    cv2.createTrackbar(names[10], "Zoom", int(top_z), int(height), bar_tz)
-    cv2.resizeWindow("Zoom", 350, 40)
-
-
-def change_image(image, last_image):
-    global image1, yuv_to_bgr_image, hsv_to_bgr_image, lab_to_bgr_image, names, restart, first_load_profile
-    global brightness, contrast, temp, saturate, left, right, top, down, V, L, A, B, Y, V, U, V2
-    global bgr, red, green, blue, red_channel, green_channel, blue_channel, width, height, profile
-    global left_z, top_z
-
-    image1 = image.copy()
-    height, width = image1.shape[:2]
-
-    names = ["Jas", "Kontrast", "Gama", "Teplota", "Sytost", "Red", "Green", "Blue", "Vlevo", "Vpravo", "Nahore",
-             "Dole"]
-
-    close = False
-    while True:
-        brightness = contrast = saturate = V = L = A = B = Y = U = V2 = 1
-        temp = 0
-        left, right, top, down = 0, width, 0, height
-        left_z, top_z = 0, 0
-
-        blue_channel, green_channel, red_channel = image1[:, :, 0], image1[:, :, 1], image1[:, :, 2]
-        blue, green, red = blue_channel, green_channel, red_channel
-        bgr = np.array([1, 1, 1], dtype=np.float64)
-
-        yuv_to_bgr_image, hsv_to_bgr_image, lab_to_bgr_image = image1.copy(), image1.copy(), image1.copy()
-
-        # Načtení profilu
-        if (os.path.exists(profile + '.txt') or restart) and first_load_profile:
-            if os.path.exists(profile + '.txt'):
-                try:
-                    loaded_profile = np.loadtxt(profile + '.txt', dtype=float)
-                    brightness, contrast, temp, saturate, V, L, A, B, Y, V, U, V2 = loaded_profile[0:12]
-                    bgr = loaded_profile[12:15]
-                    left, right, top, down = map(int, loaded_profile[15:19])
-                    del loaded_profile
-                except ValueError:
-                    print("Profil se nepovedlo načíst")
-                    pass
-            if restart:
-                if os.path.exists('profile.txt'):
-                    try:
-                        loaded_profile = np.loadtxt('profile.txt', dtype=float)
-                        brightness, contrast, temp, saturate, V, L, A, B, Y, V, U, V2 = loaded_profile[0:12]
-                        bgr = loaded_profile[12:15]
-                        left, right, top, down = map(int, loaded_profile[15:19])
-                        del loaded_profile
-                        print("\nProfil načten.")
-
-                    except ValueError:
-                        print("Profil se nepovedlo načíst")
-                else:
-                    print('Profil "profile.txt" nenalezen.')
-
-        first_load_profile = True
-        restart = False
-
-        cv2.namedWindow("Original image", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Original image", int(0.1 * width), int(0.1 * height))
-
-        cv2.namedWindow("Modified image", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Modified image", int(0.1 * width), int(0.1 * height))
-
-        cv2.namedWindow("Modified gray image", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Modified gray image", int(0.1 * width), int(0.1 * height))
-
-        cv2.namedWindow("Modified last gray image", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Modified last gray image", int(0.1 * width), int(0.1 * height))
-
-        cv2.namedWindow("Modified zoomed gray image", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Modified zoomed gray image", int(0.1 * width), int(0.1 * width))
-
-        create_param_bar()
-
-        create_other_set_bar()
-
-        create_crop_bar()
-
-        create_zoom_crop_bar()
-
-        while True:
-            if keyboard.is_pressed('escape') or keyboard.is_pressed('enter') and keyboard.is_pressed('space') or \
-                    keyboard.is_pressed('r') and keyboard.is_pressed('shift') or \
-                    keyboard.is_pressed('s') and keyboard.is_pressed('shift') or \
-                    keyboard.is_pressed('l') and keyboard.is_pressed('shift'):
-
-                if keyboard.is_pressed('escape') or keyboard.is_pressed('enter') and keyboard.is_pressed('space'):
-                    close = True
-                    cv2.destroyAllWindows()
-                    break
-
-                elif keyboard.is_pressed('r') and keyboard.is_pressed('shift'):
-                    cv2.destroyAllWindows()
-                    break
-
-                elif keyboard.is_pressed('s') and keyboard.is_pressed('shift'):
-                    data = [brightness, contrast, temp, saturate, V, L, A, B, Y, V, U, V2]
-                    data.extend(bgr)
-                    data.extend([left, right, top, down])
-                    np.savetxt(profile + '.txt', data)
-                    print("\nProfil uložen.")
-
-                elif keyboard.is_pressed('l') and keyboard.is_pressed('shift'):
-                    if os.path.exists(profile + '.txt'):
-                        print("\nZahajuji načítání profilu.")
-                        restart, close = True, True
-                        cv2.destroyAllWindows()
-                        break
-                    else:
-                        print('Profil "profile.txt" nenalezen.')
-
-            fin_img = cv2.convertScaleAbs(
-                np.minimum(np.concatenate((blue[top:down, left:right, np.newaxis],
-                                           green[top:down, left:right, np.newaxis],
-                                           red[top:down, left:right, np.newaxis]), axis=2),
-                           np.minimum(hsv_to_bgr_image[top:down, left:right],
-                                      np.minimum(yuv_to_bgr_image[top:down, left:right],
-                                                 lab_to_bgr_image[top:down, left:right]))),
-                alpha=contrast, beta=brightness)
-
-            modified_img_gray = cv2.cvtColor(fin_img, cv2.COLOR_BGR2GRAY)
-
-            # Kontrola, zda bylo okno zavřeno
-            if cv2.getWindowProperty("Original image", cv2.WND_PROP_VISIBLE) < 1 or \
-                    cv2.getWindowProperty("Modified image", cv2.WND_PROP_VISIBLE) < 1 or \
-                    cv2.getWindowProperty("Modified gray image", cv2.WND_PROP_VISIBLE) < 1 or \
-                    cv2.getWindowProperty("Modified last gray image", cv2.WND_PROP_VISIBLE) < 1 or \
-                    cv2.getWindowProperty("Modified zoomed gray image", cv2.WND_PROP_VISIBLE) < 1 or \
-                    cv2.getWindowProperty("Parameters", cv2.WND_PROP_VISIBLE) < 1 or \
-                    cv2.getWindowProperty("Other settings", cv2.WND_PROP_VISIBLE) < 1 or \
-                    cv2.getWindowProperty("Crop", cv2.WND_PROP_VISIBLE) < 1:
-
-                if cv2.getWindowProperty("Original image", cv2.WND_PROP_VISIBLE) < 1:
-                    create_image_window("Original image", image1)
-                if cv2.getWindowProperty("Modified image", cv2.WND_PROP_VISIBLE) < 1:
-                    create_image_window("Modified image", modified_img_gray)
-                if cv2.getWindowProperty("Modified last gray image", cv2.WND_PROP_VISIBLE) < 1:
-                    create_image_window("Modified last gray image", last_image[top:down, left:right])
-                if cv2.getWindowProperty("Modified zoomed gray image", cv2.WND_PROP_VISIBLE) < 1:
-                    create_image_window("Modified zoomed gray image",
-                                        modified_img_gray[top_z:top_z + 100, left_z:left_z + 100])
-                    cv2.resizeWindow("Modified zoomed gray image", int(0.1 * width), int(0.1 * width))
-                if cv2.getWindowProperty("Modified gray image", cv2.WND_PROP_VISIBLE) < 1:
-                    create_image_window("Modified gray image", fin_img)
-                if cv2.getWindowProperty("Parameters", cv2.WND_PROP_VISIBLE) < 1:
-                    create_param_bar()
-                if cv2.getWindowProperty("Other settings", cv2.WND_PROP_VISIBLE) < 1:
-                    create_other_set_bar()
-                if cv2.getWindowProperty("Crop", cv2.WND_PROP_VISIBLE) < 1:
-                    create_crop_bar()
-
-            cv2.imshow("Modified image", fin_img)
-            cv2.imshow("Modified gray image", modified_img_gray)
-            cv2.imshow("Original image", image1)
-            cv2.imshow("Modified last gray image", last_image[top:down, left:right])
-            cv2.imshow("Modified zoomed gray image", modified_img_gray[top_z:top_z + 100, left_z:left_z + 100])
-
-            cv2.waitKey(1)
-
-        if close:
-            break
-
-
 if __name__ == '__main__':
     global image1, yuv_to_bgr_image, hsv_to_bgr_image, lab_to_bgr_image, names
     global brightness, contrast, temp, saturate, left, right, top, down, V, L, A, B, Y, U, V2
@@ -735,7 +735,7 @@ if __name__ == '__main__':
     # Nastavení cest ke složkám
     folder_measurement = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_txt'
 
-    img_format = 'JPG'
+    img_format = 'png'
 
     first_load_profile = False
 
