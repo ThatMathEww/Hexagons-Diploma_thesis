@@ -4935,7 +4935,7 @@ def load_photo(img_index: int, color_type: int = 1, give_path=False, photo_path=
             global preloaded_images
             if img_index > len(preloaded_images) - 1 or img_index < -len(preloaded_images):
                 program_shutdown("Špatný index pro načtení fotografie")
-            return preloaded_images[img_index]
+            return preloaded_images[img_index].copy()
         except (NameError, Exception):
             if os.path.exists(photo_path):
                 return cv2.imread(photo_path, color_type)

@@ -26,21 +26,27 @@ mean_dev = 9  # Střední hodnota
 std_dev = 1  # Směrodatná odchylka
 
 # Generování dat z gausovského rozdělení
-data = np.random.normal(mean_dev, std_dev, 1000)  # Generuje 1000 vzorků
+# data = np.random.normal(mean_dev, std_dev, 1000)  # Generuje 1000 vzorků
 # data = [15, 15.5, 14.9, 10.3, 18.9, 15.1, 12, 23]
+data = np.array([21.44, 27.09, 23.85, 27.03, 21.74, 24.88, 21.28, 18.28, 23.64, 23.43, 23.14, 20.3, 22.88, 22.79, 28.3,
+                 27.08, 20.67, 24.46, 37.74, 21.87])
 std = np.std(data)
 mean = np.mean(data)
 
 fig, ax = plt.subplots()
 
 # Vykreslení histogramu dat
-bar = plt.hist(data, bins=30, density=True, label='Hustota pravděpodobnosti')
+bar = plt.hist(data, bins=30, density=False, label='Hustota pravděpodobnosti')
 gradient_bars(bar[2])
 
 # Vykreslení teoretického gausovského rozdělení
 # x = np.linspace(mean - 3 * std, mean + 3 * std, 100)
 x = np.linspace(np.min(data), np.max(data), 1000)
 pdf = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / std) ** 2)
+a, b = np.max(bar[0]), np.min(bar[0])
+# pdf = (((pdf - np.min(pdf)) / (np.max(pdf) - np.min(pdf)))) * np.max(bar[0])
+pdf = pdf * (np.max(bar[0]) / np.max(pdf))
+
 plt.plot(x, pdf, '#28418C', label='Teoretická hustota pravděpodobnosti')
 
 # Přidání popisků
@@ -48,7 +54,7 @@ plt.title('Gausovské pravděpodobnostní rozdělení')
 plt.xlabel('Hodnota')
 plt.ylabel('Hustota pravděpodobnosti')
 box = ax.get_position()
-ax.set_position([box.x0, box.y0 + box.height * 0.15,  box.width, box.height * 0.85])
+ax.set_position([box.x0, box.y0 + box.height * 0.15, box.width, box.height * 0.85])
 
 h, n = ax.get_legend_handles_labels()
 h[0] = plt.Rectangle((0, 0), 1, 1, fc="tab:blue", alpha=0.7)  # Vytvoření obdélníku pro značku
