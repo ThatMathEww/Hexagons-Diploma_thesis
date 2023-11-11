@@ -4244,33 +4244,34 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                                    current_folder_path, saved_data_name + ".zip"), 'r').namelist()
                                 if name.startswith("image_folder/")][1:]]
 
-                with open(os.path.join(folder_measurements, "data_txt", current_image_folder + ".txt"), 'r') as file:
-                    time_period = file.readline().split()
-                    file.close()
+                if os.path.isfile(os.path.join(folder_measurements, "data_txt", current_image_folder + ".txt")):
+                    with open(os.path.join(folder_measurements, "data_txt", current_image_folder + ".txt"), 'r') as txt:
+                        time_period = txt.readline().split()
+                        txt.close()
 
-                if time_period[0] == 'MMDIC' or time_period[0] == 'MMDIC2':
-                    time_period = np.int16(time_period[-1])
-                    top_pad = 0.75
-                else:
-                    print("\n\t\033[33;1;21mWARRNING\033[0m"
-                          "\n\t\t - V souboru se nenachází zadávací sekvence 'MMDIC' nebo 'MMDIC2'.")
-
-                    if len(time_stamps) >= 2:
-                        time_period = np.int16(abs(time_stamps[0] - time_stamps[1]))
+                    if time_period[0] == 'MMDIC' or time_period[0] == 'MMDIC2':
+                        time_period = np.int16(time_period[-1])
+                        top_pad = 0.75
                     else:
-                        time_period = []
-                        for i in (1, 0):
-                            image_path = load_photo(img_index=i, give_path=True)
-                            if os.path.exists(image_path):
-                                time_period.append(os.path.getmtime(image_path))
-                            if len(time_period) == 2:
-                                time_period = np.int16(abs(time_period[0] - time_period[1]))
-                            else:
-                                raise MyException("\033[33mNebylo možné získat čas ze zadávací sekvence nebo "
-                                                  "času vytvoření fotografií\033[0m")
+                        print("\n\t\033[33;1;21mWARRNING\033[0m"
+                              "\n\t\t - V souboru se nenachází zadávací sekvence 'MMDIC' nebo 'MMDIC2'.")
+
+                        if 'time_stamps' in locals() and isinstance(time_stamps, list) and len(time_stamps) >= 2:
+                            time_period = np.int16(abs(time_stamps[0] - time_stamps[1]))
+                        else:
+                            time_period = []
+                            for i in (1, 0):
+                                image_path = load_photo(img_index=i, give_path=True)
+                                if os.path.exists(image_path):
+                                    time_period.append(os.path.getmtime(image_path))
+                                if len(time_period) == 2:
+                                    time_period = np.int16(abs(time_period[0] - time_period[1]))
+                                else:
+                                    raise MyException("\033[33mNebylo možné získat čas ze zadávací sekvence nebo "
+                                                      "času vytvoření fotografií\033[0m")
 
                 if photos[-1] + 1 == len(x_data) and tot_im >= 3:
-                    if 'time_stamps' in locals() and time_stamps:
+                    if 'time_stamps' in locals() and isinstance(time_stamps, list) and len(time_stamps) >= 3:
                         last_time = np.int16(abs(time_stamps[-2] - time_stamps[-1]))
                         del time_stamps
                     else:
@@ -4279,7 +4280,6 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                             image_path = load_photo(img_index=i, give_path=True)
                             # image_path = os.path.join(current_folder_path, source_image_type[0], image_files[i])
                             if os.path.exists(image_path):
-                                a = os.path.getmtime(image_path)
                                 last_time.append(os.path.getmtime(image_path))
                         if len(last_time) == 2:
                             last_time = np.int16(abs(last_time[0] - last_time[1]))

@@ -1,44 +1,57 @@
 import pandas as pd
 import numpy as np
 import h5py
+import time
 import zipfile
 import os
 
 main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
 saved_data_name = "data_pokus.zip"
+
+########################################################################################################################
+
 images_folders = [name for name in [os.path.splitext(file)[0] for file in os.listdir(main_image_folder)]
                   if name.startswith("H01") or name.startswith("_")]
 images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
 
-for current_image_folder in images_folders:
-    # correlation_points, tracked_points, tracked_rotations, distances, forces, photo_indexes = [None] * 6
-    dataset_1, dataset_2, dataset_3, distances, forces, photo_indexes = [None] * 6
+########################################################################################################################
+########################################################################################################################
+tot_folders = len(images_folders)
+for exp, current_image_folder in enumerate(images_folders):
+    print(f"\nNačítání uložených dat: ' \033[94;1m{current_image_folder}\033[0m ' -  [ {exp + 1} / {tot_folders}]")
 
-    print("\nNačítání uložených dat.")
+    # Název Excel souboru
+    excel_file = f'hexagon_values_{exp + 1}.xlsx'
+
+    # correlation_points, tracked_points, tracked_rotations, distances, forces, photo_indexes = [None] * 6
+    dataset_1, dataset_2, dataset_3, distances, forces, photo_indexes, time_stamps = [None] * 7
 
     current_folder_path = os.path.join(main_image_folder, current_image_folder)
     zip_files = [f for f in os.listdir(current_folder_path)
                  if os.path.isfile(os.path.join(current_folder_path, f)) and f.lower().endswith(".zip")]
 
     zip_file_name = os.path.join(current_folder_path, saved_data_name)
-    if zip_file_name not in zip_files:
-        pass
+    if saved_data_name not in zip_files:
+        print(f'\n\033[31;1;21mERROR\033[0m\n\tVe složce [{current_image_folder}] se nenachází daný soubor ZIP')
+        continue
 
     try:
         # Načtení dat z zip archivu
         with zipfile.ZipFile(zip_file_name, 'r') as zipf:
 
             # Zjištění, zda je zip soubor prázdný
-            if not zipf.namelist():
-                raise Exception(f"\033[31;1;21mError:\033[0m Zip file [{zip_file_name}] is empty.")
+            zip_list = zipf.namelist()
+
+            if not zip_list:
+                raise Exception(f"\033[31;1;21mERROR:\033[0m Zip file [{zip_file_name}] is empty.")
 
             #  ######################################################################################################  #
             #  ############################################     CSV      ############################################  #
             #  ######################################################################################################  #
             # Načítání souboru CSV
             csv_file_name = f"{current_image_folder}.csv"
-            if csv_file_name in zipf.namelist():
+            if csv_file_name in zip_list:
                 path_to_csv = zipf.open(csv_file_name)
             else:
                 path_to_csv = os.path.join(folder_measurements, "data_csv", csv_file_name)
@@ -90,6 +103,46 @@ for current_image_folder in images_folders:
             beginning = np.argmax(photo_indexes >= start_position)
 
             #  ######################################################################################################  #
+            #  ############################################     TIME     ############################################  #
+            #  ######################################################################################################  #
+
+            try:
+                if "image_folder/" in zip_list:
+                    # Převod času z GMT na lokální čas změny fotek v ZIPu a uložení do seznamu
+                    time_stamps = [int(time.mktime(zipf.getinfo(file).date_time + (0, 0, 0))) for file
+                                   in [name for name in zip_list if name.startswith("image_folder/")][1:]]
+
+                    time_values = np.array([0.0 if not np.isnan(t) else np.nan for t in df['Photos'].values])
+
+                    """a = [os.path.getmtime(os.path.join(current_folder_path, "modified", i)) for i in
+                         os.listdir(os.path.join(current_folder_path, "modified"))][1:]
+                    t2 = [0] + [a[i + 1] - a[i] for i in range(len(a) - 1)]"""
+                    if len(time_stamps) < 2:
+                        raise Exception("Minimální počet fotek pro tvorbu časových razítek je 2.")
+                    if len(time_stamps) - 1 != int(np.nanmax(df['Photos'].values)):
+                        raise Exception("Neshodujhe se počet fotek v zipu s data z csv.")
+
+                    # time_stamps = time_stamps[beginning:]
+                    time_stamps = np.array(
+                        [0] + [time_stamps[i + 1] - time_stamps[i] for i in range(len(time_stamps) - 1)], dtype=int)
+                    time_stamps[1:-1] = np.median(time_stamps[1:-1])
+                    time_stamps = [np.sum(time_stamps[:i + 1]) for i in range(len(time_stamps))]
+
+                    nan_indices = np.isnan(time_values)  # Najděte indexy NaN hodnot
+                    time_values[np.isfinite(time_values)] = time_stamps
+                    time_stamps = time_values.copy()  # Vytvořte kopii vektoru pro interpolaci
+                    # Nahraďte NaN hodnoty interpolovanými hodnotami
+                    time_stamps[nan_indices] = np.interp(np.flatnonzero(nan_indices),
+                                                         np.flatnonzero(~nan_indices), time_values[~nan_indices])
+                    time_stamps = time_stamps[start_position:] - time_stamps[start_position]
+                    # time_stamps = [t - time_stamps[0] for t in time_stamps]
+                else:
+                    print("\n\033[33;1;21mWARRNING\033[0m\n\t - V souboru ZIP se nenachází fotografie")
+            except Exception as e:
+                print("\n\033[33;1;21mWARRNING\033[0m\n\t - "
+                      f"Chyba načtení časového nastavení měření ze složky: [{current_image_folder}]\n\tPOPIS: {e}")
+
+            #  ######################################################################################################  #
             #  ############################################      H5      ############################################  #
             #  ######################################################################################################  #
             # Načtení .h5 souboru
@@ -123,7 +176,7 @@ for current_image_folder in images_folders:
         zipf.close()
     except (KeyError, Exception) as e:
         print(f'\n\033[31;1;21mERROR\033[0m\n\tSelhalo načtení uložených dat\n\tPOPIS: {e}')
-        pass
+        continue
 
     datasets = dict(Correlation=None, Tracked_points=None, Forces=None, Others=None)
 
@@ -131,7 +184,7 @@ for current_image_folder in images_folders:
         scale = dataset_1[-1]
 
         if dataset_2['data_correlation'] is not None:
-            datasets['Correlation'] = dataset_2['data_correlation'] # correlation_points
+            datasets['Correlation'] = dataset_2['data_correlation']  # correlation_points
 
         if dataset_2['data_point_detect'] is not None:
             datasets['Tracked_points'] = dataset_2['data_point_detect']  # [tracked_points, tracked_rotations]
@@ -143,54 +196,59 @@ for current_image_folder in images_folders:
 
     except (ValueError, Exception) as e:
         print(f'\n\033[31;1;21mERROR\033[0m\n\tSelhalo přiřazení hodnot uložených dat\n\tPOPIS: {e}')
-        pass
-
-    # Název Excel souboru
-    excel_file = 'vase_multi_listy.xlsx'
+        continue
 
     data_frames = []
+    data_frames_names = []
 
-    # Vytvoření dat pro listy
-    data_list1 = {'A': [1, 2, 3, 4], 'B': [5, 6, 7, 8]}
-    data_list2 = {'Y': [10, 20, 30, 40], 'X': ['apple', 'banana', 'cherry', 'date']}
+    photos = np.arange(beginning, len(photo_indexes), 1)  # int(np.nanmax(df['Photos'].values)) + 1
+    time_values = time_stamps[photo_indexes - start_position][beginning:]
 
     if datasets['Correlation'] is not None:
         data_1 = np.array([np.mean(c[0], axis=0) for c in datasets['Correlation'][beginning:]])
         # Vytvoření datových rámce pro listy
-        data_frames.append(pd.DataFrame({'Photo': None,
-                                         'Time': None,
+        data_frames.append(pd.DataFrame({'Photo': photos,
+                                         'Time': time_values,
                                          'X': data_1[:, 0],
                                          'Y': data_1[:, 1]}))
+        data_frames_names.append('Movement of loading bar')
 
     if datasets['Tracked_points'] is not None:
         data_1 = np.array(datasets['Tracked_points'][0][beginning:])
         data_2 = np.array(datasets['Tracked_points'][1][beginning:])
         # Vytvoření datových rámce pro listy
-        data_frames.append(pd.DataFrame({'Photo': None,
-                                         'Time': None,
+        data_frames.append(pd.DataFrame({'Photo': photos,
+                                         'Time': time_values,
                                          'X': data_1[:, 0],
                                          'Y': data_1[:, 1],
                                          'Rotation': data_2}))
+        data_frames_names.append(f'Tracked points - {len(datasets["Tracked_points"][0])}. points')
 
     if datasets['Forces'] is not None:
         # Vytvoření datových rámce pro listy
-        data_frames.append(pd.DataFrame({'Photo': None,
-                                         'Time': None,
+        data_frames.append(pd.DataFrame({'Photo': photos,
+                                         'Time': time_values,
                                          'Distance': distances[photo_indexes[beginning:]],
                                          'Force': forces[photo_indexes[beginning:]]}))
+        data_frames_names.append('Forces on photo')
 
     if datasets['Forces'] is not None:
         # Vytvoření datových rámce pro listy
-        data_frames.append(pd.DataFrame({'Photo': df['Photos'].values,
-                                         'Time': None,
+        data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_position:],
+                                         'Time': time_stamps,
                                          'Distance': distances[start_position:],
                                          'Force': forces[start_position:]}))
+        data_frames_names.append('All forces')
 
     if datasets['Others'] is not None:
         pass
 
     # Vytvoření ExcelWriter
-    excel_writer = pd.ExcelWriter('vase_multi_listy.xlsx', engine='xlsxwriter')
+    try:
+        excel_writer = pd.ExcelWriter(excel_file, engine='xlsxwriter')
+    except PermissionError:
+        print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze upravovat, pravděpodobně je otevřen.')
+        continue
 
     # Uložení textu v listu
     text1 = "some text here"
@@ -210,6 +268,8 @@ for current_image_folder in images_folders:
     # Zápis dat do listů
     for i, data_frame in enumerate(data_frames):
         data_frame.to_excel(excel_writer, sheet_name=f'List_{i}', index=False)
+        worksheet.write(i + 7, 0, f'List_{i}: {data_frames_names[i]}')
 
     # Zavření Excel souboru
     excel_writer.close()
+    print(f"\tData úspěšně uložena.")
