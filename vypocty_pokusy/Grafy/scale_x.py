@@ -65,7 +65,7 @@ print("Translace (posun):", translation)
 print("Rotace (úhel):", np.round(np.degrees(rotation), decimals=4), np.linalg.norm(np.degrees(rotation) - angle))
 
 # Odhad transformační matice pomocí cv2.findHomography()
-translation_homo, _ = cv2.findHomography(original_points, current_verts)
+translation_homo, _ = cv2.findHomography(original_points, current_verts, cv2.RANSAC, 5.0)
 
 # Matice obsahuje informace o posunu, rotaci a další transformaci
 

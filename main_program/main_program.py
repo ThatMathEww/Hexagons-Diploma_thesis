@@ -3164,7 +3164,7 @@ def point_tracking_calculation(use_correlation=True):
         [cv2.fillPoly(mask_1, [np.int32(np.round(polygon))], 255) for polygon in triangle_points_all[0]]
         masked_img_1 = gray_1 & mask_1
 
-    for i in range(tot_im):
+    for i in range(tot_im - 2, tot_im):
         print("\n=================================================================",
               f"\nAktuální proces:  [ {i + 1} / {tot_im} ]\t  Fotografie: {image_files[i]}")
 
@@ -3230,25 +3230,13 @@ def point_tracking_calculation(use_correlation=True):
                                                            current_key_points[:, :2].astype(np.float32))[0]
 
             # Matice obsahuje informace o translaci (posunu) a rotaci
-            translation = transform_matrix[:, 2]
             rotation = np.arctan2(transform_matrix[1, 0], transform_matrix[0, 0])
-            # tracked_rotations = np.append(tracked_rotations, rotation)
-
-            print("Translace (posun):", np.round(translation, 3))
-            print("Rotace (úhel):", round(np.degrees(rotation), 3))
+            tracked_rotations = np.append(tracked_rotations, rotation)
 
             tran_mat = cv2.findHomography(current_key_points[:, 2:], current_key_points[:, :2], cv2.RANSAC, 5.0)[0]
-            tran_mat_inv = cv2.findHomography(current_key_points[:, :2], current_key_points[:, 2:], cv2.RANSAC, 5.0)[0]
             # tran_mat = cv2.getPerspectiveTransform(np.float32(def_pts), np.float32(orig_pts))
-            tran_mat_i = cv2.invert(tran_mat)[1]
-
-            # Matice obsahuje informace o translaci (posunu) a rotaci
-            translation2 = tran_mat[:2, 2]
-            rotation2 = np.arctan2(tran_mat[1, 0], tran_mat[0, 0])
-            # tracked_rotations = np.append(tracked_rotations, rotation)
-
-            print("Translace (posun):", np.round(translation2, 3))
-            print("Rotace (úhel):", round(np.degrees(rotation2), 3))  # informace o translaci (posunu) a rotaci
+            tran_mat_inv = cv2.findHomography(current_key_points[:, :2], current_key_points[:, 2:], cv2.RANSAC, 5.0)[0]
+            # tran_mat_inv = cv2.invert(tran_mat)[1]
 
             if use_correlation:
                 bound = np.int32(cv2.boundingRect(np.float32(tracking_area))).reshape(2, 2)
@@ -3329,11 +3317,11 @@ def point_tracking_calculation(use_correlation=True):
             if use_correlation:
                 transformed_matched_point = cv2.perspectiveTransform(np.float32(top_left + bound[0]).reshape(-1, 1, 2),
                                                                      tran_mat_inv)[0][0]
-                result_point = np.int32(np.round((transformed_matched_point + transformed_point) * 0.5))
+                result_point = np.int32(np.round((transformed_matched_point + transformed_point) / 2))
             else:
                 result_point = np.int32(np.round(transformed_point))
 
-            print(result_point, "===", translation + point_to_track)
+            tracked_points_cur = np.append(tracked_points_cur, result_point.reshape(1, 2), axis=0)
 
             if show_graphs:
                 matched_point = np.int32(top_left + bound[0])
@@ -3359,10 +3347,9 @@ def point_tracking_calculation(use_correlation=True):
                 plt.axis('equal')
                 plt.tight_layout()
                 plt.show()
+            else:
+                print_progress_bar(j + 1, tot_p, 1, 20, "\t")
 
-            tracked_points_cur = np.append(tracked_points_cur, result_point.reshape(1, 2), axis=0)
-
-            # print_progress_bar(j + 1, tot_p, 1, 20, "\t")
         tracked_points_all.append(tracked_points_cur)
         tracked_rotations_all.append(tracked_rotations)
 
