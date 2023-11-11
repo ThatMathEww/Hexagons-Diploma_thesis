@@ -3,11 +3,19 @@ from shutil import copy2, move
 import cv2
 from pyzbar.pyzbar import decode as qr_detect
 
+#############################################################
+#############################################################
+#############################################################
+
 # Název souboru s fotografií obsahující QR kód
 input_path = r""
 output_path = r""
 
 function = copy2  # #### Druh manipulace: copy2 - kopírování // move - přesun
+
+#############################################################
+#############################################################
+#############################################################
 
 if not os.path.isdir(input_path):
     exit()
@@ -15,10 +23,10 @@ if not os.path.isdir(input_path):
 photos = [f for f in os.listdir(input_path) if os.path.isfile(os.path.join(input_path, f))
           and f.lower().endswith((".jpg", ".jpeg", ".JPG", ".png"))]
 
-for photo in photos[-8:]:
+for photo in photos:
     photo_path = os.path.join(input_path, photo)
     # Načtení QR kódů z obrázku
-    decoded_objects = qr_detect(cv2.cvtColor(cv2.imread(photo_path, 1), cv2.COLOR_BGR2RGB))
+    decoded_objects = qr_detect(cv2.cvtColor(cv2.imread(photo_path, 1), cv2.COLOR_BGR2GRAY))
 
     if len(decoded_objects) != 1:
         if len(decoded_objects) > 1:

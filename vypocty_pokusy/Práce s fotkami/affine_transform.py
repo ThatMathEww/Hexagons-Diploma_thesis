@@ -73,7 +73,9 @@ source_points = np.array([(2229.777777777778, 1562.7777777777776), (2248.0, 1648
 target_points = np.array([(2089.6251772501255, 2006.0266479862269), (2062.4620285910282, 2087.7634755368695),
                           (2110.4087925380186, 2055.4892163508757)])
 
-image = cv2.imread('photos/IMG_0385.JPG', cv2.IMREAD_GRAYSCALE)
+image = cv2.imread(r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Hexagons-Diploma_thesis'
+                   r'\vypocty_pokusy\photos\IMG_0385.JPG',
+                   cv2.IMREAD_GRAYSCALE)
 height, width = image.shape[:2]
 
 center = np.mean(source_points, axis=0)

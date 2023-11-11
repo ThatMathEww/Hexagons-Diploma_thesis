@@ -2,11 +2,13 @@ import cv2
 import numpy as np
 
 # Načtěte první obrázek
-image1 = cv2.imread('photos/IMG_0385.JPG', cv2.IMREAD_GRAYSCALE)
+image1 = cv2.imread(r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Hexagons-Diploma_thesis'
+                    r'\vypocty_pokusy\photos\IMG_0385.JPG', cv2.IMREAD_GRAYSCALE)
 image1 = cv2.cvtColor(image1, cv2.COLOR_GRAY2BGR)[1050:3200, 1550:4630]
 
 # Načtěte druhý obrázek
-image2 = cv2.imread('photos/IMG_0400.JPG', cv2.IMREAD_GRAYSCALE)
+image2 = cv2.imread(r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Hexagons-Diploma_thesis'
+                    r'\vypocty_pokusy\photos\IMG_0400.JPG', cv2.IMREAD_GRAYSCALE)
 image2 = cv2.cvtColor(image2, cv2.COLOR_GRAY2BGR)[1050:3200, 1550:4630]
 
 # Počet prvků ve směru x a y

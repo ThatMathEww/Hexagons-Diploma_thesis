@@ -45,7 +45,8 @@ other_points = np.array([[1, 1],
 corrected_points = transform_points(other_points, main_point_end, main_point_start)
 corrected_end_point = transform_points(main_point_end, main_point_end, main_point_start)
 
-image = cv2.imread(r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\vypocty_pokusy\book2.JPG', 0)
+image = cv2.imread(r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Hexagons-Diploma_thesis'
+                   r'\vypocty_pokusy\book2.JPG', 0)
 rotated_image = transform_photo(image, main_point_end, main_point_start)
 height, width = image.shape[:2]
 
