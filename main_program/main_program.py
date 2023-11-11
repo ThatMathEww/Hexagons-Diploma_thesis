@@ -3477,6 +3477,8 @@ def perform_calculations():
               "\n\033[32;1m:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\033[0m")
         return
 
+    do_scale(load_photo(img_index=0, color_type=0))
+
     if ((do_calculations['Do Correlation'] and not calculations_statuses['Correlation']) or
             (do_calculations['Do Rough detection'] and not calculations_statuses['Rough detection'])):
 
@@ -3499,7 +3501,6 @@ def perform_calculations():
 
         fast_fine_calculation(mesh_size=fine_size)
         # fine_calculation_____________(mesh_size=fine_size)
-        do_scale(load_photo(img_index=0, color_type=0))
         show_heat_graph(-1, 0, "y", fine_triangle_points_all, fine_mesh_centers_all, scaling=scale,
                         colorbar_label='[mm]', block_graph=block_graphs)  # TODO BLOKACE GRAFU
 
@@ -3584,7 +3585,7 @@ def do_scale(img=None, auto_scale=True):
         dist = mark_points_on_canvas(2)
         print("Zadej vzdáolenost v bodů [mm]")
         while True:
-            d_mm = askinteger("Vzdálenost", "Vzdálenost.\nZadejte číslo: ")
+            d_mm = askfloat("Vzdálenost", "Vzdálenost.\nZadejte číslo: ")
             # d_mm = input("\tVzádlenost: ").replace(",", ".")
             try:
                 d_mm = abs(np.float64(d_mm))  # pokus o převod na číslo
@@ -5254,25 +5255,28 @@ def load_data():
             # Načtení .h5 souboru
             with zipf.open('data.h5') as h5_file:
                 with h5py.File(h5_file, 'r') as file:
-                    # Načtení skupiny, ve které jsou uložené proměnné
-                    data_group = file['variables']
-                    """photos_group = file['photos']"""
-
-                    # Načtení jednotlivých proměnných z datasetů a uložení do seznamu
-                    data = [data_group[f'var{i:05d}'][()] for i in range(len(data_group))]
-
-                    # Slovník statusů (atributů)
-                    for d in [key for key in file.keys() if key.startswith('dictionary_')]:
-                        data += [{key: value for key, value in file[d].attrs.items()}]
-
-                    dataset_variables = {key: value for key, value in file['additional_variables'].attrs.items()}
-
-                    dataset_values = dict(data_correlation=None, data_rough_detect=None,
-                                          data_fine_detect=None, data_point_detect=None)
-
                     # Seznam skupin v souboru
                     group_names = list(file.keys())
 
+                    # Načtení skupiny, ve které jsou uložené proměnné
+                    """photos_group = file['photos']"""
+
+                    data = None
+                    if 'variables' in group_names:
+                        data_group = file['variables']
+                        # Načtení jednotlivých proměnných z datasetů a uložení do seznamu
+                        data = [data_group[f'var{i:05d}'][()] for i in range(len(data_group))]
+
+                        # Slovník statusů (atributů)
+                        for d in [key for key in file.keys() if key.startswith('dictionary_')]:
+                            data += [{key: value for key, value in file[d].attrs.items()}]
+
+                    dataset_variables = {}
+                    if 'additional_variables' in group_names:
+                        dataset_variables = {key: value for key, value in file['additional_variables'].attrs.items()}
+
+                    dataset_values = dict(data_correlation=None, data_rough_detect=None,
+                                          data_fine_detect=None, data_point_detect=None)
                     for group_name in dataset_values.keys():
                         if group_name in group_names:
                             big_all_data_group = file[group_name]
@@ -5598,7 +5602,7 @@ def try_save_data(zip_name="data_autosave", temporary_file=False, overwrite=Fals
 
         # Uložení do souboru , uložení dat
         save_data(data_json=set_data,
-                  data1_variables=[main_image_folder, current_path_to_photos, scale],  # dataset1,
+                  data1_variables=[main_image_folder, current_path_to_photos, float(scale)],  # dataset1,
                   data2_correlation=dataset2_correlation,
                   data2_rough_detect=dataset2_rough_detect,
                   data2_fine_detect=dataset2_fine_detect,
@@ -5877,7 +5881,7 @@ def main():
 
                 if isinstance(dataset_3, dict):
                     for name in dataset_3.keys():
-                        globals()[name] = settings.get(name, None)
+                        globals()[name] = dataset_3.get(name, None)
                 else:
                     print("\n\033[33;1;21mWARRNING\033[0m"
                           f"\n\tDataset_3 je špatného typu: [{type(dataset_3)}], správně má být slovník: [dict].")
