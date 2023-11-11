@@ -75,7 +75,7 @@ def get_photos_from_folder(folder, file_list=None, img_types=(".jpg", ".jpeg", "
                          try_save=False)
     else:
         files = [f for f in (os.listdir(folder) if file_list is None else file_list)
-                   if os.path.isfile(os.path.join(folder, f)) and f.lower().endswith(img_types)]
+                 if os.path.isfile(os.path.join(folder, f)) and f.lower().endswith(img_types)]
         if not files:
             print("\n\033[1;21mWARRNING\033[0m\n\tSložka je prázdná.")
             return files
@@ -4237,7 +4237,7 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                     raise MyException("Minimální počet fotek pro tvorbu časových razítek je 2.")
 
                 # Převod času z GMT na lokální čas změny fotek v ZIPu a uložení do seznamu
-                time_stamps = [np.int16(time.mktime(
+                time_stamps = [np.int64(time.mktime(
                     zipfile.ZipFile(os.path.join(current_folder_path, saved_data_name + ".zip"), 'r').getinfo(
                         file).date_time + (0, 0, 0)) - 3600) + 1 for file in
                                [name for name in zipfile.ZipFile(os.path.join(
@@ -4257,15 +4257,21 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                               "\n\t\t - V souboru se nenachází zadávací sekvence 'MMDIC' nebo 'MMDIC2'.")
 
                         if 'time_stamps' in locals() and isinstance(time_stamps, list) and len(time_stamps) >= 2:
-                            time_period = np.int16(abs(time_stamps[0] - time_stamps[1]))
+                            time_period = np.array([0] + [abs(time_stamps[i + 1] - time_stamps[i])
+                                                          for i in range(len(time_stamps) - 1)], dtype=np.int16)
+                            time_period = np.median(time_period[1:-1])
+                            # time_period = np.int16(abs(time_stamps[0] - time_stamps[1]))
                         else:
                             time_period = []
-                            for i in (1, 0):
+                            for i in range(0, len(image_files) - 1):
                                 image_path = load_photo(img_index=i, give_path=True)
                                 if os.path.exists(image_path):
                                     time_period.append(os.path.getmtime(image_path))
-                                if len(time_period) == 2:
-                                    time_period = np.int16(abs(time_period[0] - time_period[1]))
+                                if len(time_period) >= 2:
+                                    time_period = np.array([0] + [abs(time_period[i + 1] - time_period[i])
+                                                                  for i in range(len(time_period) - 1)], dtype=np.int16)
+                                    time_period = np.median(time_period[1:-1])
+                                    # time_period = np.int16(abs(time_period[0] - time_period[1]))
                                 else:
                                     raise MyException("\033[33mNebylo možné získat čas ze zadávací sekvence nebo "
                                                       "času vytvoření fotografií\033[0m")

@@ -1,13 +1,19 @@
 import pandas as pd
 import numpy as np
+import zipfile
 import h5py
 import time
-import zipfile
 import os
+
+saved_data_name = "data_pokus.zip"
 
 main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
-saved_data_name = "data_pokus.zip"
+
+"""folder = "H01_03_12s"
+t1 = [os.path.getmtime(os.path.join(main_image_folder, folder, "original", i)) for i in
+      os.listdir(os.path.join(main_image_folder, folder, "original"))][1:]
+t2 = [0] + [t1[i + 1] - t1[i] for i in range(len(t1) - 1)]"""
 
 ########################################################################################################################
 
@@ -17,6 +23,7 @@ images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 3
 
 ########################################################################################################################
 ########################################################################################################################
+
 tot_folders = len(images_folders)
 for exp, current_image_folder in enumerate(images_folders):
     print(f"\nNačítání uložených dat: ' \033[94;1m{current_image_folder}\033[0m ' -  [ {exp + 1} / {tot_folders}]")
@@ -114,9 +121,9 @@ for exp, current_image_folder in enumerate(images_folders):
 
                     time_values = np.array([0.0 if not np.isnan(t) else np.nan for t in df['Photos'].values])
 
-                    """a = [os.path.getmtime(os.path.join(current_folder_path, "modified", i)) for i in
+                    """t1 = [os.path.getmtime(os.path.join(current_folder_path, "modified", i)) for i in
                          os.listdir(os.path.join(current_folder_path, "modified"))][1:]
-                    t2 = [0] + [a[i + 1] - a[i] for i in range(len(a) - 1)]"""
+                    t2 = [0] + [t1[i + 1] - t1[i] for i in range(len(t1) - 1)]"""
                     if len(time_stamps) < 2:
                         raise Exception("Minimální počet fotek pro tvorbu časových razítek je 2.")
                     if len(time_stamps) - 1 != int(np.nanmax(df['Photos'].values)):
@@ -129,7 +136,7 @@ for exp, current_image_folder in enumerate(images_folders):
                     time_stamps = [np.sum(time_stamps[:i + 1]) for i in range(len(time_stamps))]
 
                     nan_indices = np.isnan(time_values)  # Najděte indexy NaN hodnot
-                    time_values[np.isfinite(time_values)] = time_stamps
+                    time_values[~nan_indices] = time_stamps
                     time_stamps = time_values.copy()  # Vytvořte kopii vektoru pro interpolaci
                     # Nahraďte NaN hodnoty interpolovanými hodnotami
                     time_stamps[nan_indices] = np.interp(np.flatnonzero(nan_indices),
@@ -273,3 +280,5 @@ for exp, current_image_folder in enumerate(images_folders):
     # Zavření Excel souboru
     excel_writer.close()
     print(f"\tData úspěšně uložena.")
+
+print("\nHotovo.")
