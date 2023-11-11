@@ -74,14 +74,14 @@ def get_photos_from_folder(folder, file_list=None, img_types=(".jpg", ".jpeg", "
                          f"\n\tNepodporovaný typ fotografie.\n\t\033[41;30m➤ Ukončení programu.\033[0m",
                          try_save=False)
     else:
-        folders = [f for f in (os.listdir(folder) if file_list is None else file_list)
+        files = [f for f in (os.listdir(folder) if file_list is None else file_list)
                    if os.path.isfile(os.path.join(folder, f)) and f.lower().endswith(img_types)]
-        if not folders:
+        if not files:
             print("\n\033[1;21mWARRNING\033[0m\n\tSložka je prázdná.")
-            return folders
-        first_type = os.path.splitext(folders[0])[1]
-        if all(os.path.splitext(f)[1] == first_type for f in folders):  # kontrola jestli josu všechny fotky stejné
-            return folders
+            return files
+        first_type = os.path.splitext(files[0])[1]
+        if all(os.path.splitext(f)[1] == first_type for f in files):  # kontrola jestli josu všechny fotky stejné
+            return files
         else:
             print("\n\033[33;1;21mWARRNING\033[0m\n\tNačtené fotografie jsou různého typu.")
             return None

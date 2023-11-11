@@ -46,7 +46,7 @@ plt.gca().add_patch(polygon)
 center = np.mean(coordinates[:, :], axis=0)
 
 # Získání aktuálních souřadnic všech bodů polygonu
-current_verts = polygon.get_xy()[:-1].copy()
+# current_verts = polygon.get_xy()[:-1].copy()
 current_verts = final_points
 
 # Změna souřadnic bodů ve směru osy x od středu
