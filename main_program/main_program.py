@@ -411,17 +411,17 @@ def edit_object_on_canvas(center_cor: list | tuple | np.ndarray, polygons_cor: l
             entries_[2].insert(0, f"{int(centers_[cur_p_].get_offsets()[0][1])}" if float(
                 centers_[cur_p_].get_offsets()[0][1]).is_integer() else f"{centers_[cur_p_].get_offsets()[0][1]:.4f}")
             entries_[3].delete(0, "end")
-            entries_[3].insert(0,
-                               f"{int(rotations_[cur_p_]) if float(rotations_[cur_p_]).is_integer() else rotations_[cur_p_]}")
+            entries_[3].insert(0, f"{int(rotations_[cur_p_])}" if float(
+                rotations_[cur_p_]).is_integer() else f"{rotations_[cur_p_]}")
             entries_[4].delete(0, "end")
-            entries_[4].insert(0,
-                               f"{int(scales_[cur_p_][0]) if float(scales_[cur_p_][0]).is_integer() else scales_[cur_p_][0]}")
+            entries_[4].insert(0, f"{int(scales_[cur_p_][0])}" if float(
+                scales_[cur_p_][0]).is_integer() else f"{scales_[cur_p_][0]}")
             entries_[5].delete(0, "end")
-            entries_[5].insert(0,
-                               f"{int(scales_[cur_p_][1]) if float(scales_[cur_p_][1]).is_integer() else scales_[cur_p_][1]}")
+            entries_[5].insert(0, f"{int(scales_[cur_p_][1])}" if float(
+                scales_[cur_p_][1]).is_integer() else f"{scales_[cur_p_][1]}")
             entries_[6].delete(0, "end")
-            entries_[6].insert(0,
-                               f"{int(scales_[cur_p_][2]) if float(scales_[cur_p_][2]).is_integer() else scales_[cur_p_][2]}")
+            entries_[6].insert(0, f"{int(scales_[cur_p_][2])}" if float(
+                scales_[cur_p_][2]).is_integer() else f"{scales_[cur_p_][2]}")
             fig.canvas.draw()
         except (ValueError, SyntaxError):
             pass
@@ -489,8 +489,8 @@ def edit_object_on_canvas(center_cor: list | tuple | np.ndarray, polygons_cor: l
             rot = np.deg2rad(rot)
 
             # Vytvoření transformační matice pro rotaci
-            rotation_matrix = np.array([[np.cos(rot), -np.sin(rot)],
-                                        [np.sin(rot), np.cos(rot)]]) * scales_[cur_p_][0]
+            rotation_matrix = np.float64([[np.cos(rot), -np.sin(rot)],
+                                          [np.sin(rot), np.cos(rot)]]) * scales_[cur_p_][0]
             points = pp_[cur_p_].copy()
             points[:, 0] = cc_[cur_p_][0] + scales_[cur_p_][1] * (pp_[cur_p_][:, 0] - cc_[cur_p_][0])
             points[:, 1] = cc_[cur_p_][1] + scales_[cur_p_][2] * (pp_[cur_p_][:, 1] - cc_[cur_p_][1])
@@ -673,7 +673,7 @@ def mark_rectangle_on_canvas(window_name="Adding points", graph_title="Mark poin
     axis.autoscale(True)
     plt.show()
 
-    rectangle = np.array(selector.extents).reshape(2, 2).T
+    rectangle = np.float64(selector.extents).reshape(2, 2).T
 
     # Procházení sloupců a nastavení horní hodnoty
     for column, limit in enumerate((img.shape[1], img.shape[0])):
@@ -719,7 +719,7 @@ def mark_polygon_on_canvas(window_name="Adding points", graph_title="Mark points
     plt.title(graph_title)"""
     plt.show()
 
-    polygon = np.array(selector.verts)
+    polygon = np.float64(selector.verts)
 
     # Procházení sloupců a nastavení horní hodnoty
     if len(polygon) > 0:
@@ -798,8 +798,8 @@ def mark_ellipse_on_canvas(window_name="Adding points", graph_title="Mark points
     axis.autoscale(True)
     plt.show()
 
-    center = np.array(selector.center)
-    edge = np.array((selector.geometry[1], selector.geometry[0])).T
+    center = np.float64(selector.center)
+    edge = np.float64((selector.geometry[1], selector.geometry[0])).T
 
     # Procházení sloupců a nastavení horní hodnoty
     for column, limit in enumerate((img.shape[1], img.shape[0])):
@@ -813,7 +813,7 @@ def reorder(points):
     if len(points) < 3:
         return np.array([])
 
-    points = np.array(points)
+    points = np.float64(points)
     # Vypočítání středu bodů
     center = np.mean(points, axis=0)
 
@@ -1775,8 +1775,8 @@ def circle_intersection(data):
 
 def distance_error(point, distances, known_points):
     x_i, y_i = point
-    known_points = np.array(known_points)
-    distances = np.array(distances)
+    known_points = np.float64(known_points)
+    distances = np.float64(distances)
 
     errors = (np.sqrt((x_i - known_points[:, 0]) ** 2 + (y_i - known_points[:, 1]) ** 2) - distances) ** 2
     error = np.sum(errors)
@@ -1926,8 +1926,8 @@ def results(result, old_center, limit, mesh, upper_area_cor=None):
     upper_area_lines = np.sum(result[:, 1] < 900)
     print("\n\tPočet horních elementů:", upper_area_elements, " , Počet řádků pro horní elementy", upper_area_lines)"""
 
-    sx_old, sy_old, sx_new, sy_new = np.array([]), np.array([]), np.array([]), np.array([])
-    # rot_x, rot_y = np.array([]), np.array([])
+    sx_old, sy_old, sx_new, sy_new = np.float64([]), np.float64([]), np.float64([]), np.float64([])
+    # rot_x, rot_y = np.float64([]), np.float64([])
 
     for i in range(len(limit) - 1):
         if limit[i] == limit[i + 1]:
@@ -1970,7 +1970,8 @@ def results(result, old_center, limit, mesh, upper_area_cor=None):
 
     """wrong_list, wrong_index = [], []
     up_limit, down_limit, right_limit, left_limit = np.int32(min(points_pos[:, 1]) + 600), \
-        np.int32(max(points_pos[:, 1]) + 50), np.int32(max(points_pos[:, 0]) + 600), np.int32(min(points_pos[:, 0]) - 600)
+        np.int32(max(points_pos[:, 1]) + 50), np.int32(max(points_pos[:, 0]) + 600), 
+        np.int32(min(points_pos[:, 0]) - 600)
 
     for t in range(len(new_center)):
         up_points = new_center[t, 1] < up_limit
@@ -2726,7 +2727,7 @@ def fine_calculation_____________(mesh_size=10):
 
                             pixel_values_np[y, x] = correlate(pic1, pic2)"""
 
-                    pixel_values_np = np.array([
+                    pixel_values_np = np.float64([
                         [
                             np.linalg.norm(
                                 pic1 ** 2 - cv2.normalize(picture2[y:y + h_bound, x:x + w_bound] & cv2.fillPoly(
@@ -4257,8 +4258,8 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                               "\n\t\t - V souboru se nenachází zadávací sekvence 'MMDIC' nebo 'MMDIC2'.")
 
                         if 'time_stamps' in locals() and isinstance(time_stamps, list) and len(time_stamps) >= 2:
-                            time_period = np.array([0] + [abs(time_stamps[i + 1] - time_stamps[i])
-                                                          for i in range(len(time_stamps) - 1)], dtype=np.int16)
+                            time_period = np.int32([0] + [abs(time_stamps[i + 1] - time_stamps[i])
+                                                          for i in range(len(time_stamps) - 1)])
                             time_period = np.median(time_period[1:-1])
                             # time_period = np.int16(abs(time_stamps[0] - time_stamps[1]))
                         else:
@@ -4268,8 +4269,8 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                                 if os.path.exists(image_path):
                                     time_period.append(os.path.getmtime(image_path))
                                 if len(time_period) >= 2:
-                                    time_period = np.array([0] + [abs(time_period[i + 1] - time_period[i])
-                                                                  for i in range(len(time_period) - 1)], dtype=np.int16)
+                                    time_period = np.int32([0] + [abs(time_period[i + 1] - time_period[i])
+                                                                  for i in range(len(time_period) - 1)])
                                     time_period = np.median(time_period[1:-1])
                                     # time_period = np.int16(abs(time_period[0] - time_period[1]))
                                 else:
@@ -5391,9 +5392,9 @@ def finalize_results_points(found_coordinates, x1, y1):
     found_coordinates = found_coordinates * scale
 
     # rotate picture:
-    rotation_matrix = photo = np.zeros((2, 2))  # TODO ################
-    start_point = np.array((0, 0))
-    corner_points = np.array(((0, 0), (width, 0), (0, height), (width, height)))
+    rotation_matrix = photo = np.zeros((2, 2), dtype=np.float64)  # TODO ################
+    start_point = np.float64((0, 0))
+    corner_points = np.float64(((0, 0), (width, 0), (0, height), (width, height)))
 
     rotated_corner_points = np.dot((corner_points - start_point), rotation_matrix) + start_point
 
@@ -6042,7 +6043,7 @@ def main():
 
             plt.figure(num="Graph of loading bar movement")  # TODO KONTROLA
             plt.title("Movement of loading bar")
-            data = np.array([point[0][0] for point in correlation_area_points_all]) * scale
+            data = np.float64([point[0][0] for point in correlation_area_points_all]) * scale
             data -= data[0]
             plt.plot(data[:, 0], data[:, 1], c='dodgerblue', zorder=7, label="Path")
             plt.scatter(data[:, 0], data[:, 1], c='darkorange', marker="x", s=25, zorder=6, label="Taken photos")
