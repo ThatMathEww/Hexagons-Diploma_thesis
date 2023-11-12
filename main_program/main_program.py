@@ -3478,7 +3478,37 @@ def perform_calculations():
               "\n\033[32;1m:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\033[0m")
         return
 
-    do_scale(load_photo(img_index=0, color_type=0))
+    if scale == 1:
+        print("Chcete ručně zadat měřítko?")
+        while True:
+            if super_speed:
+                ans = 'N'
+            else:
+                ans = askstring("Chcete ručně zadat měřítko?", "Chcete ručně zadat měřítko?\nZadejte Y / N: ")
+            # make_scale = input("\tZadejte Y nebo N: ")
+            if ans == "Y":
+                print("\n\tZvolena možnost 'Y'\n\tMěřítko bude definováno ručně.")
+                do_scale(auto_scale=False)
+                while True:
+                    print("\nChcete proces zopakovat?")
+                    rerun = askstring("Chcete proces zopakovat?", "Chcete proces zopakovat?\nZadejte Y / N: ")
+                    # rerun = input("\tZadejte Y nebo N: ")
+                    if rerun == "Y":
+                        do_scale(auto_scale=False)
+                    elif rerun == "N":
+                        break
+                    else:
+                        print("\nNeplatná odpověď. Zadejte pouze Y nebo N.")
+                del rerun
+                break
+
+            elif ans == "N":
+                print("\n\tZvolena možnost 'N'\n\tMěřítko bude definováno automaticky.")
+                do_scale(img=load_photo(img_index=0, color_type=0), auto_scale=True)
+                break
+            else:
+                print("\nNeplatná odpověď. Zadejte pouze Y nebo N.")
+        del ans
 
     if ((do_calculations['Do Correlation'] and not calculations_statuses['Correlation']) or
             (do_calculations['Do Rough detection'] and not calculations_statuses['Rough detection'])):
@@ -3558,46 +3588,51 @@ def do_scale(img=None, auto_scale=True):
         scale_paths = os.path.join(folder_measurements, "scale")
         template1 = cv2.imread(scale_paths + r"\12.png", photo_type)[30:-90, 215:-45]
         template2 = cv2.imread(scale_paths + r"\23.png", photo_type)[30:-90, 215:-45]
-        top_left1, height1, width1, result1 = match(template1, img)
-        top_left2, height2, width2, result2 = match(template2, img)
+        top_left1, height1, width1, result1 = match(template1, img, tolerance=0.55)
+        top_left2, height2, width2, result2 = match(template2, img, tolerance=0.55)
 
-        dist = np.linalg.norm(top_left1 - top_left2)
-        scale = (230 - 120) / dist
-        print(f"\n\tMěřítko: {scale:.4f}",
-              f"\n\tCelková vzdálenost: {dist:.3f}\n\t\tRozdíly (x,y): {abs(top_left2 - top_left1)}",
-              f"\n\t\t  Přesnosti: [{result1:.3f}], [{result2:.3f}]")
+        if top_left1 is not None and top_left2 is not None:
+            dist = np.linalg.norm(top_left1 - top_left2)
+            scale = (230 - 120) / dist
+            print(f"\n\tMěřítko: {scale:.4f}",
+                  f"\n\tCelková vzdálenost: {dist:.3f}\n\t\tRozdíly (x,y): {abs(top_left2 - top_left1)}",
+                  f"\n\t\t  Přesnosti: [{result1:.3f}], [{result2:.3f}]")
 
-        if False:
-            plt.figure()
-            plt.subplot(221)
-            plt.imshow(cv2.cvtColor(template1, cv2.COLOR_BGR2RGB))
-            plt.subplot(222)
-            plt.imshow(cv2.cvtColor(template2, cv2.COLOR_BGR2RGB))
-            plt.subplot(223)
-            plt.imshow(cv2.cvtColor(
-                img[top_left1[1]:top_left1[1] + height1, top_left1[0]:top_left1[0] + width1], cv2.COLOR_BGR2RGB))
-            plt.subplot(224)
-            plt.imshow(cv2.cvtColor(
-                img[top_left2[1]:top_left2[1] + height2, top_left2[0]:top_left2[0] + width2], cv2.COLOR_BGR2RGB))
-            plt.tight_layout()
-            plt.show(block=block_graphs)
+            if False:
+                plt.figure()
+                plt.subplot(221)
+                plt.imshow(cv2.cvtColor(template1, cv2.COLOR_BGR2RGB))
+                plt.subplot(222)
+                plt.imshow(cv2.cvtColor(template2, cv2.COLOR_BGR2RGB))
+                plt.subplot(223)
+                plt.imshow(cv2.cvtColor(
+                    img[top_left1[1]:top_left1[1] + height1, top_left1[0]:top_left1[0] + width1], cv2.COLOR_BGR2RGB))
+                plt.subplot(224)
+                plt.imshow(cv2.cvtColor(
+                    img[top_left2[1]:top_left2[1] + height2, top_left2[0]:top_left2[0] + width2], cv2.COLOR_BGR2RGB))
+                plt.tight_layout()
+                plt.show(block=block_graphs)
 
-    else:
-        dist = mark_points_on_canvas(2)
-        print("Zadej vzdáolenost v bodů [mm]")
-        while True:
-            d_mm = askfloat("Vzdálenost", "Vzdálenost.\nZadejte číslo: ")
-            # d_mm = input("\tVzádlenost: ").replace(",", ".")
-            try:
-                d_mm = abs(np.float64(d_mm))  # pokus o převod na číslo
-                break
-            except ValueError as ve:
-                print(f"Vzdálenost ve špatném formátu, zadajete ji znovu.\n\tPOPIS: {ve}")
-                pass
+            return
 
-        dist_px = (np.sqrt((dist[1, 0] - dist[0, 0]) ** 2 + (dist[1, 1] - dist[0, 1]) ** 2))
-        scale = d_mm / dist_px
-        print(f"\n\tMěřítko: {scale:.4f}")
+        else:
+            print("\n\033[33;1;21mWARRNING\033[0m\n\tChyba načtení měřítka.\nZadejte ho ručně.")
+
+    dist = mark_points_on_canvas(2)
+    print("Zadej vzdáolenost v bodů [mm]")
+    while True:
+        d_mm = askfloat("Vzdálenost", "Vzdálenost.\nZadejte číslo: ")
+        # d_mm = input("\tVzádlenost: ").replace(",", ".")
+        try:
+            d_mm = abs(np.float64(d_mm))  # pokus o převod na číslo
+            break
+        except ValueError as ve:
+            print(f"Vzdálenost ve špatném formátu, zadajete ji znovu.\n\tPOPIS: {ve}")
+            pass
+
+    dist_px = (np.sqrt((dist[1, 0] - dist[0, 0]) ** 2 + (dist[1, 1] - dist[0, 1]) ** 2))
+    scale = d_mm / dist_px
+    print(f"\n\tMěřítko: {scale:.4f}")
 
 
 def get_index(number):
@@ -5363,7 +5398,7 @@ def finalize_results_points(found_coordinates, x1, y1):
     dist1, dist2, dist2_x, dist1_x, dist2_y, dist1_y = [0] * 7
 
     make_scale = False
-    if make_scale:
+    if make_scale and scale == 1:
         print("Chcete ručně zadat měřítko?")
         while True:
             make_scale = askstring("Chcete ručně zadat měřítko?", "Chcete ručně zadat měřítko?\nZadejte Y / N: ")
@@ -6295,7 +6330,7 @@ def main():
 
         main_counter += 1
         plt.close('all')
-        scale, second_callout, saved_data_name = 1, False, saved_data
+        scale, second_callout, saved_data_name = float(1), False, saved_data
         calculations_statuses = {key: False for key in calculations_statuses}
         # reset_parameters()
 
@@ -6478,7 +6513,7 @@ if __name__ == '__main__':
                  "CTU_green": '#A2AD00',
                  "CTU_gray": '#9B9B9B', }
 
-    scale, second_callout = 1, False
+    scale, second_callout = float(1), False
     calculations_statuses = {'Correlation': False, 'Rough detection': False,
                              'Fine detection': False, 'Point detection': False}
 

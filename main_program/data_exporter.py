@@ -26,10 +26,11 @@ images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 3
 
 tot_folders = len(images_folders)
 for exp, current_image_folder in enumerate(images_folders):
+
     print(f"\nNačítání uložených dat: ' \033[94;1m{current_image_folder}\033[0m ' -  [ {exp + 1} / {tot_folders}]")
 
     # Název Excel souboru
-    excel_file = f'hexagon_values_{exp + 1}.xlsx'
+    excel_file = f'Hexagon_Values_{exp + 1}.xlsx'
 
     # correlation_points, tracked_points, tracked_rotations, distances, forces, photo_indexes = [None] * 6
     dataset_1, dataset_2, dataset_3, distances, forces, photo_indexes, time_stamps = [None] * 7
@@ -119,7 +120,7 @@ for exp, current_image_folder in enumerate(images_folders):
                     time_stamps = [int(time.mktime(zipf.getinfo(file).date_time + (0, 0, 0))) for file
                                    in [name for name in zip_list if name.startswith("image_folder/")][1:]]
 
-                    time_values = np.int64([0.0 if not np.isnan(t) else np.nan for t in df['Photos'].values])
+                    time_values = np.float64([0.0 if not np.isnan(t) else np.nan for t in df['Photos'].values])
 
                     """t1 = [os.path.getmtime(os.path.join(current_folder_path, "modified", i)) for i in
                          os.listdir(os.path.join(current_folder_path, "modified"))][1:]
@@ -152,6 +153,7 @@ for exp, current_image_folder in enumerate(images_folders):
             except Exception as e:
                 print("\n\033[33;1;21mWARRNING\033[0m\n\t - "
                       f"Chyba načtení časového nastavení měření ze složky: [{current_image_folder}]\n\tPOPIS: {e}")
+                continue
 
             #  ######################################################################################################  #
             #  ############################################      H5      ############################################  #
@@ -209,90 +211,102 @@ for exp, current_image_folder in enumerate(images_folders):
         print(f'\n\033[31;1;21mERROR\033[0m\n\tSelhalo přiřazení hodnot uložených dat\n\tPOPIS: {e}')
         continue
 
-    data_frames = []
-    data_frames_names = []
-
-    photos = np.arange(beginning, len(photo_indexes), 1)  # int(np.nanmax(df['Photos'].values)) + 1
-    time_values = time_stamps[photo_indexes - start_position][beginning:]
-
-    if datasets['Correlation'] is not None:
-        data = np.float64([np.mean(c[0], axis=0) for c in datasets['Correlation'][beginning:]])
-        data = (data - data[0]) * scale
-        # Vytvoření datových rámce pro listy
-        data_frames.append(pd.DataFrame({'Photo': photos,
-                                         'Time [s]': time_values,
-                                         'X [mm]': data[:, 0],
-                                         'Y [mm]': data[:, 1]}))
-        data_frames_names.append('Movement of loading bar')
-
-    if datasets['Tracked_points'] is not None:
-        [tracked_points, tracked_rotations] = datasets['Tracked_points']
-        len_points = len(tracked_points[0])
-        len_photos = len(tracked_points)
-
-        data = [(np.float64([tracked_points[i][j] for i in range(len_photos)]),
-                 np.float64([tracked_rotations[i][j] for i in range(len_photos)]))
-                for j in range(len_points)][beginning:]
-
-        # Vytvoření datových rámce pro listy
-        df_tr = pd.DataFrame({'Photo': photos,
-                              'Time [s]': time_values})
-
-        # Přidání tří sloupců ve smyčce
-        for i in range(len_points):  # Přidáme tři skupiny sloupců
-            df_tr[[f'Point_{i + 1} - {v}' for j, v in zip(range(3), ('X [mm]', 'Y [mm]', 'Rotation [rad]'))]] = [
-                data[i][0][:, 0], data[i][0][:, 1], data[i][1]]
-        data_frames.append(df_tr)
-        data_frames_names.append(f'Tracked points - {len_points}. points')
-
-    if datasets['Forces'] is not None:
-        # Vytvoření datových rámce pro listy
-        data_frames.append(pd.DataFrame({'Photo': photos,
-                                         'Time [s]': time_values,
-                                         'Distance [mm]': distances[photo_indexes[beginning:]],
-                                         'Force [N]': forces[photo_indexes[beginning:]]}))
-        data_frames_names.append('Forces on photo')
-
-    if datasets['Forces'] is not None:
-        # Vytvoření datových rámce pro listy
-        data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_position:],
-                                         'Time [s]': time_stamps,
-                                         'Distance [mm]': distances[start_position:],
-                                         'Force [N]': forces[start_position:]}))
-        data_frames_names.append('All forces')
-
-    if datasets['Others'] is not None:
-        pass
-
-    # Vytvoření ExcelWriter
     try:
-        excel_writer = pd.ExcelWriter(excel_file, engine='xlsxwriter')
-    except PermissionError:
-        print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze upravovat, pravděpodobně je otevřen.')
+        data_frames = []
+        data_frames_names = []
+
+        photos = np.arange(beginning, len(photo_indexes), 1)  # int(np.nanmax(df['Photos'].values)) + 1
+        time_values = time_stamps[photo_indexes - start_position][beginning:]
+
+        if datasets['Correlation'] is not None:
+            data = np.float64([np.mean(c[0], axis=0) for c in datasets['Correlation'][:]])
+            data = (data[beginning:] - data[0]) * scale  # TODO změnit tohle na výcuc z přeškálovaných hodnot z CSV
+            # Vytvoření datových rámce pro listy
+            data_frames.append(pd.DataFrame({'Photo': photos,
+                                             'Time [s]': time_values,
+                                             'X [mm]': data[:, 0],
+                                             'Y [mm]': data[:, 1]}))
+            data_frames_names.append('Movement of loading bar')
+
+        if datasets['Tracked_points'] is not None:
+            [tracked_points, tracked_rotations] = datasets['Tracked_points']
+            len_points = len(tracked_points[0])
+            len_photos = len(tracked_points)
+
+            data = [(np.float64([tracked_points[i][j] for i in range(len_photos)]),
+                     np.float64([tracked_rotations[i][j] for i in range(len_photos)]))
+                    for j in range(len_points)]
+
+            data = [(np.float64([d[0][i] - d[0][0] for i in range(len_photos)]), d[1]) for d in data][beginning:]
+
+            # Vytvoření datových rámce pro listy
+            df_tr = pd.DataFrame({'Photo': photos,
+                                  'Time [s]': time_values})
+
+            # Přidání tří sloupců ve smyčce
+            for i in range(len_points):  # Přidáme tři skupiny sloupců
+                df_tr[[f'Point_{i + 1} - {v}' for j, v in zip(range(3), ('X [mm]', 'Y [mm]', 'Rotation [rad]'))]] = [
+                    data[i][0], data[i][1]]  # data[i][0][:, 0], data[i][0][:, 1]
+            data_frames.append(df_tr)
+            data_frames_names.append(f'Tracked points - {len_points}. points')
+
+        if datasets['Forces'] is not None:
+            # Vytvoření datových rámce pro listy
+            data_frames.append(pd.DataFrame({'Photo': photos,
+                                             'Time [s]': time_values,
+                                             'Distance [mm]': distances[photo_indexes[beginning:]],
+                                             'Force [N]': forces[photo_indexes[beginning:]]}))
+            data_frames_names.append('Forces on photo')
+
+        if datasets['Forces'] is not None:
+            # Vytvoření datových rámce pro listy
+            data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_position:],
+                                             'Time [s]': time_stamps,
+                                             'Distance [mm]': distances[start_position:],
+                                             'Force [N]': forces[start_position:]}))
+            data_frames_names.append('All forces')
+
+        if datasets['Others'] is not None:
+            pass
+
+        # Vytvoření ExcelWriter
+        try:
+            excel_writer = pd.ExcelWriter(excel_file, engine='xlsxwriter')
+        except PermissionError as e:
+            print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze upravovat, pravděpodobně je otevřen.'
+                  f'\n\tPOPIS: {e}')
+            continue
+        except (KeyError, Exception) as e:
+            print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze uložit.\n\tPOPIS: {e}')
+            continue
+
+        # Uložení textu v listu
+        text1 = f"Měření: {current_image_folder}"
+        text2 = "other text here"
+        description = "Toto je popis souboru CSV s více listy."
+
+        # Vytvoření listu pro popis
+        df_description = pd.DataFrame({'Popis': [description]})
+
+        # Zápis popisu na zvláštní list
+        df_description.to_excel(excel_writer, sheet_name='Popis', index=False, startrow=5)
+
+        worksheet = excel_writer.sheets['Popis']
+        worksheet.write(0, 0, text1)
+        worksheet.write(1, 0, text2)
+
+        # Zápis dat do listů
+        for i, data_frame in enumerate(data_frames):
+            data_frame.to_excel(excel_writer, sheet_name=f'List_{i}', index=False)
+            worksheet.write(i + 7, 0, f'List_{i}: {data_frames_names[i]}')
+
+        # Zavření Excel souboru
+        excel_writer.close()
+
+        print(f"\033[32;1m\tData úspěšně uložena.\033[0m")
+
+    except (IndexError, Exception) as e:
+        print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] se nepovedlo uložit.\n\tPOPIS: {e}')
         continue
-
-    # Uložení textu v listu
-    text1 = "some text here"
-    text2 = "other text here"
-    description = "Toto je popis souboru CSV s více listy."
-
-    # Vytvoření listu pro popis
-    df_description = pd.DataFrame({'Popis': [description]})
-
-    # Zápis popisu na zvláštní list
-    df_description.to_excel(excel_writer, sheet_name='Popis', index=False, startrow=5)
-
-    worksheet = excel_writer.sheets['Popis']
-    worksheet.write(0, 0, text1)
-    worksheet.write(1, 0, text2)
-
-    # Zápis dat do listů
-    for i, data_frame in enumerate(data_frames):
-        data_frame.to_excel(excel_writer, sheet_name=f'List_{i}', index=False)
-        worksheet.write(i + 7, 0, f'List_{i}: {data_frames_names[i]}')
-
-    # Zavření Excel souboru
-    excel_writer.close()
-    print(f"\tData úspěšně uložena.")
 
 print("\nHotovo.")
