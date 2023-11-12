@@ -119,7 +119,7 @@ for exp, current_image_folder in enumerate(images_folders):
                     time_stamps = [int(time.mktime(zipf.getinfo(file).date_time + (0, 0, 0))) for file
                                    in [name for name in zip_list if name.startswith("image_folder/")][1:]]
 
-                    time_values = np.array([0.0 if not np.isnan(t) else np.nan for t in df['Photos'].values])
+                    time_values = np.int64([0.0 if not np.isnan(t) else np.nan for t in df['Photos'].values])
 
                     """t1 = [os.path.getmtime(os.path.join(current_folder_path, "modified", i)) for i in
                          os.listdir(os.path.join(current_folder_path, "modified"))][1:]
@@ -130,9 +130,13 @@ for exp, current_image_folder in enumerate(images_folders):
                         raise Exception("Neshodujhe se počet fotek v zipu s data z csv.")
 
                     # time_stamps = time_stamps[beginning:]
-                    time_stamps = np.array(
-                        [0] + [time_stamps[i + 1] - time_stamps[i] for i in range(len(time_stamps) - 1)], dtype=int)
+                    time_stamps = np.float64(
+                        [0] + [time_stamps[i + 1] - time_stamps[i] for i in range(len(time_stamps) - 1)])
                     time_stamps[1:-1] = np.median(time_stamps[1:-1])
+
+                    t = np.int64([0] + [photo_indexes[i + 1] - photo_indexes[i] for i in range(len(photo_indexes) - 1)])
+                    t[1:-1] = np.median(t[1:-1])
+                    time_stamps[-1] = time_stamps[1] * (t[-1] / t[1])
                     time_stamps = [np.sum(time_stamps[:i + 1]) for i in range(len(time_stamps))]
 
                     nan_indices = np.isnan(time_values)  # Najděte indexy NaN hodnot
@@ -212,39 +216,49 @@ for exp, current_image_folder in enumerate(images_folders):
     time_values = time_stamps[photo_indexes - start_position][beginning:]
 
     if datasets['Correlation'] is not None:
-        data_1 = np.array([np.mean(c[0], axis=0) for c in datasets['Correlation'][beginning:]])
+        data = np.float64([np.mean(c[0], axis=0) for c in datasets['Correlation'][beginning:]])
+        data = (data - data[0]) * scale
         # Vytvoření datových rámce pro listy
         data_frames.append(pd.DataFrame({'Photo': photos,
-                                         'Time': time_values,
-                                         'X': data_1[:, 0],
-                                         'Y': data_1[:, 1]}))
+                                         'Time [s]': time_values,
+                                         'X [mm]': data[:, 0],
+                                         'Y [mm]': data[:, 1]}))
         data_frames_names.append('Movement of loading bar')
 
     if datasets['Tracked_points'] is not None:
-        data_1 = np.array(datasets['Tracked_points'][0][beginning:])
-        data_2 = np.array(datasets['Tracked_points'][1][beginning:])
+        [tracked_points, tracked_rotations] = datasets['Tracked_points']
+        len_points = len(tracked_points[0])
+        len_photos = len(tracked_points)
+
+        data = [(np.float64([tracked_points[i][j] for i in range(len_photos)]),
+                 np.float64([tracked_rotations[i][j] for i in range(len_photos)]))
+                for j in range(len_points)][beginning:]
+
         # Vytvoření datových rámce pro listy
-        data_frames.append(pd.DataFrame({'Photo': photos,
-                                         'Time': time_values,
-                                         'X': data_1[:, 0],
-                                         'Y': data_1[:, 1],
-                                         'Rotation': data_2}))
-        data_frames_names.append(f'Tracked points - {len(datasets["Tracked_points"][0])}. points')
+        df_tr = pd.DataFrame({'Photo': photos,
+                              'Time [s]': time_values})
+
+        # Přidání tří sloupců ve smyčce
+        for i in range(len_points):  # Přidáme tři skupiny sloupců
+            df_tr[[f'Point_{i + 1} - {v}' for j, v in zip(range(3), ('X [mm]', 'Y [mm]', 'Rotation [rad]'))]] = [
+                data[i][0][:, 0], data[i][0][:, 1], data[i][1]]
+        data_frames.append(df_tr)
+        data_frames_names.append(f'Tracked points - {len_points}. points')
 
     if datasets['Forces'] is not None:
         # Vytvoření datových rámce pro listy
         data_frames.append(pd.DataFrame({'Photo': photos,
-                                         'Time': time_values,
-                                         'Distance': distances[photo_indexes[beginning:]],
-                                         'Force': forces[photo_indexes[beginning:]]}))
+                                         'Time [s]': time_values,
+                                         'Distance [mm]': distances[photo_indexes[beginning:]],
+                                         'Force [N]': forces[photo_indexes[beginning:]]}))
         data_frames_names.append('Forces on photo')
 
     if datasets['Forces'] is not None:
         # Vytvoření datových rámce pro listy
         data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_position:],
-                                         'Time': time_stamps,
-                                         'Distance': distances[start_position:],
-                                         'Force': forces[start_position:]}))
+                                         'Time [s]': time_stamps,
+                                         'Distance [mm]': distances[start_position:],
+                                         'Force [N]': forces[start_position:]}))
         data_frames_names.append('All forces')
 
     if datasets['Others'] is not None:
