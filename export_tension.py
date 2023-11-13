@@ -13,9 +13,9 @@ m = 11  # 1 // 11
 files = sorted(files, key=lambda x: int(x.split(" ")[2]))[30 + (i * 7):37 + (i * 7)]
 # [0+(i * 10):10+(i * 10)] // [30+(i * 7):37+(i * 7)]
 
-
 # n = 0
 # c = 0
+
 for file in files:
     files_txt = [f for f in os.listdir(os.path.join(folder_path_load, file)) if
                  os.path.isfile(os.path.join(folder_path_load, file, f)) and f.lower().endswith('.txt')]
