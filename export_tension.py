@@ -8,12 +8,12 @@ folder_path_save = r'C:\Users\matej\PycharmProjects\pythonProject\Python_project
 files = [f for f in os.listdir(folder_path_load) if
          os.path.isdir(os.path.join(folder_path_load, f)) and not f.lower().endswith('.test')]
 
-
 i = 2
-files = sorted(files, key=lambda x: int(x.split(" ")[2]))[30+(i * 7):37+(i * 7)]
+m = 11  # 1 // 11
+files = sorted(files, key=lambda x: int(x.split(" ")[2]))[30 + (i * 7):37 + (i * 7)]
+# [0+(i * 10):10+(i * 10)] // [30+(i * 7):37+(i * 7)]
 
 
-m = 11
 # n = 0
 # c = 0
 for file in files:
@@ -23,7 +23,7 @@ for file in files:
     for file_txt in files_txt:
         df = pd.read_csv(os.path.join(folder_path_load, file, file_txt), skiprows=8, sep="\t",
                          names=['Distance', 'Force', 'Time'])
-        df = df.reindex(columns=['Distance', 'Time', 'Force'])
+        # df = df.reindex(columns=['Distance', 'Time', 'Force'])
 
         """if c % 10:
             n += 1"""
