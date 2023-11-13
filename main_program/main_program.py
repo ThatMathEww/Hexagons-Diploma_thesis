@@ -3136,7 +3136,7 @@ def point_tracking_calculation(use_correlation=True):
 
     print("\nSpuštěno hledaní bodů.")
 
-    show_graphs = True  # TODO UKAZKA GRAFU PRO
+    show_graphs = False  # TODO UKAZKA GRAFU PRO
 
     tracked_points_all, tracked_rotations_all = [], []
 
@@ -3165,10 +3165,11 @@ def point_tracking_calculation(use_correlation=True):
         [cv2.fillPoly(mask_1, [np.int32(np.round(polygon))], 255) for polygon in triangle_points_all[0]]
         masked_img_1 = gray_1 & mask_1
 
-    for i in range(tot_im - 2, tot_im):
+    for i in range(tot_im):
         print("\n=================================================================",
               f"\nAktuální proces:  [ {i + 1} / {tot_im} ]\t  Fotografie: {image_files[i]}")
 
+        start_time = time.time()
         if use_correlation:
             gray_2 = load_photo(i, photo_type)
         tracked_points_cur = np.empty((0, 2), dtype=np.int32)
@@ -3353,6 +3354,7 @@ def point_tracking_calculation(use_correlation=True):
 
         tracked_points_all.append(tracked_points_cur)
         tracked_rotations_all.append(tracked_rotations)
+        print(f"\n\tDoba vytváření: {time.time() - start_time: .2f} s.")
 
     calculations_statuses['Point detection'] = True
 
@@ -3510,6 +3512,8 @@ def perform_calculations():
                 print("\nNeplatná odpověď. Zadejte pouze Y nebo N.")
         del ans
 
+    make_angle_correction()
+
     if ((do_calculations['Do Correlation'] and not calculations_statuses['Correlation']) or
             (do_calculations['Do Rough detection'] and not calculations_statuses['Rough detection'])):
 
@@ -3588,8 +3592,8 @@ def do_scale(img=None, auto_scale=True):
         scale_paths = os.path.join(folder_measurements, "scale")
         template1 = cv2.imread(scale_paths + r"\12.png", photo_type)[30:-90, 215:-45]
         template2 = cv2.imread(scale_paths + r"\23.png", photo_type)[30:-90, 215:-45]
-        top_left1, height1, width1, result1 = match(template1, img, tolerance=0.55)
-        top_left2, height2, width2, result2 = match(template2, img, tolerance=0.55)
+        top_left1, height1, width1, result1 = match(template1, img, tolerance=0.7)
+        top_left2, height2, width2, result2 = match(template2, img, tolerance=0.7)
 
         if top_left1 is not None and top_left2 is not None:
             dist = np.linalg.norm(top_left1 - top_left2)
@@ -3950,11 +3954,16 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
 
         arrow = [ax.add_patch(Polygon(ar_points, closed=True, facecolor='black', edgecolor='white', lw=1.5, alpha=0.6))]
         # Vykreslete šipku jako polygon
-        for i in ((0.85, 0.45, 'x'), (0.25, 1.1, 'y')):
+        for i in ((1.1, 0.2, 'x'), (0.1, 1.25, 'y'), (0.85, 1, 'r')):
             arrow.append(
                 ax.text(arrow_length * i[0], arrow_length * i[1], i[2], fontweight='bold', color='white',
                         fontsize=max(arrow_length // 65, 8),
                         bbox=dict(facecolor='black', edgecolor='white', boxstyle='round', pad=0.2, alpha=0.6)))
+        arrow.append(ax.add_patch(FancyArrowPatch(
+            (arrow_length * 0.2, arrow_length * 0.95), (arrow_length * 0.95, arrow_length * 0.2),
+            facecolor='black', edgecolor='white', mutation_scale=0.075, alpha=0.6, connectionstyle="arc3,rad=0.45",
+            linewidth=1.5, arrowstyle=f"Simple, head_length={arrow_length * 0.35}, head_width={arrow_length * 0.4},"
+                                      f"tail_width={arrow_length * 0.12}")))
 
         texts1, areas1 = [], []
         if plot_correlation_paths:
@@ -4066,11 +4075,16 @@ def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='a
             (arrow_length * 0.6, arrow_length * 0.15), (arrow_length * 0.15, arrow_length * 0.15)])
         ar_points = np.vstack((ar_points, (ar_points[:, [1, 0]])[:0:-1]))
         loc = [ax.add_patch(Polygon(ar_points, closed=True, facecolor='#920422', edgecolor='white', lw=1.5, alpha=0.6))]
-        for i in ((0.85, 0.45, 'x'), (0.25, 1.1, 'y')):
+        for i in ((1.1, 0.2, 'x'), (0.1, 1.25, 'y'), (0.85, 1, 'r')): # (0.85, 0.45, 'x'), (0.25, 1.1, 'y')
             loc.append(
                 ax.text(arrow_length * i[0], arrow_length * i[1], i[2], fontweight='bold', color='white',
                         fontsize=max(arrow_length // 65, 8),
                         bbox=dict(facecolor='#920422', edgecolor='white', boxstyle='round', pad=0.2, alpha=0.6)))
+        loc.append(ax.add_patch(FancyArrowPatch(
+            (arrow_length * 0.2, arrow_length * 0.95), (arrow_length * 0.95, arrow_length * 0.2),
+            facecolor='#920422', edgecolor='white', mutation_scale=0.075, alpha=0.6, connectionstyle="arc3,rad=0.45",
+            linewidth=1.5, arrowstyle=f"Simple, head_length={arrow_length * 0.35}, head_width={arrow_length * 0.4},"
+                                      f"tail_width={arrow_length * 0.12}")))
 
         if index == 0 and "points_track" not in globals():
             try:
@@ -4153,8 +4167,8 @@ def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='a
 
 
 def show_heat_graph(image_index_shift, image_index_background, axes, coordinates, centers=None, heat_values=None,
-                    line_values=None, scaling=1, heat_graph_title=None, line_graph_title=None, graph_title=None,
-                    make_line_graph=False, figure_rgba=(1, 1, 1, 1), main_ax_rgba=(0, 0, 0, 0),
+                    line_values=None, scaling: float = 1, heat_graph_title=None, line_graph_title=None,
+                    graph_title=None, make_line_graph=False, figure_rgba=(1, 1, 1, 1), main_ax_rgba=(0, 0, 0, 0),
                     line_graph_main_ax_rgba=(0, 0, 0, 0), line_graph_sub_ax_rgba=(1, 1, 1, 1),
                     fill_between=False, min_val=None, max_val=None, colorbar_spacing=9, colorbar_style='jet',
                     colorbar_label=None, get_graph=False, saved_graph_name=None, save_graph=False,
@@ -5136,12 +5150,13 @@ def save_data(data1_variables: list = None, data2_correlation: list = None, data
             data_group = file.create_group('variables')  # Skupina daty
             [data_group.create_dataset(f'var{i:05d}', data=variable, compression=compression_type)
              if isinstance(variable, (np.ndarray, list, dict)) and len(variable) > 0 else
-             data_group.create_dataset(f'var{i:05d}', data=variable) for i, variable in enumerate(data1_variables)]
+             data_group.create_dataset(f'var{i:05d}', data=variable, compression=compression_type)
+             for i, variable in enumerate(data1_variables)]
 
             var_group = file.create_group('additional_variables')
             if isinstance(data3_additional_variables, dict):
-                [var_group.create_dataset(f'{name}', data=value, compression=compression_type)
-                 for name, value in data3_additional_variables.items()]
+                [var_group.create_dataset(f'{key}', data=value, compression=compression_type) for
+                 key, value in data3_additional_variables.items()]
 
             data2 = dict(data_correlation=data2_correlation, data_rough_detect=data2_rough_detect,
                          data_fine_detect=data2_fine_detect, data_point_detect=data2_point_detect)
@@ -5315,7 +5330,7 @@ def load_data():
 
                     dataset_variables = {}
                     if 'additional_variables' in group_names:
-                        dataset_variables = {key: value for key, value in file['additional_variables'].attrs.items()}
+                        dataset_variables = {key: value[:] for key, value in file['additional_variables'].items()}
 
                     dataset_values = dict(data_correlation=None, data_rough_detect=None,
                                           data_fine_detect=None, data_point_detect=None)
@@ -5384,16 +5399,67 @@ def dialog(error_message):
             print("\n Zadejte platnou odpověď.")
 
 
+def make_angle_correction(image=None, image_to_warp=None, points_to_warp=None):
+    global width, height, angle_correction_matrix
+    if image is None:
+        img = load_photo(0, 0)
+    else:
+        img = image.copy()
+
+    if 'width' not in globals() or 'height' not in globals():
+        # Získání rozměrů obrázku
+        height, width = img.shape[:2]
+
+    if 'angle_correction_matrix' not in globals() or not isinstance(angle_correction_matrix, np.ndarray):
+        # Vypočtěte střed obrázku
+        center = (width // 2, height // 2)
+
+        scale_paths = os.path.join(folder_measurements, "scale")
+        template1 = cv2.imread(scale_paths + r"\start_1.png", 0)
+        template2 = cv2.imread(scale_paths + r"\end_1.png", 0)
+        top_left1 = match(template1, img)[0]
+        top_left2 = match(template2, img)[0]
+        angle_degrees = np.rad2deg(np.arctan2(top_left2[1] - top_left1[1], top_left2[0] - top_left1[0]))
+        # 0.2798794602553504 // 0.3498172464499053
+        print(f"\n\033[93mÚhel pootočení stroje je: \033[95m{angle_degrees} °\033[0m")
+
+        angle_correction_matrix = cv2.getRotationMatrix2D(center, angle_degrees, 1.0)
+
+    """for point1, point2 in ((top_left1, top_left2), (points_pos[0], points_pos[-1]),
+                           (points_track[0][0], points_track[5][0]), (points_track[2][0], points_track[3][0])):
+        angle_rad = np.arctan2(point2[1] - point1[1], point2[0] - point1[0])
+        angle_degrees = np.degrees(angle_rad)
+        print(f"\n\033[93mÚhel pootočení stroje je: \033[95m{angle_degrees} °\033[0m")"""
+
+    try:
+        if isinstance(image_to_warp, np.ndarray):
+            # Aplikujte transformační matici na obrázek
+            image_to_warp = cv2.warpAffine(image_to_warp, angle_correction_matrix, (width, height))
+        if isinstance(points_to_warp, np.ndarray):
+            # Aplikujte transformační matici na body
+            points_to_warp = cv2.transform(points_to_warp.reshape(1, -1, 2), angle_correction_matrix).reshape(-1, 2)
+    except (ValueError, Exception) as e:
+        print(f"\nProblém s transformací bodů\n\tPOPIS: {e}")
+
+    if isinstance(image_to_warp, np.ndarray) or isinstance(points_to_warp, np.ndarray):
+        if isinstance(image_to_warp, np.ndarray) and isinstance(points_to_warp, np.ndarray):
+            return image_to_warp, points_to_warp
+        elif isinstance(image_to_warp, np.ndarray):
+            return image_to_warp
+        elif isinstance(points_to_warp, np.ndarray):
+            return points_to_warp
+
+
 def finalize_results_points(found_coordinates, x1, y1):
     def rotate_points(points, start__point, end__point):  # coordinates correction (oprava souřadnic)
         # TODO: pootočení souřadnic podle úhlu z corelation (svislost)
         angle_rad = np.arctan2(end__point[1] - start__point[1], end__point[0] - start__point[0]) + np.pi / 2
 
         # Rotuje body kolem počátku o daný úhel
-        rotation_matrix = np.array([[np.cos(angle_rad), -np.sin(angle_rad)],
-                                    [np.sin(angle_rad), np.cos(angle_rad)]])
+        matrix = np.array([[np.cos(angle_rad), -np.sin(angle_rad)],
+                           [np.sin(angle_rad), np.cos(angle_rad)]])
 
-        return np.dot((points - start__point), rotation_matrix) + start__point  # transformed_points
+        return np.dot((points - start__point), matrix) + start__point  # transformed_points
 
     dist1, dist2, dist2_x, dist1_x, dist2_y, dist1_y = [0] * 7
 
@@ -5552,7 +5618,7 @@ def predict_time(folders):
         if do_calculations['Do Fine detection']:
             duration += 5  # - FINE CALCULATION
         if do_calculations['Do Point detection']:
-            duration += 15  # - FIND POINTS
+            duration += 1.5  # - FIND POINTS
 
     for folder in folders:
         # Vytvoření cesty k cílovým fotografiím
@@ -5633,6 +5699,10 @@ def try_save_data(zip_name="data_autosave", temporary_file=False, overwrite=Fals
         else:
             dataset2_point_detect = None
 
+        dataset_3 = dict(angle_correction_matrix=angle_correction_matrix)
+        if all(val is None for val in dataset_3.values()):
+            dataset_3 = None
+
         """if not temporary_file and overwrite:
             if (os.path.exists(os.path.join(current_folder_path, f"{zip_name}.zip"))
                     and make_temporary_savings):
@@ -5649,7 +5719,7 @@ def try_save_data(zip_name="data_autosave", temporary_file=False, overwrite=Fals
                   data2_rough_detect=dataset2_rough_detect,
                   data2_fine_detect=dataset2_fine_detect,
                   data2_point_detect=dataset2_point_detect,
-                  data3_additional_variables=None,
+                  data3_additional_variables=dataset_3,
                   current_measurement=current_image_folder, file_name=f"{zip_name}", temporary_save=temporary_file)
         if make_temporary_savings:
             print("\n\t\033[37m- Průběžná data úspěšně uložena.\033[0m")
@@ -5665,7 +5735,7 @@ def main():
     global image_files, gray1, gray2, width, height, saved_file_exist, auto_crop, scale, variable_names, all_photos, \
         current_path_to_photos, current_folder_path, current_image_folder, calculations_statuses, saved_data_name
     global start, end, main_image_folder, size, fine_size, points_limit, precision, settings, second_callout
-    global points_pos, points_neg, points_cor, points_max, correlation_area_points_all
+    global points_pos, points_neg, points_cor, points_max, correlation_area_points_all, angle_correction_matrix
     global triangle_vertices_all, triangle_centers_all, triangle_indexes_all, triangle_points_all, \
         wrong_points_indexes_all, key_points_all, end_marks_all
     global fine_triangle_points_all, fine_mesh_centers_all, tracked_points_all, tracked_rotations_all
@@ -5779,6 +5849,8 @@ def main():
 
     # cyklus mezi složkami - HLAVNÍ CYKLUS
     for current_image_folder in images_folders:
+        angle_correction_matrix = None
+
         current_image_folder = str(current_image_folder)
         print(f"\033[32;1;21m{'☰' * 50}\033[0m\n\nAktuální výpočet pro: \033[96m{current_image_folder}\033[0m "
               f"\t\t[ {main_counter} / {len(images_folders)} ]")
@@ -6032,17 +6104,7 @@ def main():
                 except (Exception, MyException) as e:
                     print(f"\nNepovedlo se načíst označené oblasti: {e}")
 
-            img = load_photo(0, 0)
-            scale_paths = os.path.join(folder_measurements, "scale")
-            template1 = cv2.imread(scale_paths + r"\start.png", 0)
-            template2 = cv2.imread(scale_paths + r"\end.png", 0)
-            top_left1 = match(template1, img)[0]
-            top_left2 = match(template2, img)[0]
-            for point1, point2 in ((top_left1, top_left2), (points_pos[0], points_pos[-1]),
-                                   (points_track[0][0], points_track[5][0]), (points_track[2][0], points_track[3][0])):
-                angle_rad = np.arctan2(point2[1] - point1[1], point2[0] - point1[0])
-                angle_degrees = np.degrees(angle_rad)
-                print(f"\n\033[93mÚhel pootočení stroje je: \033[95m{angle_degrees} °\033[0m")
+            make_angle_correction()
 
             show_results_graph(show_final_image)
 
@@ -6078,7 +6140,8 @@ def main():
 
             plt.figure(num="Graph of loading bar movement")  # TODO KONTROLA
             plt.title("Movement of loading bar")
-            data = np.float64([point[0][0] for point in correlation_area_points_all]) * scale
+            data = np.float64([point[0][0] for point in correlation_area_points_all[:]])
+            data = make_angle_correction(points_to_warp=data)  * scale
             data -= data[0]
             plt.plot(data[:, 0], data[:, 1], c='dodgerblue', zorder=7, label="Path")
             plt.scatter(data[:, 0], data[:, 1], c='darkorange', marker="x", s=25, zorder=6, label="Taken photos")
@@ -6092,7 +6155,7 @@ def main():
             plt.gca().set_aspect('auto', adjustable='box')
             plt.show()
 
-            plot_final_forces(current_image_folder, correlation_area_points_all, show_photos=True,
+            plot_final_forces(current_image_folder, correlation_area_points_all[:], show_photos=True,
                               interactive_mode=True, fill_area=True)
 
             if calculations_statuses['Fine detection']:
@@ -6406,7 +6469,7 @@ if __name__ == '__main__':
     global gray1, gray2, width, height, auto_crop, saved_data_name, all_photos, preloaded_images
     global triangle_vertices_all, triangle_centers_all, triangle_indexes_all, triangle_points_all, \
         correlation_area_points_all, wrong_points_indexes_all, key_points_all, end_marks_all, tracked_points_all, \
-        tracked_rotations_all
+        tracked_rotations_all, angle_correction_matrix
     global points_pos, points_neg, points_cor, points_max, points_track, photo_size
     global saved_file_exist, current_folder_path, current_image_folder
     global fine_triangle_points_all, fine_mesh_centers_all
@@ -6417,7 +6480,7 @@ if __name__ == '__main__':
 
     from matplotlib.widgets import CheckButtons  # , TextBox
     from matplotlib.widgets import PolygonSelector, RectangleSelector, EllipseSelector
-    from matplotlib.patches import Rectangle, Polygon, FancyBboxPatch
+    from matplotlib.patches import Rectangle, Polygon, FancyBboxPatch, FancyArrowPatch
     import matplotlib.patheffects as pe
 
     import tkinter as tk
@@ -6460,10 +6523,10 @@ if __name__ == '__main__':
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'data_pokus'
+    saved_data = 'data_pokus_new'
     save_calculated_data = False
     load_calculated_data = True
-    do_finishing_calculation = True
+    do_finishing_calculation = False
     make_temporary_savings = False
 
     make_video = False

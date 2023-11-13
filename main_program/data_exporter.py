@@ -5,7 +5,7 @@ import h5py
 import time
 import os
 
-saved_data_name = "data_pokus.zip"
+saved_data_name = "data_pokus_new.zip"
 
 main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
@@ -32,8 +32,9 @@ for exp, current_image_folder in enumerate(images_folders):
     # Název Excel souboru
     excel_file = f'Hexagon_Values_{exp + 1}.xlsx'
 
-    # correlation_points, tracked_points, tracked_rotations, distances, forces, photo_indexes = [None] * 6
-    dataset_1, dataset_2, dataset_3, distances, forces, photo_indexes, time_stamps = [None] * 7
+    correlation_points, tracked_points, tracked_rotations, distances, forces, photo_indexes = [None] * 6
+    dataset_1, dataset_2, dataset_3, time_stamps, start_value = [None] * 5
+    scale: float = 1
 
     current_folder_path = os.path.join(main_image_folder, current_image_folder)
     zip_files = [f for f in os.listdir(current_folder_path)
@@ -102,7 +103,6 @@ for exp, current_image_folder in enumerate(images_folders):
 
             # Najdeme pozice, kde podmínka platí
             start_position = np.where(condition)[0][-1]
-            distances = distances - distances[start_position]  # Stanovení 0 pozice zatěžovnání
 
             # Nalezení nejbližší vyšší hodnoty
             """beginning = np.where(photo_indexes >= start_position)[0][
@@ -172,11 +172,11 @@ for exp, current_image_folder in enumerate(images_folders):
                         dataset_1 = [data_group[f'var{i:05d}'][()] for i in range(len(data_group))]
 
                         # Slovník statusů (atributů)
-                        for d in [key for key in file.keys() if key.startswith('dictionary_')]:
-                            dataset_1 += [{key: value for key, value in file[d].attrs.items()}]
+                        for i in [key for key in file.keys() if key.startswith('dictionary_')]:
+                            dataset_1 += [{key: value for key, value in file[i].attrs.items()}]
 
                     if 'additional_variables' in group_names:
-                        dataset_3 = {key: value for key, value in file['additional_variables'].attrs.items()}
+                        dataset_3 = {key: value[:] for key, value in file['additional_variables'].items()}
 
                     dataset_2 = dict(data_correlation=None, data_point_detect=None)
                     for group_name in dataset_2.keys():
@@ -191,21 +191,39 @@ for exp, current_image_folder in enumerate(images_folders):
         print(f'\n\033[31;1;21mERROR\033[0m\n\tSelhalo načtení uložených dat\n\tPOPIS: {e}')
         continue
 
-    datasets = dict(Correlation=None, Tracked_points=None, Forces=None, Others=None)
+    datasets = dict(Correlation=False, Tracked_points=False, Forces=False, Others=False)
 
     try:
-        scale = dataset_1[-1]
+        if isinstance(dataset_1, list) and len(dataset_1) >= 3:
+            scale = dataset_1[2]
 
         if dataset_2['data_correlation'] is not None:
-            datasets['Correlation'] = dataset_2['data_correlation']  # correlation_points
+            correlation_points = dataset_2['data_correlation']
+            datasets['Correlation'] = True
 
         if dataset_2['data_point_detect'] is not None:
-            datasets['Tracked_points'] = dataset_2['data_point_detect']  # [tracked_points, tracked_rotations]
+            [tracked_points, tracked_rotations] = dataset_2['data_point_detect']
+            datasets['Tracked_points'] = True
 
         if isinstance(dataset_3, dict) and len(dataset_3) > 0:
-            datasets['Others'] = dataset_3
+            rotation_matrix = dataset_3.values()
+            datasets['Others'] = True
 
-        datasets['Forces'] = (distances, forces, photo_indexes)
+        """scaled_vector2 = np.interp(
+            np.linspace(0, 1, len(distances)),
+            np.linspace(0, 1, len(correlation_points)),
+            np.float64([c[0][0, 1] for c in correlation_points])
+        )
+        dd_ = np.array([distances[i + 1] - distances[i] for i in range(len(distances) - 1)])
+        sd_ = np.array([scaled_vector2[i + 1] - scaled_vector2[i] for i in range(len(scaled_vector2) - 1)])"""
+
+        if all(v is not None for v in (distances, forces, photo_indexes)):
+            distances = distances * np.linalg.norm(np.array(correlation_points[0][0][0, 1]) - np.array(
+                correlation_points[-1][0][0, 1])) / np.linalg.norm(distances[0] - distances[-1])
+            distances = (distances - distances[0]) * scale
+            start_value = distances[start_position]
+            distances = distances - start_value  # Stanovení 0 pozice zatěžovnání
+            datasets['Forces'] = True
 
     except (ValueError, Exception) as e:
         print(f'\n\033[31;1;21mERROR\033[0m\n\tSelhalo přiřazení hodnot uložených dat\n\tPOPIS: {e}')
@@ -218,18 +236,18 @@ for exp, current_image_folder in enumerate(images_folders):
         photos = np.arange(beginning, len(photo_indexes), 1)  # int(np.nanmax(df['Photos'].values)) + 1
         time_values = time_stamps[photo_indexes - start_position][beginning:]
 
-        if datasets['Correlation'] is not None:
-            data = np.float64([np.mean(c[0], axis=0) for c in datasets['Correlation'][:]])
-            data = (data[beginning:] - data[0]) * scale  # TODO změnit tohle na výcuc z přeškálovaných hodnot z CSV
+        if datasets['Correlation']:
+            data = np.float64([np.mean(c[0], axis=0) for c in correlation_points])
+            data_x = (data[beginning:, 0] - data[0, 0]) * scale
+            data_y = (data[beginning:, 1] - start_value - data[0, 1]) * scale
             # Vytvoření datových rámce pro listy
             data_frames.append(pd.DataFrame({'Photo': photos,
                                              'Time [s]': time_values,
-                                             'X [mm]': data[:, 0],
-                                             'Y [mm]': data[:, 1]}))
+                                             'X [mm]': data_x,
+                                             'Y [mm]': distances[photo_indexes][beginning:]}))
             data_frames_names.append('Movement of loading bar')
 
-        if datasets['Tracked_points'] is not None:
-            [tracked_points, tracked_rotations] = datasets['Tracked_points']
+        if datasets['Tracked_points']:
             len_points = len(tracked_points[0])
             len_photos = len(tracked_points)
 
@@ -237,7 +255,7 @@ for exp, current_image_folder in enumerate(images_folders):
                      np.float64([tracked_rotations[i][j] for i in range(len_photos)]))
                     for j in range(len_points)]
 
-            data = [(np.float64([d[0][i] - d[0][0] for i in range(len_photos)]), d[1]) for d in data][beginning:]
+            data = [(np.float64([d[0][i] - d[0][0] for i in range(len_photos)]), d[1]) for d in data]
 
             # Vytvoření datových rámce pro listy
             df_tr = pd.DataFrame({'Photo': photos,
@@ -245,12 +263,13 @@ for exp, current_image_folder in enumerate(images_folders):
 
             # Přidání tří sloupců ve smyčce
             for i in range(len_points):  # Přidáme tři skupiny sloupců
-                df_tr[[f'Point_{i + 1} - {v}' for j, v in zip(range(3), ('X [mm]', 'Y [mm]', 'Rotation [rad]'))]] = [
-                    data[i][0], data[i][1]]  # data[i][0][:, 0], data[i][0][:, 1]
+                df_tr[f'{" " * i}'] = None
+                df_tr[[f'Point_{i + 1} - {v}' for v in ('X [mm]', 'Y [mm]', 'Rotation [rad]')]] = np.vstack(
+                    (data[i][0][:, 0], data[i][0][:, 1], data[i][1])).T[beginning:]
             data_frames.append(df_tr)
             data_frames_names.append(f'Tracked points - {len_points}. points')
 
-        if datasets['Forces'] is not None:
+        if datasets['Forces']:
             # Vytvoření datových rámce pro listy
             data_frames.append(pd.DataFrame({'Photo': photos,
                                              'Time [s]': time_values,
@@ -258,7 +277,7 @@ for exp, current_image_folder in enumerate(images_folders):
                                              'Force [N]': forces[photo_indexes[beginning:]]}))
             data_frames_names.append('Forces on photo')
 
-        if datasets['Forces'] is not None:
+        if datasets['Forces']:
             # Vytvoření datových rámce pro listy
             data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_position:],
                                              'Time [s]': time_stamps,
@@ -266,7 +285,7 @@ for exp, current_image_folder in enumerate(images_folders):
                                              'Force [N]': forces[start_position:]}))
             data_frames_names.append('All forces')
 
-        if datasets['Others'] is not None:
+        if datasets['Others']:
             pass
 
         # Vytvoření ExcelWriter
@@ -305,8 +324,8 @@ for exp, current_image_folder in enumerate(images_folders):
 
         print(f"\033[32;1m\tData úspěšně uložena.\033[0m")
 
-    except (IndexError, Exception) as e:
+    except (EnvironmentError) as e:
         print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] se nepovedlo uložit.\n\tPOPIS: {e}')
         continue
 
-print("\nHotovo.")
+print("\n\033[33;1mHotovo.\033[0m")
