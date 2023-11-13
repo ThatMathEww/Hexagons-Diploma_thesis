@@ -240,6 +240,9 @@ for exp, current_image_folder in enumerate(images_folders):
             data = np.float64([np.mean(c[0], axis=0) for c in correlation_points])
             data_x = (data[beginning:, 0] - data[0, 0]) * scale
             data_y = (data[beginning:, 1] - start_value - data[0, 1]) * scale
+            # dat = distances[photo_indexes][beginning:]
+            # d1 = np.mean([data_y[i+1] - data_y[i] for i in range(len(data_y)-1)])
+            # d2 = np.mean([dat[i+1] - dat[i] for i in range(len(dat)-1)])
             # Vytvoření datových rámce pro listy
             data_frames.append(pd.DataFrame({'Photo': photos,
                                              'Time [s]': time_values,
@@ -255,7 +258,7 @@ for exp, current_image_folder in enumerate(images_folders):
                      np.float64([tracked_rotations[i][j] for i in range(len_photos)]))
                     for j in range(len_points)]
 
-            data = [(np.float64([d[0][i] - d[0][0] for i in range(len_photos)]), d[1]) for d in data]
+            data = [(np.float64([d[0][i] - d[0][0] for i in range(len_photos)]) * scale, d[1]) for d in data]
 
             # Vytvoření datových rámce pro listy
             df_tr = pd.DataFrame({'Photo': photos,
@@ -323,8 +326,7 @@ for exp, current_image_folder in enumerate(images_folders):
         excel_writer.close()
 
         print(f"\033[32;1m\tData úspěšně uložena.\033[0m")
-
-    except (EnvironmentError) as e:
+    except (ValueError, Exception) as e:
         print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] se nepovedlo uložit.\n\tPOPIS: {e}')
         continue
 

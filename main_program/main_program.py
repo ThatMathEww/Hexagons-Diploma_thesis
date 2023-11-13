@@ -1391,6 +1391,7 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
     fig_size = 6
 
     if show_graph:
+        plt.close("Regions of interest")
         # Obraz elemntů na fotografii
         # Vytvoření figure a osy v matplotlib
         plt.figure(figsize=(fig_size * ratio, fig_size), num="Regions of interest")
@@ -3337,15 +3338,28 @@ def point_tracking_calculation(use_correlation=True):
                 print(point_to_track - matched_point, transformed_point - transformed_matched_point)
 
                 # Zobrazení výsledku
-                plt.figure(figsize=(np.int8(0.0017 * width), np.int8(0.001 * height)), num="Final matched point")
+                plt.figure(figsize=(np.int8(0.002 * width), np.int8(0.002 * height)), num="Final matched point")
                 plt.subplot(121)
                 plt.imshow(gray_1, cmap='gray')
-                plt.scatter(matched_point[0], matched_point[1], color='blue', marker='x')
+                plt.scatter(point_to_track[0], point_to_track[1], s=10, c='blue', marker='s', zorder=3)
+                plt.scatter(current_key_points[:, 0], current_key_points[:, 1], s=10, c='orange', marker='o')
+                # Vytvoření grafu a nakreslení čáry
+                plt.plot([point_to_track[0], point_to_track[0] + 200], [point_to_track[1], point_to_track[1]],
+                         color='green', lw=1.5)
                 plt.axis('equal')
 
                 plt.subplot(122)
                 plt.imshow(gray_2, cmap='gray')
-                plt.scatter(transformed_matched_point[0], transformed_matched_point[1], color='blue', marker='x')
+                plt.scatter(transformed_matched_point[0], transformed_matched_point[1], s=10, color='blue', marker='s',
+                            zorder=3)
+                plt.scatter(current_key_points[:, 2], current_key_points[:, 3], s=10, c='orange', marker='o')
+                points__ = np.array([[transformed_matched_point[0], transformed_matched_point[1]],
+                                    [transformed_matched_point[0] + 200, transformed_matched_point[1]]])
+                plt.plot(points__[:, 0], points__[:, 1], color='red', lw=4)
+                rot_mat = cv2.getRotationMatrix2D(transformed_matched_point, np.rad2deg(rotation), 1.0)
+                points__ = cv2.transform(points__.reshape(1, -1, 2), rot_mat).reshape(-1, 2)
+                plt.plot(points__[:, 0], points__[:, 1], color='green', lw=1.5)
+
                 plt.axis('equal')
                 plt.tight_layout()
                 plt.show()
@@ -3934,6 +3948,10 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
         points = [np.array([tracked_points_all[i][j] for i in index_pt]) for j in indexes_pt]
         # points = [np.array([point[j] for point in tracked_points_all]) for j in range(len(tracked_points_all[0]))]
 
+        areas = [make_angle_correction(points_to_warp=a).reshape(-1, 2, 2) for a in areas]
+        points = [make_angle_correction(points_to_warp=p) for p in points]
+        image = make_angle_correction(image_to_warp=image)
+
         fig, ax = plt.subplots(figsize=(np.int8(0.002 * w), np.int8(0.0017 * h)), num="Points paths graph")
         plt.title('Points paths - Image {}: {}'.format(index + 1, image_files[index]), wrap=True, pad=12)
 
@@ -4041,7 +4059,8 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
 
 
 def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='all', save_plot=False,
-                       plot_name="marked_points", plot_format="pdf", save_dpi=300, show_menu=True, show_cor=False):
+                       plot_name="marked_points", plot_format="pdf", save_dpi=300, show_menu=True, show_cor=False,
+                       show_arrows=False):
     index = get_index(image_number)
 
     print("\n  -  Vykreslení označených bodů: Fotografie - {}: {}".format(index + 1, image_files[index]))
@@ -4075,7 +4094,7 @@ def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='a
             (arrow_length * 0.6, arrow_length * 0.15), (arrow_length * 0.15, arrow_length * 0.15)])
         ar_points = np.vstack((ar_points, (ar_points[:, [1, 0]])[:0:-1]))
         loc = [ax.add_patch(Polygon(ar_points, closed=True, facecolor='#920422', edgecolor='white', lw=1.5, alpha=0.6))]
-        for i in ((1.1, 0.2, 'x'), (0.1, 1.25, 'y'), (0.85, 1, 'r')): # (0.85, 0.45, 'x'), (0.25, 1.1, 'y')
+        for i in ((1.1, 0.2, 'x'), (0.1, 1.25, 'y'), (0.85, 1, 'r')):  # (0.85, 0.45, 'x'), (0.25, 1.1, 'y')
             loc.append(
                 ax.text(arrow_length * i[0], arrow_length * i[1], i[2], fontweight='bold', color='white',
                         fontsize=max(arrow_length // 65, 8),
@@ -4129,7 +4148,7 @@ def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='a
         print("\nChyba u vykreslení označených bodů.")
         return
 
-    objets = {'Souřadnice': loc}
+    objets = {'Coordinates': loc}
     # left, bottom, width, height
     rax = fig.add_axes(((fig.subplotpars.right + 0.01), fig.subplotpars.top - 0.25, box_width * 0.75, 0.25))
     check = CheckButtons(ax=rax, labels=objets.keys(), actives=[show_cor], useblit=True,
@@ -4151,7 +4170,12 @@ def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='a
     ax.autoscale(True)
     rax.autoscale(True)
 
+    if show_arrows:
+        [obj.set_visible(not obj.get_visible()) for obj in objets['Coordinates'][:5]]
+        [obj.figure.canvas.draw_idle() for obj in objets['Coordinates'][:5]]
+
     if save_plot:
+        plot_format = plot_format.replace(".", "")
         if plot_format not in ('jpg', 'jpeg', 'JPG', 'eps', 'pdf', 'pgf', 'png', 'ps', 'raw', 'rgba', 'svg', 'svgz',
                                'tif', 'tiff', 'webp'):
             print(f"\nNepodporavaný formát [ *.{plot_format} ], automaticky změněno na [ *.pdf ]")
@@ -4160,10 +4184,10 @@ def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='a
             plot_name = "marked_points"
         plot_name = plot_name.replace(".", "_") + "." + plot_format
         plt.savefig(os.path.join(current_folder_path, plot_name), format=plot_format, dpi=save_dpi, bbox_inches='tight')
-
-    plt.pause(0.5)
-    plt.show(block=block_graphs or show_menu)
-    plt.pause(2)
+    else:
+        plt.pause(0.5)
+        plt.show(block=block_graphs or show_menu)
+        plt.pause(2)
 
 
 def show_heat_graph(image_index_shift, image_index_background, axes, coordinates, centers=None, heat_values=None,
@@ -6109,7 +6133,7 @@ def main():
             show_results_graph(show_final_image)
 
             if calculations_statuses['Point detection']:
-                plot_marked_points(0, show_menu=True)
+                plot_marked_points(0, show_menu=False, show_arrows=True, save_plot=True, plot_format='jpg')
                 plot_point_path(0, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True)
 
             for j in [0]:  # TODO KONTROLA
@@ -6141,7 +6165,7 @@ def main():
             plt.figure(num="Graph of loading bar movement")  # TODO KONTROLA
             plt.title("Movement of loading bar")
             data = np.float64([point[0][0] for point in correlation_area_points_all[:]])
-            data = make_angle_correction(points_to_warp=data)  * scale
+            data = make_angle_correction(points_to_warp=data) * scale
             data -= data[0]
             plt.plot(data[:, 0], data[:, 1], c='dodgerblue', zorder=7, label="Path")
             plt.scatter(data[:, 0], data[:, 1], c='darkorange', marker="x", s=25, zorder=6, label="Taken photos")
@@ -6523,10 +6547,10 @@ if __name__ == '__main__':
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'data_pokus_new'
+    saved_data = 'data_export'
     save_calculated_data = False
     load_calculated_data = True
-    do_finishing_calculation = False
+    do_finishing_calculation = True
     make_temporary_savings = False
 
     make_video = False
