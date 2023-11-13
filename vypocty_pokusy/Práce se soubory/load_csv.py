@@ -1,8 +1,9 @@
 import pandas as pd
 
 # Načtení dat ze souboru CSV
-folder_path = 'VZ4_2.00_4.csv'  # cesta k souboru
+folder_path = (r'file.csv')  # cesta k souboru  CSV // TXT
 # data = pd.read_csv(cesta_k_souboru, skiprows=15, header=None,  # skiprows=15 nebo header=16
+# ################  , header=0, skiprows=(0, 1, 2, 3, 4, 5, 7)
 # names=['Sloupec1', 'Sloupec2', 'Sloupec3', 'Sloupec4'], sep="\t")  # sep: "," ";"
 
 """
@@ -37,10 +38,12 @@ skip_blank_lines:       Určuje, zda mají být přeskočeny prázdné řádky.
 thousands:              Určuje znak pro tisícovou oddělení čísel.
 """
 
-data = pd.read_csv(folder_path, skiprows=15, sep="\t")
+data = pd.read_csv(folder_path, skiprows=8, sep="\t", names=['Col1', 'Col2', 'Col3'])
 
 # Vytvoření grafu
 col1 = data.iloc[:, 0].values  # načtení prvního sloupce
 col2 = data.iloc[:, 1].values  # načtení druhého sloupce
 col3 = data.iloc[:, 2].values
-col4 = data.iloc[:, 3].values
+# col4 = data.iloc[:, 3].values
+
+print('\nHotovo')

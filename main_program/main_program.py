@@ -1785,11 +1785,11 @@ def distance_error(point, distances, known_points):
 
 
 def second_circle_intersection(data, initial_guess):
-    if 'scipy.optimize' not in sys.modules:
-        from scipy.optimize import least_squares
-    known_points = data[:, :2]
-    distances = data[:, 2]
-    result = least_squares(distance_error, initial_guess, args=(distances, known_points))
+    # if 'scipy.optimize' not in sys.modules:
+    from scipy.optimize import least_squares
+    # known_points = data[:, :2]
+    # distances = data[:, 2]
+    result = least_squares(distance_error, initial_guess, args=(data[:, 2], data[:, :2]))
     return result.x
 
 
@@ -3354,7 +3354,7 @@ def point_tracking_calculation(use_correlation=True):
                             zorder=3)
                 plt.scatter(current_key_points[:, 2], current_key_points[:, 3], s=10, c='orange', marker='o')
                 points__ = np.array([[transformed_matched_point[0], transformed_matched_point[1]],
-                                    [transformed_matched_point[0] + 200, transformed_matched_point[1]]])
+                                     [transformed_matched_point[0] + 200, transformed_matched_point[1]]])
                 plt.plot(points__[:, 0], points__[:, 1], color='red', lw=4)
                 rot_mat = cv2.getRotationMatrix2D(transformed_matched_point, np.rad2deg(rotation), 1.0)
                 points__ = cv2.transform(points__.reshape(1, -1, 2), rot_mat).reshape(-1, 2)
@@ -5172,14 +5172,16 @@ def save_data(data1_variables: list = None, data2_correlation: list = None, data
 
             # Vytvoření skupiny pro uložení proměnných
             data_group = file.create_group('variables')  # Skupina daty
-            [data_group.create_dataset(f'var{i:05d}', data=variable, compression=compression_type)
-             if isinstance(variable, (np.ndarray, list, dict)) and len(variable) > 0 else
-             data_group.create_dataset(f'var{i:05d}', data=variable, compression=compression_type)
+            [data_group.create_dataset(f'var{i:05d}', data=variable,
+                                       compression=compression_type if isinstance(variable, np.ndarray) and len(
+                                           variable.shape) >= 2 else None)
              for i, variable in enumerate(data1_variables)]
 
             var_group = file.create_group('additional_variables')
             if isinstance(data3_additional_variables, dict):
-                [var_group.create_dataset(f'{key}', data=value, compression=compression_type) for
+                [var_group.create_dataset(f'{key}', data=value,
+                                          compression=compression_type if isinstance(value, np.ndarray) and len(
+                                              value.shape) >= 2 else None) for
                  key, value in data3_additional_variables.items()]
 
             data2 = dict(data_correlation=data2_correlation, data_rough_detect=data2_rough_detect,
@@ -5194,7 +5196,9 @@ def save_data(data1_variables: list = None, data2_correlation: list = None, data
                     [
                         [
                             big_all_data_group.create_dataset(f'subgroup_{i:05d}/data_{j:05d}', data=array,
-                                                              compression=compression_type)
+                                                              compression=compression_type
+                                                              if isinstance(array, np.ndarray) and len(
+                                                                  array.shape) >= 2 else None)
                             for j, array in enumerate(sublist)
                         ]
                         for i, sublist in enumerate(data_type)
@@ -5723,7 +5727,7 @@ def try_save_data(zip_name="data_autosave", temporary_file=False, overwrite=Fals
         else:
             dataset2_point_detect = None
 
-        dataset_3 = dict(angle_correction_matrix=angle_correction_matrix)
+        dataset_3 = dict(angle_correction_matrix=angle_correction_matrix, photos_times=photos_times)
         if all(val is None for val in dataset_3.values()):
             dataset_3 = None
 
@@ -5738,7 +5742,7 @@ def try_save_data(zip_name="data_autosave", temporary_file=False, overwrite=Fals
 
         # Uložení do souboru , uložení dat
         save_data(data_json=set_data,
-                  data1_variables=[main_image_folder, current_path_to_photos, float(scale)],  # dataset1,
+                  data1_variables=[main_image_folder, current_path_to_photos, float(scale), photos_times],  # dataset1
                   data2_correlation=dataset2_correlation,
                   data2_rough_detect=dataset2_rough_detect,
                   data2_fine_detect=dataset2_fine_detect,
@@ -5761,7 +5765,7 @@ def main():
     global start, end, main_image_folder, size, fine_size, points_limit, precision, settings, second_callout
     global points_pos, points_neg, points_cor, points_max, correlation_area_points_all, angle_correction_matrix
     global triangle_vertices_all, triangle_centers_all, triangle_indexes_all, triangle_points_all, \
-        wrong_points_indexes_all, key_points_all, end_marks_all
+        wrong_points_indexes_all, key_points_all, end_marks_all, photos_times
     global fine_triangle_points_all, fine_mesh_centers_all, tracked_points_all, tracked_rotations_all
 
     def check_folder(folder, text1, text2, text3, important_folder=True):
@@ -5792,7 +5796,7 @@ def main():
 
     # images_folders = images_folders[-2:-1]  # TODO ############ potom změnit počet složek
     images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
-    images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+    images_folders = [images_folders[i] for i in (10, 13, 19, 33, 37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
 
     print(f"\nDatum:  {time.strftime('%H:%M, %d.%m. %Y', time.strptime(date, '%H-%M-%S_%d-%m-%Y'))}\n"
           f"\n\033[36mSpuštění programu pro detekci fotek.\n  Verze: {program_version}\n\033[0m"
@@ -5874,6 +5878,7 @@ def main():
     # cyklus mezi složkami - HLAVNÍ CYKLUS
     for current_image_folder in images_folders:
         angle_correction_matrix = None
+        photos_times = []
 
         current_image_folder = str(current_image_folder)
         print(f"\033[32;1;21m{'☰' * 50}\033[0m\n\nAktuální výpočet pro: \033[96m{current_image_folder}\033[0m "
@@ -5940,7 +5945,8 @@ def main():
 
                 """[start, end, main_image_folder, size, fine_size, points_limit, precision, scale,
                  calculations_statuses], dataset_2 = load_data()"""
-                (settings, [main_image_folder, current_path_to_photos, scale], dataset_2, dataset_3) = load_data()
+                (settings, [main_image_folder, current_path_to_photos, scale], dataset_2,
+                 dataset_3) = load_data()
                 main_image_folder, current_path_to_photos = [var.decode('utf-8') for var in
                                                              (main_image_folder, current_path_to_photos)
                                                              if isinstance(var, bytes)]
@@ -6251,15 +6257,18 @@ def main():
         # Do calculation
         else:
             def calculate():
-                global image_files, start, end, all_photos, preloaded_images
+                global image_files, start, end, all_photos, preloaded_images, photos_times
 
                 image_files = image_files[start:end]  # načátání snímků (první je 0) př: "image_files[2:5] od 2 do 5"
                 """image_files = [image_files[0], image_files[7], image_files[14], image_files[21],
                                image_files[-1]]"""  # TODO ############ potom změnit počet fotek
-                image_files = [image_files[0], image_files[-1]]
+                # image_files = [image_files[0], image_files[-1]]
 
                 if preload_photos:
                     preloaded_images = [load_photo(i, photo_type) for i in range(len(image_files))]
+
+                photos_times = [os.path.getmtime(os.path.join(current_path_to_photos, i)) for i in image_files]
+                photos_times = [0] + [int(photos_times[i + 1] - photos_times[i]) for i in range(len(photos_times) - 1)]
 
                 if main_counter == 1:
                     print(f"\n\tNastavení:",
@@ -6493,7 +6502,7 @@ if __name__ == '__main__':
     global gray1, gray2, width, height, auto_crop, saved_data_name, all_photos, preloaded_images
     global triangle_vertices_all, triangle_centers_all, triangle_indexes_all, triangle_points_all, \
         correlation_area_points_all, wrong_points_indexes_all, key_points_all, end_marks_all, tracked_points_all, \
-        tracked_rotations_all, angle_correction_matrix
+        tracked_rotations_all, angle_correction_matrix, photos_times
     global points_pos, points_neg, points_cor, points_max, points_track, photo_size
     global saved_file_exist, current_folder_path, current_image_folder
     global fine_triangle_points_all, fine_mesh_centers_all
@@ -6528,7 +6537,7 @@ if __name__ == '__main__':
 
     dynamic_mode = False
 
-    send_final_message = False
+    send_final_message = True
 
     load_set_points = True
     do_auto_mark = True
@@ -6548,10 +6557,10 @@ if __name__ == '__main__':
     source_image_type = ['original', 'modified']
 
     saved_data = 'data_export'
-    save_calculated_data = False
-    load_calculated_data = True
+    save_calculated_data = True
+    load_calculated_data = False
     do_finishing_calculation = True
-    make_temporary_savings = False
+    make_temporary_savings = True
 
     make_video = False
 
@@ -6560,12 +6569,12 @@ if __name__ == '__main__':
     size = 250  # !=_ 135 _=!,   250, 100, 85 - min,   (40)
     fine_size = 20  # np.int32(size * 0.1)
 
-    points_limit = 1000
+    points_limit = 1200
     precision = 0.65
 
     show_final_image = -1  # Kterou fotografii vykreslit
 
-    program_version = 'v0.8.00'
+    program_version = 'v0.8.50'
 
     preload_photos = False
 
