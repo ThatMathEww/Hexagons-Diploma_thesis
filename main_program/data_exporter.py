@@ -7,6 +7,7 @@ import cv2
 import os
 
 saved_data_name = "data_export.zip"
+out_put_folder = ""
 
 main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
@@ -181,7 +182,7 @@ for exp, current_image_folder in enumerate(images_folders):
 
                 if all(v is not None for v in (distances, forces, photo_indexes)):
                     distances = (distances * (np.linalg.norm(correlation_points[0][0, 1] - correlation_points[-1][0, 1])
-                                 / np.linalg.norm(distances[0] - distances[-1])))
+                                              / np.linalg.norm(distances[0] - distances[-1])))
                     distances = (distances - distances[0]) * scale
                     start_value = distances[start_position]
                     distances = distances - start_value  # Stanovení 0 pozice zatěžovnání
@@ -313,7 +314,7 @@ for exp, current_image_folder in enumerate(images_folders):
 
         # Vytvoření ExcelWriter
         try:
-            excel_writer = pd.ExcelWriter(excel_file, engine='xlsxwriter')
+            excel_writer = pd.ExcelWriter(os.path.join(out_put_folder, excel_file), engine='xlsxwriter')
         except PermissionError as e:
             print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze upravovat, pravděpodobně je otevřen.'
                   f'\n\tPOPIS: {e}')
@@ -345,7 +346,7 @@ for exp, current_image_folder in enumerate(images_folders):
         # Zavření Excel souboru
         excel_writer.close()
 
-        print(f"\033[32;1m\tData úspěšně uložena.\033[0m")
+        print(f"\033[32;1m\tData úspěšně uložena jako: \033[0m' \033[35;1m{excel_file}\033[0m '")
     except (ValueError, Exception) as e:
         print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] se nepovedlo uložit.\n\tPOPIS: {e}')
         continue
