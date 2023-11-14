@@ -20,8 +20,8 @@ t2 = [0] + [t1[i + 1] - t1[i] for i in range(len(t1) - 1)]"""
 
 images_folders = [name for name in [os.path.splitext(file)[0] for file in os.listdir(main_image_folder)]
                   if name.startswith("H01") or name.startswith("_")]
-images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-
+images_folders = [images_folders[i] for i in (10, 11, 12, 13, 19, 33)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+types = ['State-II-max', 'State-III', 'State-II', 'State-I', 'Cantilevers', 'Cantilevers-Snapped']
 ########################################################################################################################
 ########################################################################################################################
 
@@ -31,7 +31,7 @@ for exp, current_image_folder in enumerate(images_folders):
     print(f"\nNačítání uložených dat: ' \033[94;1m{current_image_folder}\033[0m ' -  [ {exp + 1} / {tot_folders}]")
 
     # Název Excel souboru
-    excel_file = f'Hexagon_Values_{exp + 1}.xlsx'
+    excel_file = f'Hexagon_Values_{exp + 1}_{types[exp]}.xlsx'
 
     correlation_points, tracked_points, tracked_rotations, distances, forces, photo_indexes = [None] * 6
     dataset_1, dataset_2, dataset_3, time_stamps, start_value = [None] * 5
@@ -260,6 +260,7 @@ for exp, current_image_folder in enumerate(images_folders):
             data = np.float64([np.mean(c, axis=0) for c in correlation_points])
             data_x = (data[beginning:, 0] - data[0, 0]) * scale
             data_y = (data[beginning:, 1] - start_value - data[0, 1]) * scale
+            a = distances[photo_indexes][beginning:]
             # dat = distances[photo_indexes][beginning:]
             # d1 = np.mean([data_y[i+1] - data_y[i] for i in range(len(data_y)-1)])
             # d2 = np.mean([dat[i+1] - dat[i] for i in range(len(dat)-1)])
