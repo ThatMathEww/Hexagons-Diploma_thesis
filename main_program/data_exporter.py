@@ -3,6 +3,7 @@ import numpy as np
 import zipfile
 import h5py
 import time
+import cv2
 import os
 
 saved_data_name = "data_export.zip"
@@ -19,7 +20,7 @@ t2 = [0] + [t1[i + 1] - t1[i] for i in range(len(t1) - 1)]"""
 
 images_folders = [name for name in [os.path.splitext(file)[0] for file in os.listdir(main_image_folder)]
                   if name.startswith("H01") or name.startswith("_")]
-images_folders = [images_folders[i] for i in (10, 11, 12, 13, 19, 33, 37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
 
 ########################################################################################################################
 ########################################################################################################################
@@ -111,51 +112,6 @@ for exp, current_image_folder in enumerate(images_folders):
             beginning = np.argmax(photo_indexes >= start_position)
 
             #  ######################################################################################################  #
-            #  ############################################     TIME     ############################################  #
-            #  ######################################################################################################  #
-
-            try:
-                if "image_folder/" in zip_list:
-                    # Převod času z GMT na lokální čas změny fotek v ZIPu a uložení do seznamu
-                    time_stamps = [int(time.mktime(zipf.getinfo(file).date_time + (0, 0, 0))) for file
-                                   in [name for name in zip_list if name.startswith("image_folder/")][1:]]
-
-                    time_values = np.float64([0.0 if not np.isnan(t) else np.nan for t in df['Photos'].values])
-
-                    """t1 = [os.path.getmtime(os.path.join(current_folder_path, "modified", i)) for i in
-                         os.listdir(os.path.join(current_folder_path, "modified"))][1:]
-                    t2 = [0] + [t1[i + 1] - t1[i] for i in range(len(t1) - 1)]"""
-                    if len(time_stamps) < 2:
-                        raise Exception("Minimální počet fotek pro tvorbu časových razítek je 2.")
-                    if len(time_stamps) - 1 != int(np.nanmax(df['Photos'].values)):
-                        raise Exception("Neshodujhe se počet fotek v zipu s data z csv.")
-
-                    # time_stamps = time_stamps[beginning:]
-                    time_stamps = np.float64(
-                        [0] + [time_stamps[i + 1] - time_stamps[i] for i in range(len(time_stamps) - 1)])
-                    time_stamps[1:-1] = np.median(time_stamps[1:-1])
-
-                    t = np.int64([0] + [photo_indexes[i + 1] - photo_indexes[i] for i in range(len(photo_indexes) - 1)])
-                    t[1:-1] = np.median(t[1:-1])
-                    time_stamps[-1] = time_stamps[1] * (t[-1] / t[1])
-                    time_stamps = [np.sum(time_stamps[:i + 1]) for i in range(len(time_stamps))]
-
-                    nan_indices = np.isnan(time_values)  # Najděte indexy NaN hodnot
-                    time_values[~nan_indices] = time_stamps
-                    time_stamps = time_values.copy()  # Vytvořte kopii vektoru pro interpolaci
-                    # Nahraďte NaN hodnoty interpolovanými hodnotami
-                    time_stamps[nan_indices] = np.interp(np.flatnonzero(nan_indices),
-                                                         np.flatnonzero(~nan_indices), time_values[~nan_indices])
-                    time_stamps = time_stamps[start_position:] - time_stamps[start_position]
-                    # time_stamps = [t - time_stamps[0] for t in time_stamps]
-                else:
-                    print("\n\033[33;1;21mWARRNING\033[0m\n\t - V souboru ZIP se nenachází fotografie")
-            except Exception as e:
-                print("\n\033[33;1;21mWARRNING\033[0m\n\t - "
-                      f"Chyba načtení časového nastavení měření ze složky: [{current_image_folder}]\n\tPOPIS: {e}")
-                continue
-
-            #  ######################################################################################################  #
             #  ############################################      H5      ############################################  #
             #  ######################################################################################################  #
             # Načtení .h5 souboru
@@ -186,47 +142,112 @@ for exp, current_image_folder in enumerate(images_folders):
                                                      for subgroup in data_group.values()]
                 file.close()
             h5_file.close()
+
+            angle_correction_matrix, photos_times = None, None
+            datasets = dict(Correlation=False, Tracked_points=False, Forces=False, Others=False)
+
+            try:
+                if isinstance(dataset_1, list) and len(dataset_1) >= 3:
+                    scale = dataset_1[2]
+
+                if dataset_2['data_correlation'] is not None:
+                    correlation_points = dataset_2['data_correlation']
+                    datasets['Correlation'] = True
+
+                if dataset_2['data_point_detect'] is not None:
+                    [tracked_points, tracked_rotations] = dataset_2['data_point_detect']
+                    datasets['Tracked_points'] = True
+
+                if isinstance(dataset_3, dict) and len(dataset_3) > 0:
+                    for name in dataset_3.keys():
+                        globals()[name] = dataset_3.get(name, None)
+                    datasets['Others'] = True
+
+                correlation_points = [
+                    cv2.transform(np.float64(point[0]).reshape(1, 2, 2), angle_correction_matrix).reshape(2, 2) for
+                    point in correlation_points]
+
+                tracked_points = [
+                    cv2.transform(np.float64(point).reshape(1, -1, 2), angle_correction_matrix).reshape(-1, 2)
+                    for point in tracked_points]
+
+                """scaled_vector2 = np.interp(
+                    np.linspace(0, 1, len(distances)),
+                    np.linspace(0, 1, len(correlation_points)),
+                    np.float64([c[0][0, 1] for c in correlation_points])
+                )
+                dd_ = np.array([distances[i + 1] - distances[i] for i in range(len(distances) - 1)])
+                sd_ = np.array([scaled_vector2[i + 1] - scaled_vector2[i] for i in range(len(scaled_vector2) - 1)])"""
+
+                if all(v is not None for v in (distances, forces, photo_indexes)):
+                    distances = (
+                                distances * np.linalg.norm(correlation_points[0][0, 1] - correlation_points[-1][0, 1]) /
+                                np.linalg.norm(distances[0] - distances[-1]))
+                    distances = (distances - distances[0]) * scale
+                    start_value = distances[start_position]
+                    distances = distances - start_value  # Stanovení 0 pozice zatěžovnání
+                    datasets['Forces'] = True
+
+            except (ValueError, Exception) as e:
+                print(f'\n\033[31;1;21mERROR\033[0m\n\tSelhalo přiřazení hodnot uložených dat\n\tPOPIS: {e}')
+                continue
+
+            #  ######################################################################################################  #
+            #  ############################################     TIME     ############################################  #
+            #  ######################################################################################################  #
+
+            load_photos_time = False
+
+            try:
+                time_values = np.float64([0.0 if not np.isnan(t) else np.nan for t in df['Photos'].values])
+
+                if load_photos_time:
+                    if "image_folder/" in zip_list:
+                        # Převod času z GMT na lokální čas změny fotek v ZIPu a uložení do seznamu
+                        time_stamps = [int(time.mktime(zipf.getinfo(file).date_time + (0, 0, 0))) for file
+                                       in [name for name in zip_list if name.startswith("image_folder/")][1:]]
+
+                        """t1 = [os.path.getmtime(os.path.join(current_folder_path, "modified", i)) for i in
+                             os.listdir(os.path.join(current_folder_path, "modified"))][1:]
+                        t2 = [0] + [t1[i + 1] - t1[i] for i in range(len(t1) - 1)]"""
+                        if len(time_stamps) < 2:
+                            raise Exception("Minimální počet fotek pro tvorbu časových razítek je 2.")
+                        if len(time_stamps) - 1 != int(np.nanmax(df['Photos'].values)):
+                            raise Exception("Neshodujhe se počet fotek v zipu s data z csv.")
+
+                        # time_stamps = time_stamps[beginning:]
+                        time_stamps = np.float64(
+                            [0] + [time_stamps[i + 1] - time_stamps[i] for i in range(len(time_stamps) - 1)])
+                        time_stamps[1:-1] = np.median(time_stamps[1:-1])
+                    else:
+                        print("\n\033[33;1;21mWARRNING\033[0m\n\t - V souboru ZIP se nenachází fotografie")
+                else:
+                    time_stamps = np.array(photos_times)
+                    time_stamps[1:-1] = np.median(time_stamps[1:-1])
+
+                t = np.int64(
+                    [0] + [photo_indexes[i + 1] - photo_indexes[i] for i in range(len(photo_indexes) - 1)])
+                t[1:-1] = np.median(t[1:-1])
+                time_stamps[-1] = time_stamps[1] * (t[-1] / t[1])
+                time_stamps = [np.sum(time_stamps[:i + 1]) for i in range(len(time_stamps))]
+
+                nan_indices = np.isnan(time_values)  # Najděte indexy NaN hodnot
+                time_values[~nan_indices] = time_stamps
+                time_stamps = time_values.copy()  # Vytvořte kopii vektoru pro interpolaci
+                # Nahraďte NaN hodnoty interpolovanými hodnotami
+                time_stamps[nan_indices] = np.interp(np.flatnonzero(nan_indices),
+                                                     np.flatnonzero(~nan_indices), time_values[~nan_indices])
+                time_stamps = time_stamps[start_position:] - time_stamps[start_position]
+                # time_stamps = [t - time_stamps[0] for t in time_stamps]
+
+            except Exception as e:
+                print("\n\033[33;1;21mWARRNING\033[0m\n\t - "
+                      f"Chyba načtení časového nastavení měření ze složky: [{current_image_folder}]\n\tPOPIS: {e}")
+                continue
+
         zipf.close()
     except (KeyError, Exception) as e:
         print(f'\n\033[31;1;21mERROR\033[0m\n\tSelhalo načtení uložených dat\n\tPOPIS: {e}')
-        continue
-
-    datasets = dict(Correlation=False, Tracked_points=False, Forces=False, Others=False)
-
-    try:
-        if isinstance(dataset_1, list) and len(dataset_1) >= 3:
-            scale = dataset_1[2]
-
-        if dataset_2['data_correlation'] is not None:
-            correlation_points = dataset_2['data_correlation']
-            datasets['Correlation'] = True
-
-        if dataset_2['data_point_detect'] is not None:
-            [tracked_points, tracked_rotations] = dataset_2['data_point_detect']
-            datasets['Tracked_points'] = True
-
-        if isinstance(dataset_3, dict) and len(dataset_3) > 0:
-            rotation_matrix = dataset_3.values()
-            datasets['Others'] = True
-
-        """scaled_vector2 = np.interp(
-            np.linspace(0, 1, len(distances)),
-            np.linspace(0, 1, len(correlation_points)),
-            np.float64([c[0][0, 1] for c in correlation_points])
-        )
-        dd_ = np.array([distances[i + 1] - distances[i] for i in range(len(distances) - 1)])
-        sd_ = np.array([scaled_vector2[i + 1] - scaled_vector2[i] for i in range(len(scaled_vector2) - 1)])"""
-
-        if all(v is not None for v in (distances, forces, photo_indexes)):
-            distances = distances * np.linalg.norm(np.array(correlation_points[0][0][0, 1]) - np.array(
-                correlation_points[-1][0][0, 1])) / np.linalg.norm(distances[0] - distances[-1])
-            distances = (distances - distances[0]) * scale
-            start_value = distances[start_position]
-            distances = distances - start_value  # Stanovení 0 pozice zatěžovnání
-            datasets['Forces'] = True
-
-    except (ValueError, Exception) as e:
-        print(f'\n\033[31;1;21mERROR\033[0m\n\tSelhalo přiřazení hodnot uložených dat\n\tPOPIS: {e}')
         continue
 
     try:
@@ -237,7 +258,7 @@ for exp, current_image_folder in enumerate(images_folders):
         time_values = time_stamps[photo_indexes - start_position][beginning:]
 
         if datasets['Correlation']:
-            data = np.float64([np.mean(c[0], axis=0) for c in correlation_points])
+            data = np.float64([np.mean(c, axis=0) for c in correlation_points])
             data_x = (data[beginning:, 0] - data[0, 0]) * scale
             data_y = (data[beginning:, 1] - start_value - data[0, 1]) * scale
             # dat = distances[photo_indexes][beginning:]
