@@ -5,7 +5,7 @@ import h5py
 import time
 import os
 
-saved_data_name = "data_pokus_new.zip"
+saved_data_name = "data_export.zip"
 
 main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
@@ -19,7 +19,7 @@ t2 = [0] + [t1[i + 1] - t1[i] for i in range(len(t1) - 1)]"""
 
 images_folders = [name for name in [os.path.splitext(file)[0] for file in os.listdir(main_image_folder)]
                   if name.startswith("H01") or name.startswith("_")]
-images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+images_folders = [images_folders[i] for i in (10, 11, 12, 13, 19, 33, 37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
 
 ########################################################################################################################
 ########################################################################################################################

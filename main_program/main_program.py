@@ -922,8 +922,9 @@ def pixel_correlation(points, info_text='', divide_area=True, axis_lock=None, x_
     x_f_mean, y_f_mean, x_o_mean, y_o_mean = np.mean(x_f_mean), np.mean(y_f_mean), np.mean(x_o_mean), np.mean(y_o_mean)
     x_shifted, y_shifted = x_min + (x_f_mean - x_o_mean), y_min + (y_f_mean - y_o_mean)
 
-    upper_area = np.int32(np.round([[x_shifted, y_shifted], [x_shifted + (x_max - x_min), y_shifted + (y_max - y_min)]]
-                                   ))
+    upper_area = np.int32(
+        np.round([[x_shifted, y_shifted], [x_shifted + (x_max - x_min), y_shifted + (y_max - y_min)]]))
+    # upper_area = np.array([[x_shifted, y_shifted], [x_shifted + (x_max - x_min), y_shifted + (y_max - y_min)]])
 
     print(f"\n\tNalezené oblasti:\n\t\tPřesnost: {np.int8(thresholds)} %"
           f"\n\t\t\tDoba vytváření: {time.time() - start_time: .2f} s.")

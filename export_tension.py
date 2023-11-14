@@ -28,7 +28,8 @@ for file in files:
         """if c % 10:
             n += 1"""
 
-        cvs_path = os.path.join(folder_path_save, f'T01_{m:02d}-{"I" * (i + 1)}_1s.csv')
+        csv_name = f'T01_{m:02d}-{"I" * (i + 1)}_1s.csv'
+        cvs_path = os.path.join(folder_path_save, csv_name)
         df.to_csv(cvs_path, index=False)
 
         # c += 1
@@ -37,6 +38,6 @@ for file in files:
         if m == 11:
             m = 1
 
-    print(file)
+    print(file, csv_name)
 
 print('\nHotovo')
