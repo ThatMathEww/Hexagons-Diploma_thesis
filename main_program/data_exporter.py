@@ -180,9 +180,8 @@ for exp, current_image_folder in enumerate(images_folders):
                 sd_ = np.array([scaled_vector2[i + 1] - scaled_vector2[i] for i in range(len(scaled_vector2) - 1)])"""
 
                 if all(v is not None for v in (distances, forces, photo_indexes)):
-                    distances = (
-                                distances * np.linalg.norm(correlation_points[0][0, 1] - correlation_points[-1][0, 1]) /
-                                np.linalg.norm(distances[0] - distances[-1]))
+                    distances = (distances * (np.linalg.norm(correlation_points[0][0, 1] - correlation_points[-1][0, 1])
+                                 / np.linalg.norm(distances[0] - distances[-1])))
                     distances = (distances - distances[0]) * scale
                     start_value = distances[start_position]
                     distances = distances - start_value  # Stanovení 0 pozice zatěžovnání
@@ -276,8 +275,7 @@ for exp, current_image_folder in enumerate(images_folders):
             len_photos = len(tracked_points)
 
             data = [(np.float64([tracked_points[i][j] for i in range(len_photos)]),
-                     np.float64([tracked_rotations[i][j] for i in range(len_photos)]))
-                    for j in range(len_points)]
+                     np.float64([tracked_rotations[i][j] for i in range(len_photos)])) for j in range(len_points)]
 
             data = [(np.float64([d[0][i] - d[0][0] for i in range(len_photos)]) * scale, d[1]) for d in data]
 
