@@ -10,7 +10,7 @@ from sklearn.linear_model import LinearRegression"""
 # H01_03-I_10s.csv / H01_03-II_10s.csv / H01_03-III_10s.csv   //   H01_03-II-max_12s.csv
 
 # Načtení dat ze souboru CSV
-file_path = r'data\data_csv\H01_03-II-max_12s.csv'
+file_path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_csv\H01_03-I_10s.csv'
 df = pd.read_csv(file_path)  # DATAFRAME
 
 zr = 5
@@ -32,7 +32,7 @@ photo_indexes = df[df['Photos'].notna()].index
 start_value_y = np.median(y_data[1:zr * 2 + 1])
 mean_values = np.array([np.mean(y_data[s - 3:s + 3]) for s in range(zr, d_len)])
 
-# Najdi indexy, kde je okno rovno `pocet_podminka`
+# Najdi indexy, kde je okno rovno `pocet_podminka` - pro všechna data mít stejný počáteční index
 s = [np.max(np.where(d[:max(min(int(np.where(np.convolve(np.where(np.abs(np.array(
     [np.mean(d[s - z2:s + z2]) for s in range(z2, d_len // 3)])[zr:] - np.median(d[1:zr * 2 + 1])) >= np.mean(
     np.array([np.std(d[s - z2:s + z2]) for s in range(z2, d_len // 300)])[zr:]

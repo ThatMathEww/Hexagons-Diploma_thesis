@@ -44,7 +44,7 @@ for exp, current_image_folder in enumerate(images_folders):
 
     zip_file_name = os.path.join(current_folder_path, saved_data_name)
     if saved_data_name not in zip_files:
-        print(f'\n\033[31;1;21mERROR\033[0m\n\tVe složce [{current_image_folder}] se nenachází daný soubor ZIP')
+        print(f'\033[31;1;21mERROR\033[0m\n\tVe složce [{current_image_folder}] se nenachází daný soubor ZIP')
         continue
 
     try:
@@ -66,51 +66,38 @@ for exp, current_image_folder in enumerate(images_folders):
                 path_to_csv = zipf.open(csv_file_name)
             else:
                 path_to_csv = os.path.join(folder_measurements, "data_csv", csv_file_name)
-                print(f'\n\033[33;1;21mWARRNING\033[0m\n\tV uložených datech se nenachází soubor: "{csv_file_name}"'
+                print(f'\033[33;1;21mWARRNING\033[0m\n\tV uložených datech se nenachází soubor: "{csv_file_name}"'
                       f'\n\t➤ Pokus o načtení souboru ze složky')
-
-            zero_stage = 10  # TODO &&&&&&&&&&&
-            window_size_start = 5  # TODO &&&&&&&&&&&
 
             df = pd.read_csv(path_to_csv)  # DATAFRAME
 
-            # Odečtení průměru od všech následujících hodnot v 2. a 3. sloupci
-            df.iloc[zero_stage:, 1] -= df.iloc[:zero_stage, 1].mean()
-            df.iloc[zero_stage:, 2] -= df.iloc[:zero_stage, 2].mean()
+            zr = 5
+            d_len = df.shape[0]
+            zr = max(min(zr, d_len // 3), 3)
+            z2 = max(zr // 2, 1)
 
             # Načtení dat
-            distances = df.iloc[:, 0].values  # První sloupec jako osa x - posun
-            forces = - (df.iloc[:, 1].values + df.iloc[:, 2].values)  # - celková síla
+            distances = df.iloc[:, 0].values  # - posun
+            forces = -((df.iloc[:, 1].values - df.iloc[:zr, 1].mean()) +
+                       (df.iloc[:, 2].values - df.iloc[:zr, 2].mean()))  # - celková síla
             photo_indexes = df[df['Photos'].notna()].index
 
-            # Klouzavý průměr s oknem šířky 5
-            window_start = max(3, window_size_start)
-            while True:
-                try:
-                    cumulative_sum = np.cumsum(forces)
-                    cumulative_sum[window_start:] = cumulative_sum[window_start:] - cumulative_sum[:-window_start]
-                    # Najděte kladná čísla
-                    positive_numbers = forces[max(window_start - 2, 0):window_start + 1][
-                        forces[max(window_start - 2, 0):window_start + 1] > 0]
-                    min_positive = np.min(positive_numbers)
-                    # Porovnáme průměry 5 po sobě jdoucích čísel s hodnotami na daných pozicích
-                    condition = (cumulative_sum / window_start) < min_positive
-                    break
-                except ValueError:
-                    if window_start > window_size_start + 50:
-                        condition = [True]
-                        print("\nDosažení limitu pro hledání počátku měření")
-                        break
-                    window_start += 1
+            # Najdi indexy, kde je okno rovno `pocet_podminka`
+            start_index = np.max(np.where(forces[:max(min(int(np.where(np.convolve(np.where(np.abs(np.array(
+                [np.mean(forces[s - z2:s + z2]) for s in range(z2, d_len // 3)])[zr:] - np.median(
+                forces[1:zr * 2 + 1])) >= np.mean(
+                np.array([np.std(forces[s - z2:s + z2]) for s in range(z2, d_len // 300)])[zr:]
+                * 1.5), 1, 0), np.ones(int(np.ceil(d_len * 0.1))), mode='valid') == np.ceil(d_len * 0.1))[0][0]) - zr,
+                                                          d_len), 0) + 1] <= 0)[0])
 
-            # Najdeme pozice, kde podmínka platí
-            start_position = np.where(condition)[0][-1]
+            # Najdi indexy, kde je rozdíl menší než -5
+            snap_index = np.where(np.diff(forces) <= -5)[0]
 
             # Nalezení nejbližší vyšší hodnoty
-            """beginning = np.where(photo_indexes >= start_position)[0][
-                np.argmin(photo_indexes[photo_indexes >= start_position])]"""
+            """beginning = np.where(photo_indexes >= start_index)[0][
+                np.argmin(photo_indexes[photo_indexes >= start_index])]"""
             # Nalezení indexu nejbližší vyšší hodnoty
-            beginning = np.argmax(photo_indexes >= start_position)
+            beginning = np.argmax(photo_indexes >= start_index)
 
             #  ######################################################################################################  #
             #  ############################################      H5      ############################################  #
@@ -184,12 +171,12 @@ for exp, current_image_folder in enumerate(images_folders):
                     distances = (distances * (np.linalg.norm(correlation_points[0][0, 1] - correlation_points[-1][0, 1])
                                               / np.linalg.norm(distances[0] - distances[-1])))
                     distances = (distances - distances[0]) * scale
-                    start_value = distances[start_position]
+                    start_value = distances[start_index]
                     distances = distances - start_value  # Stanovení 0 pozice zatěžovnání
                     datasets['Forces'] = True
 
             except (ValueError, Exception) as e:
-                print(f'\n\033[31;1;21mERROR\033[0m\n\tSelhalo přiřazení hodnot uložených dat\n\tPOPIS: {e}')
+                print(f'\033[31;1;21mERROR\033[0m\n\tSelhalo přiřazení hodnot uložených dat\n\tPOPIS: {e}')
                 continue
 
             #  ######################################################################################################  #
@@ -220,7 +207,7 @@ for exp, current_image_folder in enumerate(images_folders):
                             [0] + [time_stamps[i + 1] - time_stamps[i] for i in range(len(time_stamps) - 1)])
                         time_stamps[1:-1] = np.median(time_stamps[1:-1])
                     else:
-                        print("\n\033[33;1;21mWARRNING\033[0m\n\t - V souboru ZIP se nenachází fotografie")
+                        print("\033[33;1;21mWARRNING\033[0m\n\t - V souboru ZIP se nenachází fotografie")
                 else:
                     time_stamps = np.array(photos_times)
                     time_stamps[1:-1] = np.median(time_stamps[1:-1])
@@ -237,17 +224,112 @@ for exp, current_image_folder in enumerate(images_folders):
                 # Nahraďte NaN hodnoty interpolovanými hodnotami
                 time_stamps[nan_indices] = np.interp(np.flatnonzero(nan_indices),
                                                      np.flatnonzero(~nan_indices), time_values[~nan_indices])
-                time_stamps = time_stamps[start_position:] - time_stamps[start_position]
+                time_stamps = time_stamps[start_index:] - time_stamps[start_index]
                 # time_stamps = [t - time_stamps[0] for t in time_stamps]
 
             except Exception as e:
-                print("\n\033[33;1;21mWARRNING\033[0m\n\t - "
+                print("\033[33;1;21mWARRNING\033[0m\n\t - "
                       f"Chyba načtení časového nastavení měření ze složky: [{current_image_folder}]\n\tPOPIS: {e}")
                 continue
 
         zipf.close()
     except (KeyError, Exception) as e:
-        print(f'\n\033[31;1;21mERROR\033[0m\n\tSelhalo načtení uložených dat\n\tPOPIS: {e}')
+        print(f'\033[31;1;21mERROR\033[0m\n\tSelhalo načtení uložených dat\n\tPOPIS: {e}')
+        continue
+
+    try:
+        def poly_function(poly_x, coefficients, start_ind, end_ind=""):
+            function = "y = "
+            # Získání počtu koeficientů
+            len_c = len(coefficients)
+            poly_y = np.zeros_like(poly_x)
+            # Výpočet hodnoty y_fit
+            for i in range(len_c):
+                poly_y += coefficients[i] * poly_x ** (len_c - i - 1)
+                if (len_c - i - 1) == 0:
+                    function += f"{coefficients[i]:.5f}" if -0.00001 < coefficients[
+                        i] < 0.00001 else f"{coefficients[i]:.5f}"
+                elif (len_c - i - 1) == 1:
+                    function += f"{coefficients[i]:.5e}*x + " if -0.00001 < coefficients[i] < 0.00001 \
+                        else f"{coefficients[i]:.5f}*x + "
+                else:
+                    function += f"{coefficients[i]:.5e}*x^{len_c - i - 1} + " if -0.00001 < coefficients[i] < 0.00001 \
+                        else f"{coefficients[i]:.5f}*x^{len_c - i - 1} + "
+            if function.endswith("+ "):
+                function = function[:-2]
+            function += f";[ {poly_x[0]} : {poly_x[-1]} ];[ {start_ind} : {end_ind} ]"
+            return poly_y, function, coefficients
+
+
+        x_fit = []
+        y_fit = []
+        funcs = []
+        coefs = []
+        mses = []
+        if snap_index.size > 0:
+            snap_index = snap_index[0]
+            mean_values2 = np.array([np.mean(forces[s:s + 2]) for s in range(snap_index)])
+            mean_values2[0] = forces[0]
+            mean_values2[-1] = forces[snap_index - 1]
+            mean_values2[-2] = (mean_values2[-1] + mean_values2[-3]) / 2
+
+            differ_index = np.where(np.diff(forces[snap_index:]) <= -0.3)[0][[0, -1]] + snap_index
+
+            d = [np.mean(forces[s:s + 2]) for s in range(differ_index[0], differ_index[1] + 1)]
+            d = np.array(
+                [np.mean(d[s:s + 2]) for s in range(len(d))])
+            mean_values2 = np.append(mean_values2, d)
+
+            d = [np.mean(forces[s:s + 2]) for s in range(differ_index[1] + 1, d_len)]
+            mean_values2 = np.append(mean_values2, d)
+
+            x_ = distances[start_index:snap_index - 1]
+            y = mean_values2[start_index:snap_index - 1]
+
+            y_, func, c_ = poly_function(x_, np.polyfit(x_, y, 5), start_index - start_index,
+                                         snap_index - 1 - start_index)
+            coefs.append(c_)
+            funcs.append(func)
+            x_fit.append(x_)
+            y_fit.append(y_)
+
+            # Výpočet kvadratické chyby
+            mse = np.mean((y - y_) ** 2)
+            mses.append(mse)
+            # print("\nMean Squared Error (MSE):", mse)
+
+            x_ = distances[snap_index + 1:]
+            y = mean_values2[snap_index + 1:]
+            y_, func, c_ = poly_function(x_, np.polyfit(x_, y, 5), snap_index - 1 - start_index,
+                                         len(distances) - start_index)
+            coefs.append(c_)
+            funcs.append(func)
+            x_fit.append(x_)
+            y_fit.append(y_)
+
+            # Výpočet kvadratické chyby
+            mse = np.mean((y - y_) ** 2)
+            mses.append(mse)
+            # print("Mean Squared Error (MSE):", mse)
+
+        else:
+            mean_values2 = np.array([np.mean(forces[s:s + 2]) for s in range(d_len)])
+            mean_values2[0] = forces[0]
+            x_fit.append(distances[start_index:])
+            y_, func, c_ = poly_function(distances[start_index:],
+                                         np.polyfit(distances[start_index:], mean_values2[start_index:], 5),
+                                         start_index - start_index, len(distances) - start_index)
+            coefs.append(c_)
+            funcs.append(func)
+            y_fit.append(y_)
+
+            # Výpočet kvadratické chyby
+            mse = np.mean((mean_values2[start_index:] - y_fit[0]) ** 2)
+            mses.append(mse)
+            # print("\nMean Squared Error (MSE):", mse)
+
+    except (ValueError, Exception) as e:
+        print(f'\033[31;1;21mERROR\033[0m\n\tSelhalo vytvoření křivek\n\tPOPIS: {e}')
         continue
 
     try:
@@ -255,16 +337,16 @@ for exp, current_image_folder in enumerate(images_folders):
         data_frames_names = []
 
         photos = np.arange(beginning, len(photo_indexes), 1)  # int(np.nanmax(df['Photos'].values)) + 1
-        time_values = time_stamps[photo_indexes - start_position][beginning:]
+        time_values = time_stamps[photo_indexes - start_index][beginning:]
 
         if datasets['Correlation']:
             data = np.float64([np.mean(c, axis=0) for c in correlation_points])
             data_x = (data[beginning:, 0] - data[0, 0]) * scale
             data_y = (data[beginning:, 1] - start_value - data[0, 1]) * scale
-            a = distances[photo_indexes][beginning:]
-            # dat = distances[photo_indexes][beginning:]
-            # d1 = np.mean([data_y[i+1] - data_y[i] for i in range(len(data_y)-1)])
-            # d2 = np.mean([dat[i+1] - dat[i] for i in range(len(dat)-1)])
+            """dat = distances[photo_indexes][beginning:]
+            d1 = np.median([data_y[i+1] - data_y[i] for i in range(len(data_y)-1)])
+            d2 = np.median([dat[i+1] - dat[i] for i in range(len(dat)-1)])
+            d3 = np.mean([dat[i] - data_y[i] for i in range(len(dat))])"""
             # Vytvoření datových rámce pro listy
             data_frames.append(pd.DataFrame({'Photo': photos,
                                              'Time [s]': time_values,
@@ -303,10 +385,10 @@ for exp, current_image_folder in enumerate(images_folders):
 
         if datasets['Forces']:
             # Vytvoření datových rámce pro listy
-            data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_position:],
+            data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_index:],
                                              'Time [s]': time_stamps,
-                                             'Distance [mm]': distances[start_position:],
-                                             'Force [N]': forces[start_position:]}))
+                                             'Distance [mm]': distances[start_index:],
+                                             'Force [N]': forces[start_index:]}))
             data_frames_names.append('All forces')
 
         if datasets['Others']:
@@ -316,17 +398,17 @@ for exp, current_image_folder in enumerate(images_folders):
         try:
             excel_writer = pd.ExcelWriter(os.path.join(out_put_folder, excel_file), engine='xlsxwriter')
         except PermissionError as e:
-            print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze upravovat, pravděpodobně je otevřen.'
+            print(f'\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze upravovat, pravděpodobně je otevřen.'
                   f'\n\tPOPIS: {e}')
             continue
         except (KeyError, Exception) as e:
-            print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze uložit.\n\tPOPIS: {e}')
+            print(f'\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze uložit.\n\tPOPIS: {e}')
             continue
 
         # Uložení textu v listu
-        text1 = f"Měření: {current_image_folder}"
-        text2 = "other text here"
-        description = "Toto je popis souboru CSV s více listy."
+        text1 = f"Typ měření: {str(excel_file).replace('.xlsx', '')}"
+        text2 = f"(Měření: {current_image_folder})"
+        description = "Obsah jednotlivých listů:"
 
         # Vytvoření listu pro popis
         df_description = pd.DataFrame({'Popis': [description]})
@@ -341,14 +423,31 @@ for exp, current_image_folder in enumerate(images_folders):
         # Zápis dat do listů
         for i, data_frame in enumerate(data_frames):
             data_frame.to_excel(excel_writer, sheet_name=f'List_{i}', index=False)
-            worksheet.write(i + 7, 0, f'List_{i}: {data_frames_names[i]}')
+            worksheet.write(i + 7, 1, f'List_{i}:')
+            worksheet.write(i + 7, 2, f'{data_frames_names[i]}')
+
+        # Zápis popisu na zvláštní list
+        for i, (f, c, m) in enumerate(zip(funcs, coefs, mses)):
+            df_description = pd.DataFrame({'Aproximace průběhu zatížení': []})
+            df_description.to_excel(excel_writer, sheet_name='Popis', index=False, startrow=5, startcol=7)
+            f = f.split(";")
+            worksheet.write(6 + (i * 6), 8, f'Funkce {i + 1}:  ')
+            worksheet.write(6 + (i * 6), 9, f[0])
+            worksheet.write(7 + (i * 6), 8, "Koeficienty:  ")
+            [worksheet.write(7 + (i * 6), 9 + j, cof) for j, cof in enumerate(c)]
+            worksheet.write(8 + (i * 6), 8, f'Rozsah:  ')
+            worksheet.write(8 + (i * 6), 9, f[1])
+            worksheet.write(9 + (i * 6), 8, f'Indexy:  ')
+            worksheet.write(9 + (i * 6), 9, f[2])
+            worksheet.write(10 + (i * 6), 8, f'MSE:  ')
+            worksheet.write(10 + (i * 6), 9, m)
 
         # Zavření Excel souboru
         excel_writer.close()
 
         print(f"\033[32;1m\tData úspěšně uložena jako: \033[0m' \033[35;1m{excel_file}\033[0m '")
     except (ValueError, Exception) as e:
-        print(f'\n\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] se nepovedlo uložit.\n\tPOPIS: {e}')
+        print(f'\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] se nepovedlo uložit.\n\tPOPIS: {e}')
         continue
 
 print("\n\033[33;1mHotovo.\033[0m")

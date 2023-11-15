@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 
 # Načtení dat ze souboru CSV
-path = r'data\data_csv'
+path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_csv'
 
 file_names = np.array([p for p in os.listdir(path) if os.path.isfile(os.path.join(path, p))
                        and p.lower().endswith(".csv") and p.lower().startswith("h01")])
