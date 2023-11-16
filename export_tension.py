@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import os
 
 # Zadání cesty ke složce
@@ -9,8 +10,11 @@ files = [f for f in os.listdir(folder_path_load) if
          os.path.isdir(os.path.join(folder_path_load, f)) and not f.lower().endswith('.test')]
 
 i = 2
-m = 11  # 1 // 11
-files = sorted(files, key=lambda x: int(x.split(" ")[2]))[30 + (i * 7):37 + (i * 7)]
+m = 1  # 1 // 11
+a = 0  # 0 // 30
+b = 10  # 10 // 7
+
+files = sorted(files, key=lambda x: int(x.split(" ")[2]))[a + (i * b):(a + b) + (i * b)]
 # [0+(i * 10):10+(i * 10)] // [30+(i * 7):37+(i * 7)]
 
 # n = 0
@@ -27,6 +31,13 @@ for file in files:
 
         """if c % 10:
             n += 1"""
+
+        df = df.replace(',', '.', regex=True)
+        names = df.axes[1]
+        values = np.array(df.values, dtype=float)
+        values[:, 1] *= 1000
+        df = pd.DataFrame(dtype=float)
+        df[names] = values
 
         csv_name = f'T01_{m:02d}-{"I" * (i + 1)}_1s.csv'
         cvs_path = os.path.join(folder_path_save, csv_name)

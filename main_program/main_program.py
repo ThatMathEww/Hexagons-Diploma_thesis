@@ -5797,7 +5797,7 @@ def main():
 
     # images_folders = images_folders[-2:-1]  # TODO ############ potom změnit počet složek
     images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
-    images_folders = [images_folders[i] for i in (11,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+    images_folders = [images_folders[i] for i in (33,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
 
     print(f"\nDatum:  {time.strftime('%H:%M, %d.%m. %Y', time.strptime(date, '%H-%M-%S_%d-%m-%Y'))}\n"
           f"\n\033[36mSpuštění programu pro detekci fotek.\n  Verze: {program_version}\n\033[0m"
@@ -5946,7 +5946,7 @@ def main():
 
                 """[start, end, main_image_folder, size, fine_size, points_limit, precision, scale,
                  calculations_statuses], dataset_2 = load_data()"""
-                (settings, [main_image_folder, current_path_to_photos, scale], dataset_2,
+                (settings, [main_image_folder, current_path_to_photos, scale, _], dataset_2,
                  dataset_3) = load_data()
                 main_image_folder, current_path_to_photos = [var.decode('utf-8') for var in
                                                              (main_image_folder, current_path_to_photos)
@@ -6557,10 +6557,10 @@ if __name__ == '__main__':
     source_image_type = ['original', 'modified']
 
     saved_data = 'data_export'
-    save_calculated_data = True
-    load_calculated_data = False
-    do_finishing_calculation = True
-    make_temporary_savings = True
+    save_calculated_data = False
+    load_calculated_data = True
+    do_finishing_calculation = False
+    make_temporary_savings = False
 
     make_video = False
 
