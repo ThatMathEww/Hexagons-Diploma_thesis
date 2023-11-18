@@ -4309,7 +4309,6 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                 line_graph_title = 'Total force\n'
             ax.set_title(line_graph_title, pad=10, wrap=True)
 
-
             # Časové úseky pořízení fotografií
             top_pad = 0.86
             try:
@@ -4326,11 +4325,20 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                                       "času vytvoření fotografií\033[0m")
 
                 if time_period is None:
-                    if len(photos_times) >= 3:
-                        time_period = np.median(time_stamps[1:-1])
-                        time_stamps[1:-1] = np.median(time_stamps[1:-1])
+                    if time_stamps:
+                        if len(photos_times) >= 3:
+                            time_period = np.median(time_stamps[1:-1])
+                            time_stamps[1:-1] = np.median(time_stamps[1:-1])
+                        else:
+                            time_period = time_stamps[-1]
                     else:
-                        time_period = time_stamps[-1]
+                        time_stamps = []
+                        for i in (0, 1):
+                            image_path = load_photo(img_index=i, give_path=True)
+                            if os.path.exists(image_path):
+                                time_stamps.append(os.path.getmtime(image_path))
+                        if len(time_stamps) == 2:
+                            time_stamps = np.int16(abs(time_stamps[0] - time_stamps[1]))
 
                 if photos[-1] + 1 == len(x_data) and tot_im >= 3:
                     if 'time_stamps' in locals() and isinstance(time_stamps, list) and len(time_stamps) >= 3:
