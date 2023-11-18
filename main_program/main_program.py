@@ -922,9 +922,9 @@ def pixel_correlation(points, info_text='', divide_area=True, axis_lock=None, x_
     x_f_mean, y_f_mean, x_o_mean, y_o_mean = np.mean(x_f_mean), np.mean(y_f_mean), np.mean(x_o_mean), np.mean(y_o_mean)
     x_shifted, y_shifted = x_min + (x_f_mean - x_o_mean), y_min + (y_f_mean - y_o_mean)
 
-    upper_area = np.int32(
-        np.round([[x_shifted, y_shifted], [x_shifted + (x_max - x_min), y_shifted + (y_max - y_min)]]))
-    # upper_area = np.array([[x_shifted, y_shifted], [x_shifted + (x_max - x_min), y_shifted + (y_max - y_min)]])
+    # upper_area = np.int32(
+    #    np.round([[x_shifted, y_shifted], [x_shifted + (x_max - x_min), y_shifted + (y_max - y_min)]]))
+    upper_area = np.array([[x_shifted, y_shifted], [x_shifted + (x_max - x_min), y_shifted + (y_max - y_min)]])
 
     print(f"\n\tNalezené oblasti:\n\t\tPřesnost: {np.int8(thresholds)} %"
           f"\n\t\t\tDoba vytváření: {time.time() - start_time: .2f} s.")
@@ -1191,7 +1191,7 @@ def set_roi(finish_marking=False, just_load=False):
 
             masked_img[mask > 0] = (masked_img[mask > 0] * 0.35).astype(np.uint8)
             points_neg = edit_points_on_canvas(points_neg, image=masked_img, path_color="red")
-    done_changes = True
+        done_changes = True
 
     if not isinstance(points_max, np.ndarray) and mark_points_by_hand:
 
@@ -1547,6 +1547,9 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
         if (isinstance(shift_start, (np.ndarray, list, tuple)) and
                 isinstance(current_shift,
                            (int, float, np.int16, np.int32, np.int64, np.float16, np.float32, np.float64))):
+            if not isinstance(shift_start, tuple):
+                shift_start = shift_start.copy()
+            shift_start = np.int32(np.round(shift_start))
             cv2.rectangle(mask2, (shift_start[0, 0], np.int32(np.round(shift_start[0, 1] + current_shift))),
                           (shift_start[1, 0], shift_start[1, 1]), 255, -1)
         mask2 = cv2.bitwise_and(make_eroded_mask(photo=gray2), mask2)
@@ -1794,7 +1797,7 @@ def second_circle_intersection(data, initial_guess):
     return result.x
 
 
-def results(result, old_center, limit, mesh, upper_area_cor=None):
+def results_adjustment(result, old_center, limit, mesh, upper_area_cor=None):
     print("\nVyhodnocování výsledků.")
 
     new_center = np.empty((0, 2))
@@ -2162,7 +2165,7 @@ def rough_calculation(mesh, centers):
                                               edge_threshold=set_edge_threshold,
                                               sigma=set_sigma)
 
-        triangle_vertices, triangle_centers, triangle_indexes, wrong_points_indexes = results(
+        triangle_vertices, triangle_centers, triangle_indexes, wrong_points_indexes = results_adjustment(
             key_points, centers, end_marks, mesh, correlation_area_points_all[i])
 
         triangle_vertices_all.append(triangle_vertices)  # n,2
@@ -4185,6 +4188,7 @@ def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='a
             plot_name = "marked_points"
         plot_name = plot_name.replace(".", "_") + "." + plot_format
         plt.savefig(os.path.join(current_folder_path, plot_name), format=plot_format, dpi=save_dpi, bbox_inches='tight')
+        plt.close("Marked points graph")
     else:
         plt.pause(0.5)
         plt.show(block=block_graphs or show_menu)
@@ -4305,51 +4309,28 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                 line_graph_title = 'Total force\n'
             ax.set_title(line_graph_title, pad=10, wrap=True)
 
-            # Otevřít textový soubor pro čtení časového nastavení
+
+            # Časové úseky pořízení fotografií
             top_pad = 0.86
             try:
+                time_period, time_stamps = None, []
                 if not tot_im >= 2:
                     raise MyException("Minimální počet fotek pro tvorbu časových razítek je 2.")
 
-                # Převod času z GMT na lokální čas změny fotek v ZIPu a uložení do seznamu
-                time_stamps = [np.int64(time.mktime(
-                    zipfile.ZipFile(os.path.join(current_folder_path, saved_data_name + ".zip"), 'r').getinfo(
-                        file).date_time + (0, 0, 0)) - 3600) + 1 for file in
-                               [name for name in zipfile.ZipFile(os.path.join(
-                                   current_folder_path, saved_data_name + ".zip"), 'r').namelist()
-                                if name.startswith("image_folder/")][1:]]
+                time_stamps, time_period = get_photos_time_stamps()
 
-                if os.path.isfile(os.path.join(folder_measurements, "data_txt", current_image_folder + ".txt")):
-                    with open(os.path.join(folder_measurements, "data_txt", current_image_folder + ".txt"), 'r') as txt:
-                        time_period = txt.readline().split()
-                        txt.close()
+                if time_period is not None or time_stamps:
+                    top_pad = 0.75
+                else:
+                    raise MyException("\033[33mNebylo možné získat čas ze zadávací sekvence nebo "
+                                      "času vytvoření fotografií\033[0m")
 
-                    if time_period[0] == 'MMDIC' or time_period[0] == 'MMDIC2':
-                        time_period = np.int16(time_period[-1])
-                        top_pad = 0.75
+                if time_period is None:
+                    if len(photos_times) >= 3:
+                        time_period = np.median(time_stamps[1:-1])
+                        time_stamps[1:-1] = np.median(time_stamps[1:-1])
                     else:
-                        print("\n\t\033[33;1;21mWARRNING\033[0m"
-                              "\n\t\t - V souboru se nenachází zadávací sekvence 'MMDIC' nebo 'MMDIC2'.")
-
-                        if 'time_stamps' in locals() and isinstance(time_stamps, list) and len(time_stamps) >= 2:
-                            time_period = np.int32([0] + [abs(time_stamps[i + 1] - time_stamps[i])
-                                                          for i in range(len(time_stamps) - 1)])
-                            time_period = np.median(time_period[1:-1])
-                            # time_period = np.int16(abs(time_stamps[0] - time_stamps[1]))
-                        else:
-                            time_period = []
-                            for i in range(0, len(image_files) - 1):
-                                image_path = load_photo(img_index=i, give_path=True)
-                                if os.path.exists(image_path):
-                                    time_period.append(os.path.getmtime(image_path))
-                                if len(time_period) >= 2:
-                                    time_period = np.int32([0] + [abs(time_period[i + 1] - time_period[i])
-                                                                  for i in range(len(time_period) - 1)])
-                                    time_period = np.median(time_period[1:-1])
-                                    # time_period = np.int16(abs(time_period[0] - time_period[1]))
-                                else:
-                                    raise MyException("\033[33mNebylo možné získat čas ze zadávací sekvence nebo "
-                                                      "času vytvoření fotografií\033[0m")
+                        time_period = time_stamps[-1]
 
                 if photos[-1] + 1 == len(x_data) and tot_im >= 3:
                     if 'time_stamps' in locals() and isinstance(time_stamps, list) and len(time_stamps) >= 3:
@@ -4794,6 +4775,8 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
         else:
             plt.savefig(os.path.join(current_folder_path, saved_graph_name), format=graph_format, dpi=save_dpi,
                         bbox_inches='tight')
+
+        plt.close("Final displacement graph")
     else:
         plt.pause(0.5)
         plt.show(block=block_graph)
@@ -5083,6 +5066,67 @@ def get_files_from_zipped_folder(zip_folder_name="image_folder"):
         print("\n\033[1;21mWARRNING\033[0m:  Chyba v načtení fotek ze souboru ZIP.")
         files_names = get_photos_from_folder(current_path_to_photos)
     return files_names
+
+
+def get_photos_time_stamps(method="Auto", load_measurement_input=True):
+    """method = 'Auto' | 'Original photos' | 'Zipped photos'"""
+    global photos_times
+
+    try_get_value, try_get_original_photos, try_get_zipped_photos = False, False, False
+    if method == "Auto":
+        try_get_value = try_get_original_photos = try_get_zipped_photos = True
+    elif method == "Original photos":
+        try_get_original_photos = True
+    elif method == "Zipped photos":
+        try_get_zipped_photos = True
+    else:
+        print("\nŠpatně zvolen typ načtení časů fotografií, bude použito automatické rozhodnutuní.")
+        try_get_value = try_get_original_photos = try_get_zipped_photos = True
+
+    times = []
+    input_sequence = None
+
+    if 'photos_times' in globals() and isinstance(photos_times, list) and len(photos_times) > 0 and try_get_value:
+        try:
+            times = photos_times.copy()
+        except (ValueError, Exception):
+            times = []
+    if not times and try_get_original_photos:
+        try:
+            times = [os.path.getmtime(os.path.join(current_path_to_photos, i)) for i in image_files]
+            times = [0] + [int(times[i + 1] - times[i]) for i in range(len(times) - 1)]
+        except (ValueError, Exception):
+            times = []
+    if not times and try_get_zipped_photos:
+        try:
+            times = [np.int64(time.mktime(
+                zipfile.ZipFile(os.path.join(current_folder_path, saved_data_name + ".zip"), 'r').getinfo(
+                    file).date_time + (0, 0, 0)) - 3600) + 1 for file in
+                     [name for name in zipfile.ZipFile(os.path.join(current_folder_path, saved_data_name + ".zip"),
+                                                       'r').namelist() if name.startswith("image_folder/")][1:]]
+            times = [0] + [int(times[i + 1] - times[i]) for i in range(len(times) - 1)]
+        except (ValueError, Exception, MyException):
+            times = []
+
+    if load_measurement_input:
+        # Otevřít textový soubor pro čtení časového nastavení
+        if os.path.isfile(os.path.join(folder_measurements, "data_txt", current_image_folder + ".txt")):
+            try:
+                with open(os.path.join(folder_measurements, "data_txt", current_image_folder + ".txt"), 'r') as txt:
+                    input_sequence = txt.readline().split()
+                    txt.close()
+
+                if input_sequence[0] == 'MMDIC' or input_sequence[0] == 'MMDIC2':
+                    input_sequence = np.int16(input_sequence[-1])
+                else:
+                    print("\n\t\033[33;1;21mWARRNING\033[0m"
+                          "\n\t\t - V souboru se nenachází zadávací sekvence 'MMDIC' nebo 'MMDIC2'.")
+            except (ValueError, Exception):
+                input_sequence = None
+
+        return times, input_sequence
+    else:
+        return times
 
 
 def save_data(data1_variables: list = None, data2_correlation: list = None, data2_rough_detect: list = None,
@@ -5797,7 +5841,7 @@ def main():
 
     # images_folders = images_folders[-2:-1]  # TODO ############ potom změnit počet složek
     images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
-    images_folders = [images_folders[i] for i in (33,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+    images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
 
     print(f"\nDatum:  {time.strftime('%H:%M, %d.%m. %Y', time.strptime(date, '%H-%M-%S_%d-%m-%Y'))}\n"
           f"\n\033[36mSpuštění programu pro detekci fotek.\n  Verze: {program_version}\n\033[0m"
@@ -6537,7 +6581,7 @@ if __name__ == '__main__':
 
     dynamic_mode = False
 
-    send_final_message = True
+    send_final_message = False
 
     load_set_points = True
     do_auto_mark = True
@@ -6559,7 +6603,7 @@ if __name__ == '__main__':
     saved_data = 'data_export'
     save_calculated_data = False
     load_calculated_data = True
-    do_finishing_calculation = False
+    do_finishing_calculation = True
     make_temporary_savings = False
 
     make_video = False
