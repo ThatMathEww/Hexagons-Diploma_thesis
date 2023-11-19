@@ -5849,7 +5849,8 @@ def main():
 
     # images_folders = images_folders[-2:-1]  # TODO ############ potom změnit počet složek
     images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
-    images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+    # images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+    images_folders = [images_folders[i] for i in range(len(images_folders)) if i not in (10, 11, 12, 13, 19, 33, 37, 38)]
 
     print(f"\nDatum:  {time.strftime('%H:%M, %d.%m. %Y', time.strptime(date, '%H-%M-%S_%d-%m-%Y'))}\n"
           f"\n\033[36mSpuštění programu pro detekci fotek.\n  Verze: {program_version}\n\033[0m"
@@ -6595,10 +6596,10 @@ if __name__ == '__main__':
     do_auto_mark = True
     mark_points_by_hand = True
 
-    do_calculations = {'Do Correlation': True,
-                       'Do Rough detection': True,
+    do_calculations = {'Do Correlation': False,
+                       'Do Rough detection': False,
                        'Do Fine detection': False,
-                       'Do Point detection': True}
+                       'Do Point detection': False}
 
     main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 

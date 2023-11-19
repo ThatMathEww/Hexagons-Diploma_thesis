@@ -468,13 +468,13 @@ def change_image(image, last_image):
 
 
 def main():
-    global restart, profile, image_folder, folder_measurement, left, right, top, down, make_gray
+    global restart, profile, image_folder, left, right, top, down, make_gray
     print("\n")
 
     # Získání seznamu jmen názvů složek dle jmen měření
-    folder_names = [name for name in [os.path.splitext(file)[0] for file in
-                                      os.listdir(folder_measurement)] if name.startswith("H01") or name.startswith("_")]
-
+    folder_names = [name for name in [f for f in os.listdir(image_folder)] if
+                    os.path.isdir(os.path.join(image_folder, name)) and (
+                                name.startswith(type_) or name.startswith(","))]
     [print(f"{i: >6}:  {file}") for i, file in enumerate(folder_names)]
     print("")
 
@@ -498,8 +498,9 @@ def main():
             print(f"\n Zadejte platnou odpověď.\n\tPOPIS: {ve}")
             pass
 
-    folder_names = [folder_names[i] for i in (10, 11, 12, 13, 19, 33, 37, 38)]
-    # folder_names = folder_names[start:end]  # jaké složky budu načítat (první je 0) př: "files[2:5] od 2 do 5"
+    # folder_names = [folder_names[i] for i in (10, 11, 12, 13, 19, 33, 37, 38)]
+    # folder_names = [folder_names[i] for i in range(len(folder_names)) if i not in (10, 11, 12, 13, 19, 33, 37, 38)]
+    folder_names = folder_names[start:end]  # jaké složky budu načítat (první je 0) př: "files[2:5] od 2 do 5"
 
     # ############################# Todo Načítání fotek ze složek #############################
     folder_names = [f for f in folder_names if os.path.isdir(os.path.join(image_folder, f, "original"))]
@@ -634,21 +635,21 @@ def main():
                 image_files = get_photos_from_folder(input_folder)
 
                 if use_template:
-                    template1 = cv2.imread(
-                        r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\t.JPG', 0)
-                    template2 = cv2.imread(
-                        r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\t_.JPG', 0)
-                    im = cv2.imread(os.path.join(input_folder, image_files[1]), 0)
+                    template1 = cv2.imread(os.path.join(template_path, 'top_.png'), 0)
+                    template2 = cv2.imread(os.path.join(template_path, 'bottom_.png'), 0)
+                    im = cv2.imread(os.path.join(input_folder, image_files[template_img_index]), 0)
                     h, w = im.shape[:2]
                     # Porovnejte šablonu s druhou fotografií pomocí metody šablony
                     x_f1, y_f1 = cv2.minMaxLoc(cv2.matchTemplate(im, template1, cv2.TM_CCOEFF_NORMED))[-1]
                     _, y_f2 = cv2.minMaxLoc(cv2.matchTemplate(im, template2, cv2.TM_CCOEFF_NORMED))[-1]
                     x_f1 = round(x_f1 + template1.shape[1] // 2, -1)
                     left, right = int(max(min(x_f1 - width_, w), 0)), int(max(min(x_f1 + width_, w), 0))
-                    top, down = int(max(min(round(y_f1 - 50, -1), h), 0)), int(max(min(round(y_f2 + 200, -1), h), 0))
+                    top, down = int(max(min(round(y_f1 - 50, -1), h), 0)), int(
+                        max(min(round(y_f2 + template2.shape[0] + 50, -1), h), 0))
 
                 if left >= right or top >= down:
-                    return
+                    print("Chyba při automatickém označení.")
+                    continue
 
                 data = [brightness, contrast, temp, saturate, V, L, A, B, Y, V, U, V2]
                 data.extend(bgr)
@@ -670,15 +671,11 @@ def main():
 
                 # print(f"{i}. - {folder} : Soubory uloženy.")
 
-                """# Vytvoření cesty ke zdrojovému souboru
-                            cesta_zdroj = os.path.join(folder_measurement, file_create)
-                            # Kopírování souboru do cílové složky
-                            shutil.copy(cesta_zdroj, cesta_cil)"""
             print("\n====================================================\n\nVeškeré soubory uloženy")
 
             if ans == "Y":
                 print("\nUkončuji program.")
-                sys.exit()
+                sys.exit(2)
 
             print("\nChcete si uložit použitý profil?")
 
@@ -693,7 +690,7 @@ def main():
                     if not os.path.exists(new_profile_path):
                         np.savetxt(new_profile_path, data)
                         print("\nProfil uložen.\n\nUkončuji program.")
-                        sys.exit()
+                        sys.exit(3)
                     else:
                         print("Máte již vytvořený profil, chcete ho přepsat?")
                         while True:
@@ -701,21 +698,21 @@ def main():
                             if ans2 == "Y":
                                 np.savetxt(new_profile_path, data)
                                 print("\nProfil uložen.\n\nUkončuji program.")
-                                sys.exit()
+                                sys.exit(4)
                             elif ans2 == "N":
                                 np.savetxt(new_profile_path.replace(".txt", "_new.txt"), data)
                                 print("\nUkončuji program.")
-                                sys.exit()
+                                sys.exit(5)
                             else:
                                 print("Zadejte platnou odpověď.")
                 elif ans1 == "N":
                     print("\nUkončuji program.")
-                    sys.exit()
+                    sys.exit(6)
                 else:
                     print("Zadejte platnou odpověď.")
         elif save == "N":
             print("\nUkončuji program.")
-            sys.exit()
+            sys.exit(7)
         else:
             print("Špatně volená možnost, zadejte znovu.")
 
@@ -732,10 +729,11 @@ if __name__ == '__main__':
     # Nastavení názvu profilu
     profile = 'profile'
 
-    # Nastavení cest ke složkám
-    folder_measurement = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_txt'
+    template_path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\t\t01_max'
+    template_img_index = 0
+    type_ = "T01"
 
-    img_format = 'png'
+    img_format = 'JPG'
 
     first_load_profile = False
 
