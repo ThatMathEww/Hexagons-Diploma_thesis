@@ -474,7 +474,7 @@ def main():
     # Získání seznamu jmen názvů složek dle jmen měření
     folder_names = [name for name in [f for f in os.listdir(image_folder)] if
                     os.path.isdir(os.path.join(image_folder, name)) and (
-                                name.startswith(type_) or name.startswith(","))]
+                            name.startswith(type_) or name.startswith(","))]
     [print(f"{i: >6}:  {file}") for i, file in enumerate(folder_names)]
     print("")
 
@@ -658,8 +658,8 @@ def main():
 
                 for im in image_files:
                     img_path = os.path.join(input_folder, im)
-                    img_new_path = os.path.join(output_folder, os.path.splitext(os.path.basename(im))[0] +
-                                                f'_mod.{img_format.replace(".", "")}')
+                    img_new_path = os.path.join(output_folder, "mod-" + os.path.splitext(os.path.basename(im))[0] +
+                                                "." + img_format.replace(".", ""))
 
                     image = cv2.imread(img_path)
 
