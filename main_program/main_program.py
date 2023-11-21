@@ -1051,7 +1051,7 @@ def set_roi(finish_marking=False, just_load=False):
             print("\n\033[31;1;21mERROR\033[0m\n\tChyba načtenych oblastí.\n\tPOPIS: Nesprávný počet načtených dat.")
     else:
         if load_set_points:
-            print(f'\n\033[33;1;21m\tNebyla načtena žádná data definovaných oblastí.\033[0m')
+            print(f'\n\t\033[33;1;21mNebyla načtena žádná data definovaných oblastí.\033[0m')
 
     if just_load:
         return None, None
@@ -2098,7 +2098,7 @@ def correlation_calculation():
     global points_pos, points_neg, points_cor, points_max, correlation_area_points_all, current_path_to_photos, \
         gray1, gray2, width, height
 
-    if calculations_statuses['Correlation']:
+    if calculations_statuses['Correlation'] and not recalculate['Re Correlation']:
         return
 
     correlation_area_points_all = []
@@ -2128,7 +2128,7 @@ def correlation_calculation():
 
 
 def rough_calculation(mesh, centers):
-    if calculations_statuses['Rough detection']:
+    if calculations_statuses['Rough detection'] and not recalculate['Re Rough detection']:
         return
 
     global gray1, gray2, width, height
@@ -2346,7 +2346,7 @@ def scale_object(coordinates, scale_factor, axis: int | str = "vertical", only_x
 
 
 def fast_fine_calculation(mesh_size=10):
-    if calculations_statuses['Fine detection']:
+    if calculations_statuses['Fine detection'] and not recalculate['Re Fine detection']:
         return
 
     global fine_triangle_points_all, fine_mesh_centers_all
@@ -2433,7 +2433,7 @@ def fast_fine_calculation(mesh_size=10):
 
 
 def fine_calculation2(mesh_size=10):
-    if calculations_statuses['Fine detection']:
+    if calculations_statuses['Fine detection'] and not recalculate['Re Fine detection']:
         return
 
     global fine_triangle_points_all, fine_mesh_centers_all
@@ -2596,7 +2596,7 @@ def fine_calculation2(mesh_size=10):
 
 
 def fine_calculation_____________(mesh_size=10):
-    if calculations_statuses['Fine detection']:
+    if calculations_statuses['Fine detection'] and not recalculate['Re Fine detection']:
         return
 
     global fine_triangle_points_all, fine_mesh_centers_all
@@ -3129,7 +3129,7 @@ def finding_points():
 
 
 def point_tracking_calculation(use_correlation=True):
-    if calculations_statuses['Point detection']:
+    if calculations_statuses['Point detection'] and not recalculate['Re Point detection']:
         return
 
     global points_pos, points_neg, points_cor, points_max, points_track
@@ -5850,7 +5850,8 @@ def main():
     # images_folders = images_folders[-2:-1]  # TODO ############ potom změnit počet složek
     images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
     # images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[i] for i in range(len(images_folders)) if i not in (10, 11, 12, 13, 19, 33, 37, 38)]
+    images_folders = [images_folders[i] for i in range(len(images_folders)) if
+                      i not in (10, 11, 12, 13, 19, 33, 37, 38)][17:]
 
     print(f"\nDatum:  {time.strftime('%H:%M, %d.%m. %Y', time.strptime(date, '%H-%M-%S_%d-%m-%Y'))}\n"
           f"\n\033[36mSpuštění programu pro detekci fotek.\n  Verze: {program_version}\n\033[0m"
@@ -6640,6 +6641,11 @@ if __name__ == '__main__':
     set_contrast_threshold = 0.08
     set_edge_threshold = 15
     set_sigma = 1.6
+
+    recalculate = {'Re Correlation': False,
+                   'Re Rough detection': False,
+                   'Re Fine detection': False,
+                   'Re Point detection': False}
 
     #                                                                                                                  #
     ####################################################################################################################
