@@ -137,7 +137,7 @@ def program_shutdown(message: Exception | str = "\n\nUkončení programu", try_s
         global saved_data_name
         if 'saved_data_name' not in globals():
             saved_data_name = saved_data
-        if try_save_data(zip_name=saved_data_name + "backup") is SaveError:
+        if try_save_data(zip_name=saved_data_name + "_backup") is SaveError:
             print("\n\033[33;1;21mWARRNING\033[0m\n\tZáloha dat se nepovedla.")
     plt.close('all')
     ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
@@ -1073,6 +1073,7 @@ def set_roi(finish_marking=False, just_load=False):
         cv2.fillPoly(mask, [points_neg], 255)
         masked_img[mask > 0] = (masked_img[mask > 0] * 0.35).astype(np.uint8)
     if isinstance(points_track, list) and len(points_track) > 0:
+        # i = 1
         for marked_center, marked_area in points_track:
             mask = np.zeros(masked_img.shape[:2], dtype=np.uint8)
             cv2.fillPoly(mask, [marked_area], 255)
@@ -1080,6 +1081,21 @@ def set_roi(finish_marking=False, just_load=False):
             mask = cv2.add(masked_img, 110, mask=mask)
             masked_img = cv2.bitwise_or(masked_img, mask)
             cv2.circle(masked_img, (marked_center[0], marked_center[1]), 7, (255, 50, 0), -1)
+
+            """cv2.putText(masked_img, f'{i}', (marked_center[0] + 10, marked_center[1] - 10),
+                        cv2.FONT_HERSHEY_DUPLEX, 3, (255, 50, 50), 3, cv2.LINE_AA)
+            i += 1
+
+        points_track = edit_object_on_canvas([c[0] for c in points_track], [a[1] for a in points_track],
+                                             image=img)
+        points_track = [(np.int32(np.round(c)), np.int32(np.round(a))) for c, a in
+                        zip(points_track[0], points_track[1])]
+
+        done_changes = True
+
+        plt.figure()
+        plt.imshow(masked_img, cmap='gray')
+        plt.show()"""
 
     if ((do_auto_mark and not isinstance(points_cor, list)) or
             (isinstance(points_cor, list) and len(points_cor) == 0 and do_calculations['Do Correlation'])):
@@ -1137,10 +1153,11 @@ def set_roi(finish_marking=False, just_load=False):
                     names[2], titles[j], "navy", "deepskyblue", image=masked_img, tot_num=cor_num, cur_num=i + 1)))
                 if marked_points.all() != np.array(((0, 0), (0, 1))).all():
                     points_cor.append(marked_points)
-                    rectangle_region = (masked_img[marked_points[0, 1]:marked_points[1, 1],
+                    """rectangle_region = (masked_img[marked_points[0, 1]:marked_points[1, 1],
                                         marked_points[0, 0]:marked_points[1, 0]])
                     # Ztmavení oblasti obdélníku na 50 %
-                    rectangle_region //= 2
+                    rectangle_region //= 2"""
+                    masked_img[marked_points[0, 1]:marked_points[1, 1], marked_points[0, 0]:marked_points[1, 0]] //= 2
                     cv2.rectangle(masked_img, marked_points[0], marked_points[1], (255, 255, 255), 2)
                     cv2.rectangle(masked_img, marked_points[0], marked_points[1], 0, 1)
                     break
@@ -1227,8 +1244,6 @@ def set_roi(finish_marking=False, just_load=False):
                 print("\n Zadejte platnou odpověď.")
         done_changes = True
 
-    del img
-
     if ((not isinstance(points_track, list) and mark_points_by_hand) or
             (isinstance(points_track, list) and len(points_track) == 0 and
              do_calculations['Do Point detection'])):
@@ -1245,6 +1260,26 @@ def set_roi(finish_marking=False, just_load=False):
             except ValueError as ve:
                 print(f"\n Zadejte platnou odpověď.\n\tPOPIS: {ve}")
                 pass
+
+        # masked_img = cv2.add(img, masked_img)
+        masked_img = img.copy()
+        mask = np.zeros(masked_img.shape[:2], dtype=np.uint8)
+        if isinstance(points_cor, list) and len(points_cor) > 0:
+            for points in points_cor:
+                masked_img[points[0, 1]:points[1, 1], points[0, 0]:points[1, 0]] = (
+                        masked_img[points[0, 1]:points[1, 1], points[0, 0]:points[1, 0]] * 0.75).astype(np.uint8)
+                cv2.rectangle(masked_img, points[0], points[1], (255, 255, 255), 2)
+                cv2.rectangle(masked_img, points[0], points[1], 0, 1)
+        if isinstance(points_pos, np.ndarray) and len(points_pos) > 2:
+            cv2.fillPoly(mask, [points_pos], 255)
+        if isinstance(points_neg, np.ndarray) and len(points_neg) > 2:
+            cv2.fillPoly(mask, [points_neg], 0)
+
+        # Ztmavení druhé fotografie na 75%
+        img = cv2.addWeighted(masked_img, 0.75, np.zeros_like(masked_img), 0.25, 0)
+        # Aplikace masky
+        masked_img = cv2.bitwise_and(masked_img, masked_img, mask=mask)
+        masked_img += cv2.bitwise_and(img, img, mask=~mask)  # ~mask inverts the mask
 
         for i in range(p_num):
             # masked_img = (masked_img * 0.8).astype(np.uint8)
@@ -1301,6 +1336,8 @@ def set_roi(finish_marking=False, just_load=False):
         points_max = np.int16([[1590, 980], [4840, 3270]])
     else:
         program_shutdown("Špatná definice pro označení bodů.", try_save=False)"""
+
+    del img
 
     if done_changes:
         # Vytvoření matic
@@ -5847,11 +5884,11 @@ def main():
     else:
         images_folders = check_folder(main_image_folder, "Složka s fotkami", "neexistuje", "je prázdná")
 
-    # images_folders = images_folders[-2:-1]  # TODO ############ potom změnit počet složek
     images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
+    # images_folders = images_folders[-2:-1]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[i] for i in range(len(images_folders)) if
-                      i not in (10, 11, 12, 13, 19, 33, 37, 38)][17:]
+    """images_folders = [images_folders[i] for i in range(len(images_folders)) if
+                      i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
     print(f"\nDatum:  {time.strftime('%H:%M, %d.%m. %Y', time.strptime(date, '%H-%M-%S_%d-%m-%Y'))}\n"
           f"\n\033[36mSpuštění programu pro detekci fotek.\n  Verze: {program_version}\n\033[0m"
@@ -5934,6 +5971,14 @@ def main():
     for current_image_folder in images_folders:
         angle_correction_matrix = None
         photos_times = []
+
+        plt.close("Status")
+        plt.figure(num="Status", figsize=(4.5, 1.5))
+        plt.gca().axis('off')
+        plt.text(0.5, 0.5, f"{current_image_folder}  [ {main_counter} / {len(images_folders)} ]",
+                 fontsize=16, ha='center', va='center')
+        plt.tight_layout()
+        plt.show(block=False)
 
         current_image_folder = str(current_image_folder)
         print(f"\033[32;1;21m{'☰' * 50}\033[0m\n\nAktuální výpočet pro: \033[96m{current_image_folder}\033[0m "
@@ -6190,6 +6235,23 @@ def main():
                     print(f"\nNepovedlo se načíst označené oblasti: {e}")
 
             make_angle_correction()
+
+            """plt.figure(num="Graph of movement of corner to loading bar")  # TODO KONTROLA
+            data1 = np.float64([point[0][0] for point in correlation_area_points_all[:]])
+            data1 = make_angle_correction(points_to_warp=data1)
+            data2 = np.float64([point[1] for point in tracked_points_all[:]])
+            data2 = make_angle_correction(points_to_warp=data2)
+            data = np.float64([data2[i, 1] - data1[i, 1] for i in range(len(data1))]) * scale
+            data -= data[0]
+
+            plt.plot(data, c='dodgerblue', zorder=7)
+            plt.scatter(np.arange(len(data)), data, c='darkorange', marker="x", s=25, zorder=6)
+            plt.gca().invert_yaxis()
+            plt.grid(color="lightgray")
+            plt.tight_layout()
+            plt.gca().autoscale(True)
+            plt.gca().set_aspect('auto', adjustable='box')
+            plt.show()"""
 
             show_results_graph(show_final_image)
 
@@ -6597,10 +6659,10 @@ if __name__ == '__main__':
     do_auto_mark = True
     mark_points_by_hand = True
 
-    do_calculations = {'Do Correlation': False,
-                       'Do Rough detection': False,
+    do_calculations = {'Do Correlation': True,
+                       'Do Rough detection': True,
                        'Do Fine detection': False,
-                       'Do Point detection': False}
+                       'Do Point detection': True}
 
     main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 

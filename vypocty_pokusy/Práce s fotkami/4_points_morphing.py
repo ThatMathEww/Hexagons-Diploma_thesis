@@ -45,7 +45,8 @@ def reorder(points):
     return sorted_points
 
 
-path = "book.jpg"
+path = (r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Hexagons-Diploma_thesis"
+        r"\vypocty_pokusy\book.jpg")
 
 img = cv2.imread(path)
 input_img = img.copy()
