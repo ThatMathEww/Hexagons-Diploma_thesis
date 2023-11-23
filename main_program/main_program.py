@@ -3165,7 +3165,7 @@ def finding_points():
             plt.show()
 
 
-def point_tracking_calculation(use_correlation=True):
+def point_tracking_calculation(use_correlation=True, interpolate_new_points=False, interpolation_number=16):
     if calculations_statuses['Point detection'] and not recalculate['Re Point detection']:
         return
 
@@ -3182,12 +3182,62 @@ def point_tracking_calculation(use_correlation=True):
 
     tracked_points_all, tracked_rotations_all = [], []
 
-    tot_im = len(image_files)
-    tot_p = len(points_track)
-
     if 'points_track' not in globals() or (points_track is None or len(points_track) == 0):
         plt.close("Regions of interest")
         set_roi(finish_marking=True)
+
+    tot_im = len(image_files)
+
+    if interpolate_new_points:
+        interpolation_number = round(interpolation_number)
+        new_points_track = []
+
+        def linear_interpolation(point1, point2, num_interpolated_points, polygon, delete_first_last=False):
+            t = np.linspace(0, 1, num_interpolated_points + 1)
+            x = point1[0] + t * (point2[0] - point1[0])
+            y = point1[1] + t * (point2[1] - point1[1])
+            interpolated_points = np.column_stack((x, y))
+            polygon_center = np.mean(polygon, axis=0)
+            interpolated_polygon = np.array([polygon.copy() + (interpolated_points[m] - polygon_center)
+                                             for m in range(num_interpolated_points + 1)])
+            if delete_first_last:
+                return interpolated_points[1:-1], interpolated_polygon[1:-1]
+            else:
+                return interpolated_points, interpolated_polygon
+
+        area = points_track[0][1].copy()
+        points_track_new = points_track[:6].copy()
+        points_track_new.append(points_track_new[0])
+        for i in range(len(points_track_new) - 1):
+            new_points_track.append(points_track_new[i])
+            inter_points = linear_interpolation(points_track_new[i][0], points_track_new[i + 1][0],
+                                                interpolation_number, area, True)
+            [new_points_track.append((inter_points[0][j], inter_points[1][j])) for j in range(len(inter_points[0]))]
+            new_points_track.append(points_track_new[i + 1])
+        if len(points_track) == 10:
+            new_points_track.append(points_track_new[6])
+            inter_points = linear_interpolation(points_track_new[6][0], points_track_new[8][0], interpolation_number,
+                                                area, True)
+            [new_points_track.append((inter_points[0][j], inter_points[1][j])) for j in range(len(inter_points[0]))]
+            new_points_track.append(points_track_new[8])
+
+            new_points_track.append(points_track_new[7])
+            inter_points = linear_interpolation(points_track_new[7][0], points_track_new[9][0], interpolation_number,
+                                                area, True)
+            [new_points_track.append((inter_points[0][j], inter_points[1][j])) for j in range(len(inter_points[0]))]
+            new_points_track.append(points_track_new[9])
+
+        points_track = new_points_track.copy()
+        del new_points_track, points_track_new, inter_points, interpolation_number
+
+    tot_p = len(points_track)
+
+    if show_graphs:
+        plt.figure()
+        plt.imshow(cv2.cvtColor(load_photo(0, photo_type), cv2.COLOR_BGR2RGB))
+        [plt.scatter(p[0][0], p[0][1], c='blue', zorder=3) for p in points_track]
+        [plt.fill(p[1][:, 0], p[1][:, 1], facecolor='skyblue', edgecolor='none', alpha=0.5) for p in points_track]
+        plt.show()
 
     if 'key_points_all' not in globals():
         for j in range(tot_im):
@@ -3582,7 +3632,9 @@ def perform_calculations():
                 or recalculate['Re Rough detection']):
             rough_calculation(mesh, centers)
 
-        del mesh, centers, keypoints1_sift, descriptors1_sift
+            del keypoints1_sift, descriptors1_sift
+
+        del mesh, centers
 
         """for h in range(len(image_files)):  # TODO KONTROLA #########
                     # show_results_graph(show_final_image)  # Vykreslení výsledného grafu fotografie
@@ -3602,7 +3654,7 @@ def perform_calculations():
             or recalculate['Re Point detection']):
         print("\n\033[32m-----------------------------------------------------------------\033[0m"
               "\n\033[32m-----------------------------------------------------------------\033[0m")
-        point_tracking_calculation(use_correlation=False)  # TODO #####################
+        point_tracking_calculation(use_correlation=False, interpolate_new_points=True, interpolation_number=16)
 
     print("\n\033[32;1m.................................................................\033[0m"
           "\n\033[32;1m:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\033[0m")
@@ -3942,13 +3994,16 @@ def show_results_graph(image_number, img_color=0):
 
     plt.axis('off')
     # plt.subplots_adjust(right=0.99, left=0.05, top=0.96, bottom=0.045)
-    plt.tight_layout()
-    ax.set_aspect('equal', adjustable='box')
-    ax.autoscale(True)
+    try:
+        plt.tight_layout()
+        ax.set_aspect('equal', adjustable='box')
+        ax.autoscale(True)
 
-    plt.pause(0.5)
-    plt.show(block=block_graphs)
-    plt.pause(2)
+        plt.pause(0.5)
+        plt.show(block=block_graphs)
+        plt.pause(2)
+    except UserWarning:
+        plt.close("Final result graph")
 
 
 def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plot_tracked_paths=False,
@@ -5854,13 +5909,26 @@ def try_save_data(zip_name="data_autosave", temporary_file=False, overwrite=Fals
         return SaveError
 
 
+def update_text_window(text: str, entry):
+    entry.config(state="normal")  # Odblokování textového pole
+    entry.delete("1.0", "end")  # Smazání existujícího textu
+    entry.insert("1.0", f"\n{text}")  # Vložení nového textu
+    entry.tag_configure("center", justify="center")
+    # Přidání nových tagů pro tučný a větší text
+    entry.tag_configure("large", font=("Helvetica", 14, "bold"))
+    # Aplikace tagů na text
+    entry.tag_add("large", "1.0", "end")
+    entry.tag_add("center", "1.0", "end")
+    entry.config(state="disabled")  # Blokování textového pole
+
+
 def main():
     global image_files, gray1, gray2, width, height, saved_file_exist, auto_crop, scale, variable_names, all_photos, \
         current_path_to_photos, current_folder_path, current_image_folder, calculations_statuses, saved_data_name
     global start, end, main_image_folder, size, fine_size, points_limit, precision, settings, second_callout
     global points_pos, points_neg, points_cor, points_max, correlation_area_points_all, angle_correction_matrix
     global triangle_vertices_all, triangle_centers_all, triangle_indexes_all, triangle_points_all, \
-        wrong_points_indexes_all, key_points_all, end_marks_all, photos_times
+        wrong_points_indexes_all, key_points_all, end_marks_all, photos_times, main_counter
     global fine_triangle_points_all, fine_mesh_centers_all, tracked_points_all, tracked_rotations_all
 
     def check_folder(folder, text1, text2, text3, important_folder=True):
@@ -5890,7 +5958,7 @@ def main():
         images_folders = check_folder(main_image_folder, "Složka s fotkami", "neexistuje", "je prázdná")
 
     images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
-    # images_folders = images_folders[-2:-1]  # TODO ############ potom změnit počet složek
+    images_folders = images_folders[1:-2]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
@@ -5972,18 +6040,36 @@ def main():
 
     print(f"\n\033[32mVše je nastaveno.\n\t➤ Spuštení výpočtu:\033[0m")
 
+    # Vytvoření okna
+    window_status = tk.Tk()
+    window_status.title("Aktuální proces")
+    window_status.geometry("370x125")  # Počáteční velikost okna
+    window_status.minsize(370, 125)  # Minimální rozměry okna
+
+    # Vytvoření textového pole
+    text_entry = tk.Text(window_status, wrap="word", width=40, height=5, padx=10, pady=10)
+    text_entry.pack(pady=(10, 0))
+
     # cyklus mezi složkami - HLAVNÍ CYKLUS
     for current_image_folder in images_folders:
         angle_correction_matrix = None
         photos_times = []
 
-        plt.close("Status")
+        update_text_window(f"{current_image_folder}  [ {main_counter} / {len(images_folders)} ]", text_entry)
+        """plt.close("Status")
         plt.figure(num="Status", figsize=(4.5, 1.5))
         plt.gca().axis('off')
         plt.text(0.5, 0.5, f"{current_image_folder}  [ {main_counter} / {len(images_folders)} ]",
                  fontsize=16, ha='center', va='center')
         plt.tight_layout()
+        plt.pause(0.5)
         plt.show(block=False)
+        plt.pause(2)"""
+
+        # Spuštění hlavní smyčky
+        window_status.update_idletasks()  # Nutné vyvolat aktualizaci, aby se okno zobrazilo
+        window_status.update()
+        # window_status.deiconify()  # Čekání na zobrazení
 
         current_image_folder = str(current_image_folder)
         print(f"\033[32;1;21m{'☰' * 50}\033[0m\n\nAktuální výpočet pro: \033[96m{current_image_folder}\033[0m "
@@ -6010,6 +6096,7 @@ def main():
             image_files = get_files_from_zipped_folder(zip_folder_name="image_folder")
 
             if image_files is None:
+                reset_parameters()
                 continue
 
             if end == "all":
@@ -6172,6 +6259,7 @@ def main():
                                 print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
                                 out.close()
                                 del out
+                                reset_parameters()
                                 continue
 
                             out.close()
@@ -6192,6 +6280,7 @@ def main():
                             perform_calculations()
                         except Exception as e:
                             print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
+                            reset_parameters()
                             continue
 
                         while True:
@@ -6259,6 +6348,10 @@ def main():
             plt.show()"""
 
             show_results_graph(show_final_image)
+
+            if len(images_folders) > 1:
+                reset_parameters()
+                continue
 
             if calculations_statuses['Point detection']:
                 plot_marked_points(0, show_menu=False, show_arrows=True, save_plot=True, plot_format='jpg')
@@ -6425,6 +6518,7 @@ def main():
                 if not os.path.isdir(current_path_to_photos):
                     print(f"\n\033[33;1;21mWARRNING\033[0m\n\t"
                           f"Aktuální složka {current_folder_path} neobsahuje fotografie v samostatných složkách.\n")
+                    reset_parameters()
                     continue"""
 
             # Vytvoření cesty k cílovým fotografiím
@@ -6445,6 +6539,7 @@ def main():
                             print(f"\n\033[33;1;21mWARRNING\033[0m"
                                   f"\n\tAktuální složka: [\033[35m{current_path_to_photos}\033[0m] "
                                   f"\033[91mje prázdná.\033[0m\n\t- Tato složka bude přeskočena.")
+                            reset_parameters()
                             continue
                     print(f"\t\tNová složka je v pořádku.\n")
                 else:
@@ -6472,8 +6567,10 @@ def main():
                                                           ".hdr", ".pic"))
                     if not image_files:
                         print(f"\n\033[31;1;21mERROR\033[0m\n\tSložka neobsahuje fotografie.")
+                        reset_parameters()
                         continue
                     elif image_files is None:
+                        reset_parameters()
                         continue
 
                     if end == "all":
@@ -6493,6 +6590,7 @@ def main():
                     except Exception as e:
                         print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
                         out.close()
+                        reset_parameters()
                         continue
 
                     out.close()
@@ -6517,6 +6615,7 @@ def main():
                     calculate()
                 except Exception as e:
                     print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
+                    reset_parameters()
                     continue
                 while True:
                     print("\nOpravdu nechcete uložit spočítaná data?")
@@ -6548,11 +6647,7 @@ def main():
                     else:
                         print("\n Zadejte platnou odpověď.")
 
-        main_counter += 1
-        plt.close('all')
-        scale, second_callout, saved_data_name = float(1), False, saved_data
-        calculations_statuses = {key: False for key in calculations_statuses}
-        # reset_parameters()
+        reset_parameters()
 
     if send_final_message:
         current_time = time.time()
@@ -6602,14 +6697,21 @@ def main():
 
     # Navrácení režimu spánku
     plt.close('all')
+    # ukončení hlavní smyčky
+    window_status.destroy()
     ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
     print("\nUkončení programu.")
 
 
 def reset_parameters():
-    global scale, second_callout, saved_data_name, calculations_statuses
+    global scale, second_callout, saved_data_name, calculations_statuses, main_counter
 
-    scale, second_callout, saved_data_name = 1, False, saved_data
+    main_counter += 1
+    plt.close('all')
+    scale, second_callout, saved_data_name = float(1), False, saved_data
+    calculations_statuses = {key: False for key in calculations_statuses}
+
+    """scale, second_callout, saved_data_name = 1, False, saved_data
     calculations_statuses = {key: False for key in calculations_statuses}
     # Odstraňování proměnných
     for name in ('keypoints1_sift', 'descriptors1_sift', 'fine_triangle_points_all', 'fine_mesh_centers_all',
@@ -6617,11 +6719,13 @@ def reset_parameters():
                  'key_points_all', 'end_marks_all', 'triangle_vertices_all', 'triangle_centers_all',
                  'triangle_indexes_all', 'triangle_points_all', 'correlation_area_points_all', 'settings'):
         if name in globals():
-            del globals()[name]
+            del globals()[name]"""
+
+    return
 
 
 if __name__ == '__main__':
-    global end, folder_measurement, image_files, current_path_to_photos, settings, variable_names
+    global end, folder_measurement, image_files, current_path_to_photos, settings, variable_names, main_counter
     global gray1, gray2, width, height, auto_crop, saved_data_name, all_photos, preloaded_images
     global triangle_vertices_all, triangle_centers_all, triangle_indexes_all, triangle_points_all, \
         correlation_area_points_all, wrong_points_indexes_all, key_points_all, end_marks_all, tracked_points_all, \
@@ -6752,9 +6856,9 @@ if __name__ == '__main__':
         block_graphs = False
     if save_calculated_data or load_calculated_data:
         import h5py
-    if not do_just_correlation:
-        import pygmsh
-        # if do_calculations['Do Fine detection']:
+    # if not do_just_correlation:
+    import pygmsh
+    # if do_calculations['Do Fine detection']:
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     # if do_calculations['Do Correlation']:
     import json
