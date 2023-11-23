@@ -3201,7 +3201,7 @@ def point_tracking_calculation(use_correlation=True):
             key_points_all.append(key_points)
             end_marks_all.append(end_marks)
 
-    if use_correlation:
+    if use_correlation or show_graphs:
         gray_1 = load_photo(0, photo_type)
         mask_1 = np.zeros(gray_1.shape[:2], dtype=np.uint8)
         [cv2.fillPoly(mask_1, [np.int32(np.round(polygon))], 255) for polygon in triangle_points_all[0]]
@@ -3212,7 +3212,7 @@ def point_tracking_calculation(use_correlation=True):
               f"\nAktuální proces:  [ {i + 1} / {tot_im} ]\t  Fotografie: {image_files[i]}")
 
         start_time = time.time()
-        if use_correlation:
+        if use_correlation or show_graphs:
             gray_2 = load_photo(i, photo_type)
         tracked_points_cur = np.empty((0, 2), dtype=np.int32)
         tracked_rotations = np.empty(0, dtype=np.float64)
@@ -3259,7 +3259,7 @@ def point_tracking_calculation(use_correlation=True):
             # orig_pts = current_key_points[:, :2]
             # def_pts = current_key_points[:, 2:]
 
-            if use_correlation:
+            if use_correlation or show_graphs:
                 mask_2 = np.zeros(gray_2.shape[:2], dtype=np.uint8)
                 [cv2.fillPoly(mask_2, [np.int32(np.round(polygon))], 255) for polygon in triangle_points_all[i]]
                 masked_img_2 = gray_2 & mask_2
@@ -3282,7 +3282,7 @@ def point_tracking_calculation(use_correlation=True):
             tran_mat_inv = cv2.findHomography(current_key_points[:, :2], current_key_points[:, 2:], cv2.RANSAC, 5.0)[0]
             # tran_mat_inv = cv2.invert(tran_mat)[1]
 
-            if use_correlation:
+            if use_correlation or show_graphs:
                 bound = np.int32(cv2.boundingRect(np.float32(tracking_area))).reshape(2, 2)
                 w, h = bound[1] // 4
                 bound[1] += bound[0]
@@ -3329,7 +3329,7 @@ def point_tracking_calculation(use_correlation=True):
                 plt.tight_layout()
                 plt.show()
 
-            if use_correlation:
+            if use_correlation or show_graphs:
                 result = cv2.matchTemplate(img_warped[bound[0, 1]:bound[1, 1], bound[0, 0]:bound[1, 0]],
                                            template, cv2.TM_CCOEFF_NORMED)
                 top_left = cv2.minMaxLoc(result)[-1] + (point_to_track - track_area[0])
@@ -3361,7 +3361,8 @@ def point_tracking_calculation(use_correlation=True):
             if use_correlation:
                 transformed_matched_point = cv2.perspectiveTransform(np.float32(top_left + bound[0]).reshape(-1, 1, 2),
                                                                      tran_mat_inv)[0][0]
-                result_point = np.int32(np.round((transformed_matched_point + transformed_point) / 2))
+                # result_point = np.int32(np.round((transformed_matched_point + transformed_point) / 2))
+                result_point = np.int32(np.round(transformed_matched_point))
             else:
                 result_point = np.int32(np.round(transformed_point))
 
@@ -3370,7 +3371,8 @@ def point_tracking_calculation(use_correlation=True):
             if show_graphs:
                 matched_point = np.int32(top_left + bound[0])
                 transformed_point = np.int32(np.round(transformed_point))
-                transformed_matched_point = np.int32(np.round(transformed_matched_point))
+                transformed_matched_point = np.int32(
+                    np.round(transformed_matched_point)) if use_correlation else transformed_point
 
                 print("\nPůvodní hledaný bod (foto 1):\n\t", point_to_track)
                 print("Hledaný bod (foto 2):\n\t", transformed_point)
@@ -3397,7 +3399,7 @@ def point_tracking_calculation(use_correlation=True):
                 points__ = np.array([[transformed_matched_point[0], transformed_matched_point[1]],
                                      [transformed_matched_point[0] + 200, transformed_matched_point[1]]])
                 plt.plot(points__[:, 0], points__[:, 1], color='red', lw=4)
-                rot_mat = cv2.getRotationMatrix2D(transformed_matched_point, np.rad2deg(rotation), 1.0)
+                rot_mat = cv2.getRotationMatrix2D(transformed_matched_point.tolist(), np.rad2deg(rotation), 1.0)
                 points__ = cv2.transform(points__.reshape(1, -1, 2), rot_mat).reshape(-1, 2)
                 plt.plot(points__[:, 0], points__[:, 1], color='green', lw=1.5)
 
@@ -3569,13 +3571,15 @@ def perform_calculations():
 
     make_angle_correction()
 
-    if ((do_calculations['Do Correlation'] and not calculations_statuses['Correlation']) or
-            (do_calculations['Do Rough detection'] and not calculations_statuses['Rough detection'])):
+    if (((do_calculations['Do Correlation'] and not calculations_statuses['Correlation']) or
+         (do_calculations['Do Rough detection'] and not calculations_statuses['Rough detection']))
+            or recalculate['Re Correlation'] or recalculate['Re Rough detection']):
 
-        if not calculations_statuses['Correlation']:
+        if not calculations_statuses['Correlation'] or recalculate['Re Correlation']:
             correlation_calculation()
 
-        if do_calculations['Do Rough detection'] and not calculations_statuses['Rough detection']:
+        if ((do_calculations['Do Rough detection'] and not calculations_statuses['Rough detection'])
+                or recalculate['Re Rough detection']):
             rough_calculation(mesh, centers)
 
         del mesh, centers, keypoints1_sift, descriptors1_sift
@@ -3584,8 +3588,8 @@ def perform_calculations():
                     # show_results_graph(show_final_image)  # Vykreslení výsledného grafu fotografie
                     show_results_graph(h)"""
 
-    if (do_calculations['Do Fine detection'] and not calculations_statuses['Fine detection']
-            and calculations_statuses['Rough detection']):
+    if (((do_calculations['Do Fine detection'] and not calculations_statuses['Fine detection'])
+         or recalculate['Re Fine detection']) and calculations_statuses['Rough detection']):
         """print("\n\033[32m_________________________________________________________________\033[0m"
               "\n\033[32m_________________________________________________________________\033[0m")"""
 
@@ -3594,10 +3598,11 @@ def perform_calculations():
         show_heat_graph(-1, 0, "y", fine_triangle_points_all, fine_mesh_centers_all, scaling=scale,
                         colorbar_label='[mm]', block_graph=block_graphs)  # TODO BLOKACE GRAFU
 
-    if do_calculations['Do Point detection'] and not calculations_statuses['Point detection']:
-        """print("\n\033[32m-----------------------------------------------------------------\033[0m"
-              "\n\033[32m-----------------------------------------------------------------\033[0m")"""
-        point_tracking_calculation()  # TODO #####################
+    if ((do_calculations['Do Point detection'] and not calculations_statuses['Point detection'])
+            or recalculate['Re Point detection']):
+        print("\n\033[32m-----------------------------------------------------------------\033[0m"
+              "\n\033[32m-----------------------------------------------------------------\033[0m")
+        point_tracking_calculation(use_correlation=False)  # TODO #####################
 
     print("\n\033[32;1m.................................................................\033[0m"
           "\n\033[32;1m:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\033[0m")
@@ -5886,7 +5891,7 @@ def main():
 
     images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
     # images_folders = images_folders[-2:-1]  # TODO ############ potom změnit počet složek
-    # images_folders = [images_folders[i] for i in (37, 38)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+    # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6145,13 +6150,13 @@ def main():
                 if do_finishing_calculation:
                     gray1 = load_photo(img_index=0, color_type=photo_type)
                     height, width = gray1.shape[:2]
-
-                    if ((calculations_statuses['Correlation'] == do_calculations['Do Correlation'] and
-                         calculations_statuses['Rough detection'] == do_calculations['Do Rough detection'] and
-                         calculations_statuses['Fine detection'] == do_calculations['Do Fine detection'] and
-                         calculations_statuses['Point detection'] == do_calculations['Do Point detection'])
-                            or all(val is False for val in do_calculations.values())
-                            or all(val is True for val in calculations_statuses.values())):
+                    if (((calculations_statuses['Correlation'] == do_calculations['Do Correlation'] and
+                          calculations_statuses['Rough detection'] == do_calculations['Do Rough detection'] and
+                          calculations_statuses['Fine detection'] == do_calculations['Do Fine detection'] and
+                          calculations_statuses['Point detection'] == do_calculations['Do Point detection'])
+                         or all(val is False for val in do_calculations.values())
+                         or all(val is True for val in calculations_statuses.values()))
+                            and not any(val is True for val in recalculate.values())):
                         do_finishing_calculation = False
                         raise MyException(Exception)
 
@@ -6257,6 +6262,8 @@ def main():
 
             if calculations_statuses['Point detection']:
                 plot_marked_points(0, show_menu=False, show_arrows=True, save_plot=True, plot_format='jpg')
+
+                # for i in range(len(image_files)):
                 plot_point_path(0, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True)
 
             for j in [0]:  # TODO KONTROLA
@@ -6707,7 +6714,7 @@ if __name__ == '__main__':
     recalculate = {'Re Correlation': False,
                    'Re Rough detection': False,
                    'Re Fine detection': False,
-                   'Re Point detection': False}
+                   'Re Point detection': True}
 
     #                                                                                                                  #
     ####################################################################################################################
