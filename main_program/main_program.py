@@ -5962,7 +5962,7 @@ def main():
         images_folders = check_folder(main_image_folder, "Složka s fotkami", "neexistuje", "je prázdná")
 
     images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
-    images_folders = images_folders[:-2]  # TODO ############ potom změnit počet složek
+    images_folders = images_folders[4:-2]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (4,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
@@ -6232,6 +6232,11 @@ def main():
             except (Exception, MyException) as e:
                 dialog(e)
 
+            try:
+                set_roi(just_load=True)
+            except (Exception, MyException) as e:
+                print(f"\nNepovedlo se načíst označené oblasti: {e}")
+
             print("\nUložená data úspěšně načtena.")
 
             if calculations_statuses['Rough detection']:
@@ -6327,12 +6332,6 @@ def main():
             if scale == 1:
                 do_scale(load_photo(img_index=0, color_type=0))
 
-            if "points_track" not in globals():
-                try:
-                    set_roi(just_load=True)
-                except (Exception, MyException) as e:
-                    print(f"\nNepovedlo se načíst označené oblasti: {e}")
-
             make_angle_correction()
 
             """plt.figure(num="Graph of movement of corner to loading bar")  # TODO KONTROLA
@@ -6364,11 +6363,11 @@ def main():
                 continue
 
             if calculations_statuses['Point detection']:
-                plot_marked_points(-1, show_menu=False, show_arrows=True, save_plot=False, plot_format='jpg',
-                                   text_size=7, show_marked_points=False)
+                plot_marked_points(0, show_menu=False, show_arrows=True, save_plot=True, plot_format='jpg',
+                                   save_dpi=700, text_size=7, show_marked_points=True)
 
                 # for i in range(len(image_files)):
-                plot_point_path(-1, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True, text_size=7)
+                plot_point_path(0, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True, text_size=7)
 
             for j in [0]:  # TODO KONTROLA
                 # import matplotlib.image as mpimg
@@ -6796,7 +6795,7 @@ if __name__ == '__main__':
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'data_export'
+    saved_data = 'data_export_new'
     save_calculated_data = False
     load_calculated_data = True
     do_finishing_calculation = True
@@ -6831,7 +6830,7 @@ if __name__ == '__main__':
     recalculate = {'Re Correlation': False,
                    'Re Rough detection': False,
                    'Re Fine detection': False,
-                   'Re Point detection': True}
+                   'Re Point detection': False}
 
     #                                                                                                                  #
     ####################################################################################################################
