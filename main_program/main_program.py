@@ -3213,19 +3213,20 @@ def point_tracking_calculation(use_correlation=True, interpolate_new_points=Fals
             inter_points = linear_interpolation(points_track_new[i][0], points_track_new[i + 1][0],
                                                 interpolation_number, area, True)
             [new_points_track.append((inter_points[0][j], inter_points[1][j])) for j in range(len(inter_points[0]))]
-            new_points_track.append(points_track_new[i + 1])
-        if len(points_track) == 10:
-            new_points_track.append(points_track_new[6])
-            inter_points = linear_interpolation(points_track_new[6][0], points_track_new[8][0], interpolation_number,
-                                                area, True)
-            [new_points_track.append((inter_points[0][j], inter_points[1][j])) for j in range(len(inter_points[0]))]
-            new_points_track.append(points_track_new[8])
+            # new_points_track.append(points_track_new[i + 1])
 
-            new_points_track.append(points_track_new[7])
-            inter_points = linear_interpolation(points_track_new[7][0], points_track_new[9][0], interpolation_number,
+        if len(points_track) == 10:
+            new_points_track.append(points_track[6])
+            inter_points = linear_interpolation(points_track[6][0], points_track[8][0], interpolation_number,
                                                 area, True)
             [new_points_track.append((inter_points[0][j], inter_points[1][j])) for j in range(len(inter_points[0]))]
-            new_points_track.append(points_track_new[9])
+            new_points_track.append(points_track[8])
+
+            new_points_track.append(points_track[7])
+            inter_points = linear_interpolation(points_track[7][0], points_track[9][0], interpolation_number,
+                                                area, True)
+            [new_points_track.append((inter_points[0][j], inter_points[1][j])) for j in range(len(inter_points[0]))]
+            new_points_track.append(points_track[9])
 
         points_track = new_points_track.copy()
         del new_points_track, points_track_new, inter_points, interpolation_number
@@ -3233,9 +3234,11 @@ def point_tracking_calculation(use_correlation=True, interpolate_new_points=Fals
     tot_p = len(points_track)
 
     if show_graphs:
-        plt.figure()
+        plt.figure(num="Tracked points")
         plt.imshow(cv2.cvtColor(load_photo(0, photo_type), cv2.COLOR_BGR2RGB))
         [plt.scatter(p[0][0], p[0][1], c='blue', zorder=3) for p in points_track]
+        [plt.text(p[0][0] + 10, p[0][1] - 10, f"{n + 1}", fontsize=5, ha='left', va='bottom', color='darkblue',
+                  fontweight='bold') for n, p in enumerate(points_track)]
         [plt.fill(p[1][:, 0], p[1][:, 1], facecolor='skyblue', edgecolor='none', alpha=0.5) for p in points_track]
         plt.show()
 
@@ -4008,7 +4011,7 @@ def show_results_graph(image_number, img_color=0):
 
 def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plot_tracked_paths=False,
                     plot_rough_paths=False, plot_fine_paths=False, show_menu=True, show_cor=False, show_areas=False,
-                    indexes_pt='all', indexes_cor='all', index_pt='all', index_cor='all'):
+                    indexes_pt='all', indexes_cor='all', index_pt='all', index_cor='all', text_size: float | int = 9):
     index = get_index(image_number)
 
     print("\n  -  Vykreslení průběhu bodů: Fotografie - {}: {}".format(index + 1, image_files[index]))
@@ -4097,11 +4100,12 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
                         c='#EA494F', label=f'Correlation area {i + 1}.')
                 ax.scatter(centers[index, 0], centers[index, 1], s=20, marker='o', color='#731331', zorder=2)
                 ax.text(
-                    centers[index, 0] + 20, centers[index, 1] - 20, f"{i + 1}", fontsize=9, ha='left', va='bottom',
-                    color='#ED9AB0', fontweight='bold', path_effects=[pe.withStroke(linewidth=2, foreground='#320015')])
+                    centers[index, 0] + 20, centers[index, 1] - 20, f"{i + 1}", fontsize=text_size, ha='left',
+                    va='bottom', color='#ED9AB0', fontweight='bold',
+                    path_effects=[pe.withStroke(linewidth=2, foreground='#320015')])
                 text1 = ax.text(centers[index, 0] + 40, centers[index, 1] + 20, f"{np.int32(np.round(centers[index]))}",
-                                fontsize=7, ha='left', va='top', color='#ED9AB0', fontweight='bold', style='italic',
-                                path_effects=[pe.withStroke(linewidth=2, foreground='#320015')])
+                                fontsize=text_size - 2, ha='left', va='top', color='#ED9AB0', fontweight='bold',
+                                style='italic', path_effects=[pe.withStroke(linewidth=2, foreground='#320015')])
                 texts1.append(text1)
 
         texts2, areas2 = [], []
@@ -4114,12 +4118,12 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
                 ax.plot(point[:, 0], point[:, 1], linestyle=(0, (5, 5)), marker='o', markersize=3.5, c='#0679C3',
                         label=f'Tracked point {i + 1}.')
                 ax.scatter(point[index, 0], point[index, 1], s=20, marker='o', color='#1D3485', zorder=2)
-                ax.text(point[index, 0] + 20, point[index, 1] - 20, f"{i + 1}", fontsize=9, fontweight='bold',
+                ax.text(point[index, 0] + 20, point[index, 1] - 20, f"{i + 1}", fontsize=text_size, fontweight='bold',
                         ha='left',
                         va='bottom', color='#99E6FF', path_effects=[pe.withStroke(linewidth=2, foreground='#051C2C')])
                 text2 = ax.text(point[index, 0] + 40, point[index, 1] + 20, f"{point[index]}",
-                                fontsize=7, ha='left', va='top', color='#99E6FF', fontweight='bold', style='italic',
-                                path_effects=[pe.withStroke(linewidth=2, foreground='#051C2C')])
+                                fontsize=text_size - 2, ha='left', va='top', color='#99E6FF', fontweight='bold',
+                                style='italic', path_effects=[pe.withStroke(linewidth=2, foreground='#051C2C')])
                 texts2.append(text2)
     except NameError:
         print("\nChyba u vykreslení označených bodů.")
@@ -4161,7 +4165,7 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
 
 def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='all', save_plot=False,
                        plot_name="marked_points", plot_format="pdf", save_dpi=300, show_menu=True, show_cor=False,
-                       show_arrows=False):
+                       show_arrows=False, text_size: float | int = 9, show_marked_points=True):
     index = get_index(image_number)
 
     print("\n  -  Vykreslení označených bodů: Fotografie - {}: {}".format(index + 1, image_files[index]))
@@ -4206,12 +4210,12 @@ def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='a
             linewidth=1.5, arrowstyle=f"Simple, head_length={arrow_length * 0.35}, head_width={arrow_length * 0.4},"
                                       f"tail_width={arrow_length * 0.12}")))
 
-        if index == 0 and "points_track" not in globals():
+        if index == 0 and show_marked_points and "points_track" not in globals():
             try:
                 set_roi(just_load=True)
             except (Exception, MyException) as e:
                 print(f"\nNepovedlo se načíst označené oblasti: {e}")
-        if index == 0 and "points_track" in globals():
+        if index == 0 and show_marked_points and "points_track" in globals():
             length = len(points_track)
             if isinstance(indexes, str) and indexes == 'all':
                 indexes = list(range(length))
@@ -4221,9 +4225,9 @@ def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='a
 
             [(ax.add_artist(plt.Circle(point[0], 35, edgecolor='none', facecolor='#FF96BA', alpha=0.3)),
               ax.scatter(point[0][0], point[0][1], s=35, marker='X', edgecolor='white', facecolor='#920422'),
-              ax.text(point[0][0] + 20, point[0][1] - 20, f"{n + 1}", fontsize=9, fontweight='bold', ha='left',
+              ax.text(point[0][0] + 20, point[0][1] - 20, f"{n + 1}", fontsize=text_size, fontweight='bold', ha='left',
                       va='bottom', color='#920422', path_effects=[pe.withStroke(linewidth=2, foreground='white')]),
-              loc.append(ax.text(point[0][0] + 40, point[0][1] + 20, f"{point[0]}", fontsize=7, ha='left',
+              loc.append(ax.text(point[0][0] + 40, point[0][1] + 20, f"{point[0]}", fontsize=text_size - 2, ha='left',
                                  va='top', color='#ED9AB0', fontweight='bold', style='italic',
                                  path_effects=[pe.withStroke(linewidth=2, foreground='#320015')])))
              for n, point in enumerate([points_track[i] for i in indexes])]
@@ -4239,9 +4243,9 @@ def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='a
             points = np.array([point for point in tracked_points_all[index]])[indexes]
             [(ax.add_artist(plt.Circle(point, 35, edgecolor='none', facecolor='#FF96BA', alpha=0.3)),
               ax.scatter(point[0], point[1], s=35, marker='X', edgecolor='white', facecolor='#920422'),
-              ax.text(point[0] + 20, point[1] - 20, f"{n + 1}", fontsize=9, fontweight='bold', ha='left',
+              ax.text(point[0] + 20, point[1] - 20, f"{n + 1}", fontsize=text_size, fontweight='bold', ha='left',
                       va='bottom', color='#920422', path_effects=[pe.withStroke(linewidth=2, foreground='white')]),
-              loc.append(ax.text(point[0] + 40, point[1] + 20, f"{point}", fontsize=7, ha='left',
+              loc.append(ax.text(point[0] + 40, point[1] + 20, f"{point}", fontsize=text_size - 2, ha='left',
                                  va='top', color='#ED9AB0', fontweight='bold', style='italic',
                                  path_effects=[pe.withStroke(linewidth=2, foreground='#320015')])))
              for n, point in enumerate(points)]
@@ -5958,8 +5962,8 @@ def main():
         images_folders = check_folder(main_image_folder, "Složka s fotkami", "neexistuje", "je prázdná")
 
     images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
-    images_folders = images_folders[1:-2]  # TODO ############ potom změnit počet složek
-    # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+    images_folders = images_folders[:-2]  # TODO ############ potom změnit počet složek
+    # images_folders = [images_folders[i] for i in (4,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6076,6 +6080,7 @@ def main():
               f"\t\t[ {main_counter} / {len(images_folders)} ]")
 
         saved_data_name = saved_data
+        start = start_
         end = end_
         current_folder_path = os.path.join(main_image_folder, current_image_folder)
 
@@ -6349,15 +6354,21 @@ def main():
 
             show_results_graph(show_final_image)
 
-            if len(images_folders) > 1:
+            if (len(images_folders) > 1 and  # not super_speed and
+                    (calculations_statuses['Correlation'] != do_calculations['Do Correlation'] or
+                     calculations_statuses['Rough detection'] != do_calculations['Do Rough detection'] or
+                     calculations_statuses['Fine detection'] != do_calculations['Do Fine detection'] or
+                     calculations_statuses['Point detection'] != do_calculations['Do Point detection'] or
+                     any(val is True for val in recalculate.values()))):
                 reset_parameters()
                 continue
 
             if calculations_statuses['Point detection']:
-                plot_marked_points(0, show_menu=False, show_arrows=True, save_plot=True, plot_format='jpg')
+                plot_marked_points(-1, show_menu=False, show_arrows=True, save_plot=False, plot_format='jpg',
+                                   text_size=7, show_marked_points=False)
 
                 # for i in range(len(image_files)):
-                plot_point_path(0, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True)
+                plot_point_path(-1, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True, text_size=7)
 
             for j in [0]:  # TODO KONTROLA
                 # import matplotlib.image as mpimg
@@ -6704,8 +6715,10 @@ def main():
 
 
 def reset_parameters():
-    global scale, second_callout, saved_data_name, calculations_statuses, main_counter
+    global scale, second_callout, saved_data_name, calculations_statuses, main_counter, start, end
 
+    start = start_
+    end = end_
     main_counter += 1
     plt.close('all')
     scale, second_callout, saved_data_name = float(1), False, saved_data
@@ -6791,7 +6804,7 @@ if __name__ == '__main__':
 
     make_video = False
 
-    start, end_ = 1, "all"
+    start_, end_ = 1, "all"
 
     size = 250  # !=_ 135 _=!,   250, 100, 85 - min,   (40)
     fine_size = 20  # np.int32(size * 0.1)

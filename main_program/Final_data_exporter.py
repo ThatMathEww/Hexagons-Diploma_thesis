@@ -354,27 +354,6 @@ for exp, current_image_folder in enumerate(images_folders):
                                              'Y [mm]': distances[photo_indexes][beginning:]}))
             data_frames_names.append('Movement of loading bar')
 
-        if datasets['Tracked_points']:
-            len_points = len(tracked_points[0])
-            len_photos = len(tracked_points)
-
-            data = [(np.float64([tracked_points[i][j] for i in range(len_photos)]),
-                     np.float64([tracked_rotations[i][j] for i in range(len_photos)])) for j in range(len_points)]
-
-            data = [(np.float64([d[0][i] - d[0][0] for i in range(len_photos)]) * scale, d[1]) for d in data]
-
-            # Vytvoření datových rámce pro listy
-            df_tr = pd.DataFrame({'Photo': photos,
-                                  'Time [s]': time_values})
-
-            # Přidání tří sloupců ve smyčce
-            for i in range(len_points):  # Přidáme tři skupiny sloupců
-                df_tr[f'{" " * i}'] = None
-                df_tr[[f'Point_{i + 1} - {v}' for v in ('X [mm]', 'Y [mm]', 'Rotation [rad]')]] = np.vstack(
-                    (data[i][0][:, 0], data[i][0][:, 1], data[i][1])).T[beginning:]
-            data_frames.append(df_tr)
-            data_frames_names.append(f'Tracked points - {len_points}. points')
-
         if datasets['Forces']:
             # Vytvoření datových rámce pro listy
             data_frames.append(pd.DataFrame({'Photo': photos,
@@ -393,6 +372,36 @@ for exp, current_image_folder in enumerate(images_folders):
 
         if datasets['Others']:
             pass
+
+        if datasets['Tracked_points']:
+            len_points = len(tracked_points[0])
+            len_photos = len(tracked_points)
+
+            data = [(np.float64([tracked_points[i][j] for i in range(len_photos)]),
+                     np.float64([tracked_rotations[i][j] for i in range(len_photos)])) for j in range(len_points)]
+
+            data = [(np.float64([d[0][i] - d[0][0] for i in range(len_photos)]) * scale, d[1]) for d in data]
+
+            # Vytvoření datových rámce pro listy
+            for i in range(len_points):  # Přidáme tři skupiny sloupců
+                df_tr = pd.DataFrame({'Photo': photos,
+                                      'Time [s]': time_values})
+                df_tr[[f'Point_{i + 1} - {v}' for v in ('X [mm]', 'Y [mm]', 'Rotation [rad]')]] = np.vstack(
+                    (data[i][0][:, 0], data[i][0][:, 1], data[i][1])).T[beginning:]
+                data_frames.append(df_tr)
+                data_frames_names.append(f'Point_{i + 1}')
+
+            """# Vytvoření datových rámce pro listy
+            df_tr = pd.DataFrame({'Photo': photos,
+                                  'Time [s]': time_values})
+
+            # Přidání tří sloupců ve smyčce
+            for i in range(len_points):  # Přidáme tři skupiny sloupců
+                df_tr[f'{" " * i}'] = None
+                df_tr[[f'Point_{i + 1} - {v}' for v in ('X [mm]', 'Y [mm]', 'Rotation [rad]')]] = np.vstack(
+                    (data[i][0][:, 0], data[i][0][:, 1], data[i][1])).T[beginning:]
+            data_frames.append(df_tr)
+            data_frames_names.append(f'Tracked points - {len_points}. points')"""
 
         # Vytvoření ExcelWriter
         try:
