@@ -6,7 +6,7 @@ import time
 import cv2
 import os
 
-saved_data_name = "data_export.zip"
+saved_data_name = "data_export_new.zip"
 out_put_folder = ""
 
 main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'

@@ -4789,8 +4789,7 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
             cbar.outline.set_linewidth(1)
 
             if colorbar_label is not None:
-                colorbar_label = str(colorbar_label)
-            cbar.set_label(colorbar_label, labelpad=-15, y=1.08, rotation=0)
+                cbar.set_label(str(colorbar_label), labelpad=-15, y=1.08, rotation=0)
 
             # cbar.ax.plot([0, 1], [0, 0], color='black', lw=0.8, alpha=0.5, linestyle='dashed', dashes=[5, 8])
             for i in ([0, 0.25], [0.75, 1]):
@@ -5962,8 +5961,8 @@ def main():
         images_folders = check_folder(main_image_folder, "Složka s fotkami", "neexistuje", "je prázdná")
 
     images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
-    images_folders = images_folders[4:-2]  # TODO ############ potom změnit počet složek
-    # images_folders = [images_folders[i] for i in (4,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+    # images_folders = images_folders[4:-2]  # TODO ############ potom změnit počet složek
+    images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6364,7 +6363,7 @@ def main():
 
             if calculations_statuses['Point detection']:
                 plot_marked_points(0, show_menu=False, show_arrows=True, save_plot=True, plot_format='jpg',
-                                   save_dpi=700, text_size=7, show_marked_points=True)
+                                   save_dpi=700, text_size=3, show_marked_points=False)
 
                 # for i in range(len(image_files)):
                 plot_point_path(0, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True, text_size=7)
