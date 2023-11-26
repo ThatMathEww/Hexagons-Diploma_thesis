@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ReportTemplate version="4.1">
+  <_TraitsFileList_ type="String">
+    <String>ReportTemplate.Traits</String>
+  </_TraitsFileList_>
+  <Name>RET1</Name>
+  <TemplateFileName>Default Test Report.xltx</TemplateFileName>
+  <RelativePathType>ReportTemplateBasePath</RelativePathType>
+  <ReportType>Sample</ReportType>
+  <ReportFormat>NormalWorkbook</ReportFormat>
+  <IsDefault>True</IsDefault>
+  <ReportRecordingMode>New</ReportRecordingMode>
+  <Selector>ReportTemplates</Selector>
+  <UniqueId>{943ad091-0481-49d0-b56d-4188b58c9fb7}</UniqueId>
+  <ReportLocation>
+    <MtsStringParameter version="4.1">
+      <Value></Value>
+      <Selector>ReportLocation</Selector>
+      <UniqueId>{60b72c03-6755-4dcd-8424-148d202be266}</UniqueId>
+    </MtsStringParameter>
+  </ReportLocation>
+</ReportTemplate>

@@ -1,0 +1,334 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AnalysisRun version="4.1">
+  <_TraitsFileList_ type="String">
+    <String>AnalysisRun.Traits</String>
+  </_TraitsFileList_>
+  <Name>ANR1</Name>
+  <Owner>MTS-PC\MTS</Owner>
+  <DateCreated>11/13/2023 12:51:35</DateCreated>
+  <DateLastModified>11/13/2023 12:52:30</DateLastModified>
+  <Selector>AnalysisRuns</Selector>
+  <UniqueId>{fd484074-3579-4172-9d82-5544417ae90e}</UniqueId>
+  <Description>
+    <LocalizedString version="4.1">
+      <Selector>Description</Selector>
+      <UniqueId>{0d4a7e8d-6e81-47a6-bb20-f1aac8e320a1}</UniqueId>
+      <InternalLocalizedStrings />
+    </LocalizedString>
+  </Description>
+  <AnalysisDefinition>AND1</AnalysisDefinition>
+  <DisplayName>
+    <LocalizedString version="4.1">
+      <Selector>DisplayName</Selector>
+      <UniqueId>{6c878485-c4b0-4142-a4ff-3b43eb9763b3}</UniqueId>
+      <InternalLocalizedStrings>
+        <Entry>
+          <Key>cs</Key>
+          <Value>Spuštění testu 41</Value>
+        </Entry>
+      </InternalLocalizedStrings>
+    </LocalizedString>
+  </DisplayName>
+  <FirstTimeCalcValues>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>1.4100615806228354E-05</ValueAsDouble>
+      <Name>SlackVal</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{1ade1592-1e25-4929-8e51-069120eaeabe}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>0.0508</ValueAsDouble>
+      <Name>AdjGage</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{6d83d166-f3cc-429e-8f7f-c0da4effcab4}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>4.03225E-05</ValueAsDouble>
+      <Name>Area</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{fac934cc-32c1-4856-aa1c-6305a851e207}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>0</ValueAsDouble>
+      <Name>GageAdjustment</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{3de3665a-5692-4727-aa7e-44b5b8c4ad17}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>EnergyToPeak</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{c7b7c722-4bf8-40c9-8bac-91c5f1e4ab4b}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>45834118.426049352</ValueAsDouble>
+      <Name>PeakStress</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{26840581-d952-4783-9f12-2ab73a192936}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>1848.146240234375</ValueAsDouble>
+      <Name>PeakLoad</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{3f9ddca4-138f-4043-b0d6-1f5cb4fdaae4}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StrnAtPeak</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{ea506ed3-7284-4a64-8667-40ea119ab867}</UniqueId>
+    </DoubleValue>
+    <LongValue version="4.1">
+      <ValueAsLong>568</ValueAsLong>
+      <Name>Peak</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{6e59938c-b0b6-4be5-a486-caae72ccbef1}</UniqueId>
+    </LongValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>ExtAtPeak</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{a1b24346-7f76-454a-94ad-3aea219329b8}</UniqueId>
+    </DoubleValue>
+    <LongValue version="4.1">
+      <ValueAsLong>568</ValueAsLong>
+      <Name>Break</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{9b55bf08-a885-4cc4-9b1e-fe7f07421c7d}</UniqueId>
+    </LongValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>0.0463762769568106</ValueAsDouble>
+      <Name>StrnAtBreak</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{4cf48a89-a820-48b1-b408-460cc2221a22}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>EnergyPerVolumeAtBreak</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{fc1d4e46-30a2-4f0c-8bdd-e95133257616}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>ExtAtBreak</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{e86b1cb5-c012-4f51-900f-2e93893699ea}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>TEA</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{f79ab363-40af-48c1-a5ed-b355ce70535c}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>EnergyToBreak</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{253d6c53-e5ca-457b-8188-3026dcee33a1}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StressAtBreak</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{4bb7b8c1-ce85-48db-a678-504c07e1976b}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>LoadAtBreak</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{f8e2f654-2f98-4f7a-ae0a-ec8ec93ce911}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>LoadAtYield</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{832f3909-11dd-466c-ad5e-8c2e0dd0aabc}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StrnAtYield</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{dd9631e7-fdbe-4085-9c8c-51c269da242a}</UniqueId>
+    </DoubleValue>
+    <LongValue version="4.1">
+      <ValueAsLong>568</ValueAsLong>
+      <Name>Yield</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{44920b8c-ecec-4628-b4bf-5bc1827d0b1a}</UniqueId>
+    </LongValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StressAtYield</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{1ea3d7cf-a7d4-4c6e-9d57-f997ff711310}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>ExtAtYield</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{0820e88f-7843-4e55-9d48-2f18ba7e98fc}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>EnergyToYield</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{29f4703f-2f3a-4127-8e5c-a4ffc9873e2a}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>1430734797.145236</ValueAsDouble>
+      <Name>Modulus</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{9450b6b9-22be-48fd-9ff6-e0c48ea0bbe5}</UniqueId>
+    </DoubleValue>
+    <LongValue version="4.1">
+      <ValueAsLong>0</ValueAsLong>
+      <Name>Slope1</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{4c274aee-9c21-42ff-8a41-9624b837829c}</UniqueId>
+    </LongValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>ChordModBetweenElong1And2</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{2b7fa857-e486-4f1a-893f-62f0f674cafc}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>SecantModAtElongPt1</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{e66a96eb-bb33-476d-9405-1fa0fc1315c9}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>ChordModBetweenStrain1And2</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{3d54e2a9-164d-4ff2-aeda-a29a19bfe9fb}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>SecantModAtStrainPt2</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{307bc235-3350-4cd4-843a-e6c74047b1e5}</UniqueId>
+    </DoubleValue>
+    <LongValue version="4.1">
+      <ValueAsLong>78</ValueAsLong>
+      <Name>Slope2</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{744a1bbe-f721-4ab0-8406-b2cf9bdf4db9}</UniqueId>
+    </LongValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>SecantModAtStrainPt1</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{0a0be95a-36f8-45e9-bc54-3dd61e60197b}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>1135645.7452340303</ValueAsDouble>
+      <Name>Slope</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{3009100f-5158-427a-ae60-712a07e42740}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StrnAtOffsetYield</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{e6881f08-33bf-4fea-8f7b-537ba77cbb7d}</UniqueId>
+    </DoubleValue>
+    <LongValue version="4.1">
+      <ValueAsLong>269</ValueAsLong>
+      <Name>OffsetYield</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{8f87967b-2f44-4dfa-b0f0-aadf104e2aa2}</UniqueId>
+    </LongValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>LoadAtOffsetYield</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{2e7dea0a-b272-465a-9ada-7437cf694f33}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StressAtOffsetYield</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{b8f74038-6c14-41e0-9868-6904dcd79c08}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>ExtAtOffsetYield</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{dcb03e96-463c-4295-b597-60f6712e336d}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StressAtStrainPoint01</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{5ab84961-4295-4d09-b9b1-fbe2f52f13f3}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>LoadAtStrainPoint01</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{8bd4d854-3682-4378-ab9b-110d564d13b0}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StressAtStrainPoint07</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{2fd92db3-cd51-4341-9d90-0204751f9528}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>LoadAtStrainPoint02</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{814b910f-39e5-4b84-9542-a59f4a84d1e6}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StressAtStrainPoint05</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{2526e604-8a1e-416d-8a28-d99391e50a75}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StressAtStrainPoint04</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{96155019-6e97-4478-917e-be8729d810bf}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>CalculatedElongation</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{fcae8a7a-0efb-4523-b66c-a40cab52ea41}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StressAtStrainPoint03</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{e444c0a7-e9f2-4c08-9b33-3e67a29fa78c}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StressAtStrainPoint08</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{ef3244dd-e6f4-42f3-b070-bd7cc5f56cab}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StressAtStrainPoint02</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{5fca5cb6-a305-4399-bcda-b8aa47b35518}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>NaN</ValueAsDouble>
+      <Name>StressAtStrainPoint06</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{673978bc-fbe5-4235-a17b-55fd35d7379e}</UniqueId>
+    </DoubleValue>
+    <DoubleValue version="4.1">
+      <ValueAsDouble>0</ValueAsDouble>
+      <Name>_Abort</Name>
+      <Selector>FirstTimeCalcValues</Selector>
+      <UniqueId>{c202df32-bcd9-4580-bd9e-375161cbd408}</UniqueId>
+    </DoubleValue>
+  </FirstTimeCalcValues>
+</AnalysisRun>
