@@ -1,9 +1,13 @@
 import cv2
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import numpy as np
 
 # Načtení původní fotografie
-image1 = cv2.imread('photos/IMG_0385.JPG')
-image2 = cv2.imread('photos/IMG_0417.JPG')
+image1 = cv2.imread(r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Hexagons-Diploma_thesis'
+                    r'\vypocty_pokusy\photos\IMG_0385.JPG')
+image2 = cv2.imread(r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Hexagons-Diploma_thesis'
+                    r'\vypocty_pokusy\photos\IMG_0417.JPG')
 
 gray1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
 gray2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
@@ -60,10 +64,56 @@ plt.tight_layout()"""
 
 # Vytvoření grafu tepelné mapy
 plt.figure(figsize=(8, 6))
-plt.imshow(normalized_result, cmap='jet', vmin=0, vmax=1)
+plt.imshow(normalized_result[top_left[1] - 100:top_left[1] + 100, top_left[0] - 100:top_left[0] + 100],
+           cmap='jet', vmin=0, vmax=1)
 plt.colorbar()
 plt.title('Tepelná mapa podobnosti')
 plt.axis('off')
 plt.tight_layout()
+
+# Vytvoření grafu tepelné mapy
+plt.figure(figsize=(8, 6))
+plt.imshow(normalized_result, cmap='jet', vmin=0, vmax=1)
+plt.gca().add_patch(plt.Rectangle((top_left[0] - 100, top_left[1] - 100), 200, 200, edgecolor='red', facecolor='none',
+                                  linewidth=2, zorder=5))
+plt.colorbar(shrink=0.675, aspect=20)
+plt.title('Tepelná mapa podobnosti')
+# plt.axis('off')
+plt.tight_layout()
+
+# Vytvoření grafu tepelné mapy
+fig = plt.figure(figsize=(8, 6))
+
+fig_ax = plt.gca().axis('off')
+plt.suptitle('Tepelná mapa podobnosti')
+
+ax = fig.add_subplot(111, projection='3d')
+# Nastavení polohy osy
+ax.set_position([0.05, 0.05, 0.85, 0.85])  # [left, bottom, width, height]
+
+z = normalized_result[top_left[1] - 100:top_left[1] + 100, top_left[0] - 100:top_left[0] + 100]
+x = np.arange(0, z.shape[1])
+y = np.arange(0, z.shape[0])
+x, y = np.meshgrid(x, y)
+
+surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1)  # cmap určuje barevnou mapu
+
+# Vytvoření colorbaru
+cax = fig.add_axes((0.8, 0.05, 0.03, 0.8))  # [left, bottom, width, height]
+cbar = plt.colorbar(surf, cax=cax, aspect=10)  # Přidání colorbaru
+
+# Nastavení os a zobrazení grafu
+ax.set_xlabel('x position [pixels]', labelpad=10)
+ax.set_ylabel('y position [pixels]', labelpad=10)
+ax.set_zlabel('Correlation coefficient', labelpad=10)
+
+ax.invert_yaxis()
+
+ax.auto_scale_xyz(x.flatten(), y.flatten(), z.flatten())
+ax.dist = 1  # Upravte vzdálenost osy podle potřeby
+# Vykreslení 3D grafu
+ax.view_init(elev=35, azim=-120, roll=0)
+ax.set_zlim(0, 1)
+# plt.tight_layout()
 
 plt.show()
