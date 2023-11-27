@@ -72,10 +72,22 @@ plt.axis('off')
 plt.tight_layout()
 
 # Vytvoření grafu tepelné mapy
-plt.figure(figsize=(8, 6))
+fig, ax = plt.subplots(figsize=(8, 6))
+
 plt.imshow(normalized_result, cmap='jet', vmin=0, vmax=1)
-plt.gca().add_patch(plt.Rectangle((top_left[0] - 100, top_left[1] - 100), 200, 200, edgecolor='red', facecolor='none',
-                                  linewidth=2, zorder=5))
+
+# inset axes
+x1, x2, y1, y2 = top_left[0] - 100, top_left[0] + 100, top_left[1] - 100, top_left[1] + 100  # subregion of the image
+ax_ins = ax.inset_axes([0.5, 0.5, 0.6, 0.47], xlim=(x1, x2), ylim=(y1, y2),
+                       xticks=[], xticklabels=[], yticks=[], yticklabels=[])
+ax_ins.imshow(normalized_result, cmap='jet', vmin=0, vmax=1, alpha=1, origin="upper")
+# change all spines
+[ax_ins.spines[axis].set_linewidth(1.05) for axis in ['top', 'bottom', 'left', 'right']]
+
+ax.indicate_inset_zoom(ax_ins, edgecolor="black", linewidth=1.05, alpha=0.8)
+
+"""plt.gca().add_patch(plt.Rectangle((top_left[0] - 100, top_left[1] - 100), 200, 200, edgecolor='blacck', 
+facecolor='none', linewidth=2, zorder=5))"""
 plt.colorbar(shrink=0.675, aspect=20)
 plt.title('Tepelná mapa podobnosti')
 # plt.axis('off')
@@ -114,6 +126,47 @@ ax.dist = 1  # Upravte vzdálenost osy podle potřeby
 # Vykreslení 3D grafu
 ax.view_init(elev=35, azim=-120, roll=0)
 ax.set_zlim(0, 1)
+# plt.tight_layout()
+
+
+# Vytvoření grafu tepelné mapy
+fig, ax = plt.subplots(figsize=(8, 6))
+
+fig.set_facecolor('none')
+ax.set_facecolor('none')
+
+plt.imshow(normalized_result, cmap='jet', vmin=0, vmax=1)
+
+# inset axes
+x1, x2, y1, y2 = top_left[0] - 100, top_left[0] + 100, top_left[1] - 100, top_left[1] + 100  # subregion of the image
+ax_ins = ax.inset_axes([0.5, 0.5, 0.6, 0.47], xlim=(x1, x2), ylim=(y1, y2),
+                       xticks=[], xticklabels=[], yticks=[], yticklabels=[])
+# change all spines
+[ax_ins.spines[axis].set_linewidth(1.05) for axis in ['top', 'bottom', 'left', 'right']]
+
+ax_ins_3d = ax_ins.inset_axes([0, 0, 1, 1], projection='3d', xticklabels=[], yticklabels=[],
+                              zticks=np.arange(0, 1.2, 0.2), zticklabels=[], zlim=(0, 1))
+ax_ins_3d.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1)
+ax_ins_3d.invert_yaxis()
+ax_ins_3d.view_init(elev=35, azim=-120, roll=0)
+
+ax_ins_3d.xaxis.set_pane_color((0.95, 0.95, 0.95, 0.8))  # Barva pozadí osy x
+ax_ins_3d.yaxis.set_pane_color((0.95, 0.95, 0.95, 0.8))  # Barva pozadí osy y
+ax_ins_3d.zaxis.set_pane_color((0.85, 0.85, 0.85, 0.8))  # Barva pozadí osy z
+
+ax_ins.set_facecolor((0.5, 0.5, 0.5, 0.8))
+ax_ins_3d.set_facecolor('none')
+ax_ins.set_aspect('equal', adjustable='box')
+ax.set_aspect('equal', adjustable='box')
+
+ax.indicate_inset_zoom(ax_ins, edgecolor="black", linewidth=1.05, alpha=0.8)
+
+"""plt.imshow(normalized_result, cmap='jet', vmin=0, vmax=1)
+plt.gca().add_patch(plt.Rectangle((top_left[0] - 100, top_left[1] - 100), 200, 200, edgecolor='red', facecolor='none',
+                                  linewidth=2, zorder=5))"""
+plt.colorbar(shrink=0.675, aspect=20)
+plt.title('Tepelná mapa podobnosti')
+# plt.axis('off')
 # plt.tight_layout()
 
 plt.show()

@@ -15,7 +15,7 @@ folders = [name for name in [os.path.splitext(file)[0] for file in os.listdir(ma
            if name.startswith("T01")]
 folders = [folders[i] for i in (15, 16, 17, 21, 22, 23, 45, 46, 47, 48, 49, 50)]
 
-m = 0  # I - 2 , II - 1    III - 0
+m = 2  # I - 2 , II - 1    III - 0
 n = [i + m for i in range(0, len(folders) - 1, 3)]
 folders = [folders[i] for i in n]  # I - (2, 5, 8, 11) , II - (1, 4, 7, 10)    III - (0, 3, 6, 9)
 
