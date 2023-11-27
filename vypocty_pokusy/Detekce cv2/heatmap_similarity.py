@@ -109,6 +109,12 @@ y = np.arange(0, z.shape[0])
 x, y = np.meshgrid(x, y)
 
 surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1)  # cmap určuje barevnou mapu
+ax.set_xticks(ax.get_xticks())
+ax.set_yticks(ax.get_yticks())
+
+# fig.autofmt_xdate()
+# ax.set_xticklabels(np.int32(ax.get_xticks() + (top_left[1] - 100)), rotation=-30)
+# ax.set_yticklabels(np.int32(ax.get_yticks() + (top_left[0] - 100)))
 
 # Vytvoření colorbaru
 cax = fig.add_axes((0.8, 0.05, 0.03, 0.8))  # [left, bottom, width, height]
@@ -124,7 +130,7 @@ ax.invert_yaxis()
 ax.auto_scale_xyz(x.flatten(), y.flatten(), z.flatten())
 ax.dist = 1  # Upravte vzdálenost osy podle potřeby
 # Vykreslení 3D grafu
-ax.view_init(elev=35, azim=-120, roll=0)
+ax.view_init(elev=30, azim=-120, roll=0)
 ax.set_zlim(0, 1)
 # plt.tight_layout()
 
@@ -148,7 +154,7 @@ ax_ins_3d = ax_ins.inset_axes([0, 0, 1, 1], projection='3d', xticklabels=[], yti
                               zticks=np.arange(0, 1.2, 0.2), zticklabels=[], zlim=(0, 1))
 ax_ins_3d.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1)
 ax_ins_3d.invert_yaxis()
-ax_ins_3d.view_init(elev=35, azim=-120, roll=0)
+ax_ins_3d.view_init(elev=30, azim=-120, roll=0)
 
 ax_ins_3d.xaxis.set_pane_color((0.95, 0.95, 0.95, 0.8))  # Barva pozadí osy x
 ax_ins_3d.yaxis.set_pane_color((0.95, 0.95, 0.95, 0.8))  # Barva pozadí osy y
