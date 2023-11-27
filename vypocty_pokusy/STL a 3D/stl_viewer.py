@@ -43,15 +43,15 @@ ax.add_collection3d(poly3d)
 ax.auto_scale_xyz(your_mesh.x.flatten(), your_mesh.y.flatten(), your_mesh.z.flatten())"""
 
 # Přidání colorbaru
-cbar = plt.colorbar(surf, shrink=0.75)
+cbar = plt.colorbar(surf, shrink=0.75, aspect=15)
 
 # Nastavení jednotek pro colorbar
 # cbar.set_label('[µm]')
 cbar.ax.text(1, np.max(z) * 1.025, '[µm]', rotation=0, va='bottom', ha='left')
 
 # Nastavení os
-ax.set_xlabel(f'{round(np.max(x))} µm')
-ax.set_ylabel(f'{round(np.max(y))} µm')
+ax.set_xlabel(f'{np.max(x):.3f} µm', labelpad=-10)
+ax.set_ylabel(f'{np.max(y):.3f} µm', labelpad=-10)
 # ax.set_zlabel(f'{round(np.max(z))}')
 
 # Vypnutí hodnot na ose X a Y
