@@ -64,10 +64,9 @@ ax.axis('equal')
 ax.set_zlim(0)
 
 ax.auto_scale_xyz(your_mesh.x.flatten(), your_mesh.y.flatten(), your_mesh.z.flatten())
-ax.dist = 1  # Upravte vzdálenost osy podle potřeby
-
 # Vykreslení 3D grafu
 ax.view_init(elev=20, azim=60)
+ax.dist = 1  # Upravte vzdálenost osy podle potřeby
 # ax.invert_xaxis()
 
 plt.tight_layout()
