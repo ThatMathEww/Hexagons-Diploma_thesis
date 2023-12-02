@@ -247,7 +247,7 @@ def get_photos_from_folder(folder, img_types=(".jpg", ".jpeg", ".jpe", ".JPG", "
         sys.exit("Chyba v typu fotek.")
     else:
         folders = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f)) and
-                   f.lower().endswith(img_types)]
+                   f.lower().endswith(img_types) and not f.startswith("0.")]
         first_type = os.path.splitext(folders[0])[1]
         if all(os.path.splitext(f)[1] == first_type for f in folders):  # kontrola jestli josu všechny fotky stejné
             return folders
@@ -500,6 +500,7 @@ def main():
 
     # folder_names = [folder_names[i] for i in (10, 11, 12, 13, 19, 33, 37, 38)]
     # folder_names = [folder_names[i] for i in range(len(folder_names)) if i not in (10, 11, 12, 13, 19, 33, 37, 38)]
+    # folder_names = [f for i, f in enumerate(folder_names) if i in (9, 13, 18,28)]
     folder_names = folder_names[start:end]  # jaké složky budu načítat (první je 0) př: "files[2:5] od 2 do 5"
 
     # ############################# Todo Načítání fotek ze složek #############################
@@ -730,7 +731,7 @@ if __name__ == '__main__':
     profile = 'profile'
 
     template_path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\t\t01_max'
-    template_img_index = 0
+    template_img_index = 2
     type_ = "T01"
 
     img_format = 'JPG'

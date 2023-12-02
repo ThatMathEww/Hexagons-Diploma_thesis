@@ -1817,6 +1817,11 @@ def circle_intersection(data):
 
 def distance_error(point, distances, known_points):
     x_i, y_i = point
+    try:
+        if len(known_points) == 0 and len(distances) == 0:
+            return None
+    except (ValueError, Exception):
+        return None
     known_points = np.float64(known_points)
     distances = np.float64(distances)
 
