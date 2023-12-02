@@ -6906,4 +6906,5 @@ if __name__ == '__main__':
     photos_types = (".jpg", ".jpeg", ".JPG", ".png", ".tiff", ".tif")
 
     main()
+
     # ━━━━━━━━━

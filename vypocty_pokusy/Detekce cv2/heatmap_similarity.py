@@ -108,10 +108,10 @@ x = np.arange(0, z.shape[1])
 y = np.arange(0, z.shape[0])
 x, y = np.meshgrid(x, y)
 
-surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1, antialiased=True)
+surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1, antialiased=True, linewidth=0,
+                       alpha=0.95)
 ax.set_xticks(ax.get_xticks())
 ax.set_yticks(ax.get_yticks())
-
 
 off_set = 1.5
 
@@ -119,7 +119,9 @@ ax.plot_surface(x, y, np.full_like(z, off_set), facecolors=plt.cm.jet(z), rstrid
                 alpha=0.15)
 
 # Přidání vrstevnic
-contour = ax.contour(x, y, z, zdir='z', offset=off_set, colors='black', alpha=0.85)  # , cmap='jet'
+contour = ax.contour(x, y, z, levels=5, zdir='z', offset=off_set, linestyles="solid", colors='black', alpha=0.85,
+                     antialiased=True)  # colors='black'   //   cmap='jet'
+# ax.contour3D(x, y, z, 50, cmap='jet')  # colors='black'   //   cmap='jet'
 
 # fig.autofmt_xdate()
 # ax.set_xticklabels(np.int32(ax.get_xticks() + (top_left[1] - 100)), rotation=-30)
@@ -136,6 +138,7 @@ ax.zaxis.set_rotate_label(False)  # disable automatic rotation
 ax.set_zlabel('Correlation coefficient', labelpad=10, rotation=90)
 
 ax.set_yticklabels(ax.get_yticklabels()[::-1])
+
 # ax.invert_yaxis()
 
 ax.auto_scale_xyz(x.flatten(), y.flatten(), z.flatten())
@@ -143,9 +146,8 @@ ax.auto_scale_xyz(x.flatten(), y.flatten(), z.flatten())
 ax.view_init(elev=30, azim=-120, roll=0)
 # ax.dist = 1  # Upravte vzdálenost osy podle potřeby
 ax.set_zlim(0, 1)
-#ax.set_aspect('auto', adjustable='box')
+# ax.set_aspect('auto', adjustable='box')
 ax.set_box_aspect([1.1, 1.1, 0.755], zoom=0.87)
-
 
 # Vytvoření grafu tepelné mapy
 fig, ax = plt.subplots(figsize=(8, 6))

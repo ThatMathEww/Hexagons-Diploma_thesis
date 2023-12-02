@@ -57,7 +57,6 @@ ax.set_ylabel(f'{np.max(y):.3f} µm', labelpad=-10)
 # Vypnutí hodnot na ose X a Y
 ax.set_xticks([])
 ax.set_yticks([])
-
 # ax.axis('off')
 ax.axis('equal')
 
@@ -67,7 +66,7 @@ ax.set_zlim(0)
 ax.auto_scale_xyz(your_mesh.x.flatten(), your_mesh.y.flatten(), your_mesh.z.flatten())
 # Vykreslení 3D grafu
 ax.view_init(elev=20, azim=60)
-# ax.dist = 50  # Upravte vzdálenost osy podle potřeby
+ax.dist = 1  # Upravte vzdálenost osy podle potřeby
 # ax.invert_xaxis()
 
 plt.tight_layout()
