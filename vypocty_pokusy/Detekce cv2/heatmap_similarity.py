@@ -97,43 +97,54 @@ plt.tight_layout()
 fig = plt.figure(figsize=(8, 6))
 
 fig_ax = plt.gca().axis('off')
-plt.suptitle('Tepelná mapa podobnosti')
+# plt.suptitle('Tepelná mapa podobnosti')
 
 ax = fig.add_subplot(111, projection='3d')
 # Nastavení polohy osy
-ax.set_position([0.05, 0.05, 0.85, 0.85])  # [left, bottom, width, height]
+ax.set_position([0.05, 0.02, 0.85, 0.92])  # [left, bottom, width, height]
 
 z = normalized_result[top_left[1] - 100:top_left[1] + 100, top_left[0] - 100:top_left[0] + 100]
 x = np.arange(0, z.shape[1])
 y = np.arange(0, z.shape[0])
 x, y = np.meshgrid(x, y)
 
-surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1)  # cmap určuje barevnou mapu
+surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1, antialiased=True)
 ax.set_xticks(ax.get_xticks())
 ax.set_yticks(ax.get_yticks())
+
+
+off_set = 1.5
+
+ax.plot_surface(x, y, np.full_like(z, off_set), facecolors=plt.cm.jet(z), rstride=1, cstride=1, antialiased=True,
+                alpha=0.15)
+
+# Přidání vrstevnic
+contour = ax.contour(x, y, z, zdir='z', offset=off_set, colors='black', alpha=0.85)  # , cmap='jet'
 
 # fig.autofmt_xdate()
 # ax.set_xticklabels(np.int32(ax.get_xticks() + (top_left[1] - 100)), rotation=-30)
 # ax.set_yticklabels(np.int32(ax.get_yticks() + (top_left[0] - 100)))
 
 # Vytvoření colorbaru
-cax = fig.add_axes((0.8, 0.05, 0.03, 0.8))  # [left, bottom, width, height]
-cbar = plt.colorbar(surf, cax=cax, aspect=10)  # Přidání colorbaru
+cax = fig.add_axes((0.8, 0.1, 0.03, 0.8))  # [left, bottom, width, height]
+cbar = plt.colorbar(surf, cax=cax, aspect=30, shrink=0.75)  # Přidání colorbaru
 
 # Nastavení os a zobrazení grafu
 ax.set_xlabel('x position [pixels]', labelpad=10)
 ax.set_ylabel('y position [pixels]', labelpad=10)
-ax.set_zlabel('Correlation coefficient', labelpad=10)
+ax.zaxis.set_rotate_label(False)  # disable automatic rotation
+ax.set_zlabel('Correlation coefficient', labelpad=10, rotation=90)
 
-ax.invert_yaxis()
+ax.set_yticklabels(ax.get_yticklabels()[::-1])
+# ax.invert_yaxis()
 
 ax.auto_scale_xyz(x.flatten(), y.flatten(), z.flatten())
-ax.dist = 1  # Upravte vzdálenost osy podle potřeby
 # Vykreslení 3D grafu
 ax.view_init(elev=30, azim=-120, roll=0)
-ax.dist = 1  # Upravte vzdálenost osy podle potřeby
+# ax.dist = 1  # Upravte vzdálenost osy podle potřeby
 ax.set_zlim(0, 1)
-# plt.tight_layout()
+#ax.set_aspect('auto', adjustable='box')
+ax.set_box_aspect([1.1, 1.1, 0.755], zoom=0.87)
 
 
 # Vytvoření grafu tepelné mapy
@@ -153,12 +164,12 @@ ax_ins = ax.inset_axes([0.5, 0.5, 0.6, 0.47], xlim=(x1, x2), ylim=(y1, y2),
 
 ax_ins_3d = ax_ins.inset_axes([0, 0, 1, 1], projection='3d', xticklabels=[], yticklabels=[],
                               zticks=np.arange(0, 1.2, 0.2), zticklabels=[], zlim=(0, 1))
-ax_ins_3d.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1)
-ax_ins_3d.invert_yaxis()
+ax_ins_3d.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1, antialiased=True)
+# ax_ins_3d.invert_yaxis()
 
 ax_ins_3d.auto_scale_xyz(x.flatten(), y.flatten(), z.flatten())
 ax_ins_3d.view_init(elev=30, azim=-120, roll=0)
-ax.dist = 1  # Upravte vzdálenost osy podle potřeby
+# ax.dist = 1  # Upravte vzdálenost osy podle potřeby
 
 ax_ins_3d.xaxis.set_pane_color((0.95, 0.95, 0.95, 0.8))  # Barva pozadí osy x
 ax_ins_3d.yaxis.set_pane_color((0.95, 0.95, 0.95, 0.8))  # Barva pozadí osy y
