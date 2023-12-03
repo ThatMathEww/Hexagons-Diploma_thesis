@@ -13,7 +13,7 @@ import os
 make_frame = True
 square_size = 10
 
-output_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\tension\_qr_names'
+output_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Hexagons-Diploma_thesis\QRcodes'
 
 file_type = "YAML"
 
@@ -56,11 +56,11 @@ data = ((name, photo), (os.path.getmtime(path), os.path.getctime(path)))"""
 use_logo = False
 
 # Vytvoření QR kódu s určenou úrovní korekce chyb
-error_correction = qrcode.constants.ERROR_CORRECT_M
+error_correction = qrcode.constants.ERROR_CORRECT_Q
 
-for i in range(1, 31):
-    data = f"T01_{i:02d}-III_1s"
-    name = data
+for i in range(3, 5):
+    data = f".*CP*._N#{i}"
+    name = f"calibration_point{i:02d}"
 
     # Vytvoření QR kódu
     qr = qrcode.QRCode(
