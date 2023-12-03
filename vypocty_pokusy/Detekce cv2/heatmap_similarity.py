@@ -1,7 +1,15 @@
 import cv2
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+# from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
+
+# import seaborn as sns
+
+"""
+sns.set_context("notebook")
+
+sns.heatmap(data, cmap='jet', vmin=0, vmax=1)
+"""
 
 # Načtení původní fotografie
 image1 = cv2.imread(r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Hexagons-Diploma_thesis'
@@ -64,6 +72,7 @@ plt.tight_layout()"""
 
 # Vytvoření grafu tepelné mapy
 plt.figure(figsize=(8, 6))
+
 plt.imshow(normalized_result[top_left[1] - 100:top_left[1] + 100, top_left[0] - 100:top_left[0] + 100],
            cmap='jet', vmin=0, vmax=1)
 plt.colorbar()
@@ -108,8 +117,8 @@ x = np.arange(0, z.shape[1])
 y = np.arange(0, z.shape[0])
 x, y = np.meshgrid(x, y)
 
-surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1, antialiased=True, linewidth=0,
-                       alpha=0.95)
+surf = ax.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1, antialiased=True, linewidth=0)
+# alpha=0.8
 ax.set_xticks(ax.get_xticks())
 ax.set_yticks(ax.get_yticks())
 
@@ -148,6 +157,8 @@ ax.view_init(elev=30, azim=-120, roll=0)
 ax.set_zlim(0, 1)
 # ax.set_aspect('auto', adjustable='box')
 ax.set_box_aspect([1.1, 1.1, 0.755], zoom=0.87)
+
+fig.savefig("test.pdf", format="pdf", dpi=700, bbox_inches='tight')
 
 # Vytvoření grafu tepelné mapy
 fig, ax = plt.subplots(figsize=(8, 6))
