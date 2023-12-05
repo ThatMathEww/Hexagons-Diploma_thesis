@@ -357,6 +357,8 @@ def live_webcam(camera_index=None, width=1920, height=1080, cam_fps=60, camera=N
     if w != width or h != height:
         print("\n\033[31;1mNesouhlasí zadaný formát videa a pořízenou fotografií.\033[0m"
               f"\n\t\033[31mZadání: {width} x {height}, Kamera: {w} x {h}\033[0m")
+    else:
+        print(f"\nNastavení kamery:\n\tObraz: {w} x {h}\n\tFPS: {int(cap.get(cv2.CAP_PROP_FPS))}")
 
     cv2.namedWindow("WebCam", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("WebCam", np.int32(0.7 * w), np.int32(0.7 * h))
@@ -600,7 +602,7 @@ def main():
         cv2.imwrite(os.path.join(folder_path, f"_first_photo.png"), frame[y_lim:-y_lim, x_lim:-x_lim])
         del frame
 
-        execute_command(ser, f"M {first_movement * 0.75} 1")
+        execute_command(ser, f"M {first_movement * 0.75} 0.75")
         execute_command(ser, f"M {first_movement * 0.15} 0.15")
         execute_command(ser, f"M {first_movement * 0.1} 0.1")
 
@@ -624,7 +626,7 @@ def main():
                         move = input("\n\tZadejte číslo:  ")
                         try:
                             move = float(move)
-                            execute_command(ser, f"M {move * 0.1} 1")
+                            execute_command(ser, f"M {move} 1")
 
                             print("Chcete provést další posun?")
                             ans = input("\t\tZadejte Y / N: ")
@@ -671,11 +673,11 @@ if __name__ == "__main__":
     from serial.tools import list_ports
     from serial import Serial, SerialException
 
-    output = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\friction"
+    output = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Friction_photos"
 
-    camera_width = 1920  # cam_width = 3840
-    camera_height = 1080  # cam_height = 2160
-    camera_fps = 60  # 120
+    camera_width = 1280  # cam_width = 3840 // 1920
+    camera_height = 960  # cam_height = 2160 // 1080
+    camera_fps = 100  # 60
     measure_dist = 0.25  # 0.1
     measure_speed = 0.1  # 0.005
     waiting_time = 10  # 10
