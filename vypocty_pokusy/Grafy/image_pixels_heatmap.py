@@ -6,6 +6,7 @@ data = np.random.random((8, 10))
 
 color_grid = "white"  # 'white' // 'none'
 line_width_grid = 2
+line_style = '-'
 
 # Min-Max normalizace
 min_val = np.min(data)
@@ -36,12 +37,13 @@ ax.spines[:].set_linewidth(line_width_grid)
 
 ax.set_xticks(np.arange(data.shape[1] + 1), minor=True)
 ax.set_yticks(np.arange(data.shape[0] + 1), minor=True)
-ax.grid(which="minor", color=color_grid, linestyle='-', linewidth=line_width_grid)
+ax.grid(which="minor", color=color_grid, linestyle=line_style, linewidth=line_width_grid)
 ax.tick_params(which="minor", bottom=False, left=False)
 
 ax.set_facecolor("none")
 fig.set_facecolor("none")
 
+ax.invert_yaxis()
 
 fig.tight_layout()
 ax.set_aspect('equal', adjustable='box')

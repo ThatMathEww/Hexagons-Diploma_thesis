@@ -25,9 +25,9 @@ def execute_command_and_measure(port, distance, period, camera, x_lim, y_lim):
     else:
         images = []
         _, frame = camera.read()  # Načtení snímku z kamery
+        log = []
+
         images.append(frame[y_lim:-y_lim, x_lim:-x_lim])
-        start_time = 0
-        current_time = 0
 
         command = f"MMDIC {distance} {period}"
         port.write(command.encode())
@@ -35,17 +35,27 @@ def execute_command_and_measure(port, distance, period, camera, x_lim, y_lim):
 
         time.sleep(0.5)
 
-        if "Photo 0 taken at this point" in port.readline().decode().strip():
+        def measure():
             start_time = time.time()
             while True:
+                log_output = port.readline().decode().strip()
+                log.append(log_output)
                 current_time = time.time()
                 if start_time + period >= current_time:
-                    _, frame = camera.read()  # Načtení snímku z kamery
-                    images.append(frame[y_lim:-y_lim, x_lim:-x_lim])
+                    _, frame_ = camera.read()  # Načtení snímku z kamery
+                    images.append(frame_[y_lim:-y_lim, x_lim:-x_lim])
                     start_time = current_time
 
-                    if "HOTOVO " in port.readline().decode().strip():
-                        break
+                if "HOTOVO " in log_output:
+                    break
+
+        while True:
+            output_line = port.readline().decode().strip()
+
+            if "Photo 0 taken at this point" in output_line:
+                measure()
+                break
+
     return images
 
 
