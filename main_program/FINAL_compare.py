@@ -442,4 +442,57 @@ for i in range(len(indexes)):
     axs[i].set_aspect('auto', adjustable='box')
 
 plt.tight_layout()
+
+fig, ax = plt.subplots(figsize=(6, 6))
+
+for name, curve_index, color in zip(("I", "II", "III"),
+                                    # ("I", "II", "III") // ("MAX", "NORM", "SNAPPED")
+                                    (data_indexes_I, data_indexes_II, data_indexes_III),
+                                    # (data_indexes_max, data_indexes_can_norm, data_indexes_can_snapped) //
+                                    # (data_indexes_I, data_indexes_II, data_indexes_III)
+                                    ("dodgerblue", "red", "limegreen")):
+    datas = [all_datas[j] for j in curve_index]
+    data_plot_x = np.array([[x[-2].iloc[i, 2] for x in datas] for i in range(np.min([x[-2].shape[0] for x in datas]))])
+    data_plot_y = np.array([[y[-2].iloc[i, 3] for y in datas] for i in range(np.min([y[-2].shape[0] for y in datas]))])
+
+    # Definice velikosti okna pro klouzavý průměr
+    window_size = 5
+    # Vytvoření průměrového filtru
+    window = np.ones(window_size) / window_size
+
+    """
+    # Převod dat na pandas DataFrame
+    df = pd.DataFrame({'y': y})
+    
+    # Vytvoření klouzavého průměru
+    window_size = 10
+    y_smooth = df['y'].rolling(window=window_size).mean()
+    """
+
+    data_mean_x = np.mean(data_plot_x, axis=1)
+    data_mean_y = np.mean(data_plot_y, axis=1)
+    data_max = np.max(data_plot_y, axis=1)
+    data_min = np.min(data_plot_y, axis=1)
+    data_std = np.std(data_plot_y, axis=1)
+
+    # Aplikace klouzavého průměru
+    data_mean_x = data_mean_x[:-2]
+    data_mean_y = np.convolve(data_mean_y, window, mode='same')[:-2]
+    data_max = np.convolve(data_max, window, mode='same')[:-2]
+    data_min = np.convolve(data_min, window, mode='same')[:-2]
+    data_std = np.convolve(data_std, window, mode='same')[:-2]
+
+    ax.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=6)
+    ax.fill_between(data_mean_x, data_mean_y + data_std, data_mean_y - data_std, alpha=0.35, color=color, zorder=4)
+    ax.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=5)
+    ax.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=5)
+
+ax.grid()
+ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+ax.set_xlabel('Distance [mm]')
+ax.set_ylabel('Force [N]')
+
+ax.set_aspect('auto', adjustable='box')
+plt.tight_layout()
+
 plt.show()
