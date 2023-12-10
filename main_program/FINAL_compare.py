@@ -7,11 +7,18 @@ import time
 import cv2
 import os
 
-saved_data_name = "data_export.zip"
+saved_data_name = "data_export_new.zip"
 out_put_folder = ""
 
 main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
+
+data_indexes_I = np.arange(0, 4 * 7, 5) + 3
+data_indexes_II = np.arange(0, 4 * 7, 5) + 2
+data_indexes_III = np.arange(0, 4 * 7, 5) + 1
+data_indexes_max = np.arange(0, 4 * 7, 5)
+data_indexes_can_norm = np.arange(0, 4 * 7, 5) + 4
+data_indexes_can_snapped = np.arange(30, 36)
 
 ########################################################################################################################
 
@@ -326,7 +333,7 @@ for exp, current_image_folder in enumerate(images_folders):
         continue"""
 
     try:
-        data_frames = []
+        data_frames = [current_image_folder]
 
         photos = np.arange(beginning, len(photo_indexes), 1)  # int(np.nanmax(df['Photos'].values)) + 1
         time_values = time_stamps[photo_indexes - start_index][beginning:]
@@ -361,7 +368,7 @@ for exp, current_image_folder in enumerate(images_folders):
         if datasets['Others']:
             pass
 
-        if datasets['Tracked_points']:
+        if datasets['Tracked_points'] and False:
 
             len_points = len(tracked_points[0])
             len_photos = len(tracked_points)
@@ -379,6 +386,8 @@ for exp, current_image_folder in enumerate(images_folders):
                 df_tr[[f'Point_{i + 1} - {v}' for v in ('X [mm]', 'Y [mm]')]] = np.vstack(
                     (data[i][0][:, 0], data[i][0][:, 1])).T[beginning:]
             data_frames.append(df_tr)
+        else:
+            data_frames.append([])
 
         all_datas.append(data_frames)
 
@@ -388,13 +397,49 @@ for exp, current_image_folder in enumerate(images_folders):
 
 print("\n\033[33;1mHotovo.\033[0m")
 
-plt.figure()
-d = np.array(all_datas[0][-1])
-[plt.plot(d[:, j], d[:, j + 1], ) for j in range(0, d.shape[1], 2)]
-plt.show()
+"""plt.figure()
+data_plot = all_datas[0]
+d = np.array(data_plot[-1])
+plt.plot(d[:, 0], d[:, 1], label=data_plot[0])
+# [plt.plot(d[:, j], d[:, j + 1], label=data_plot[0]) for j in range(0, d.shape[1], 2)]
+plt.legend()
+plt.show()"""
+
 """for j, dat in enumerate(all_datas):
     plt.figure()
     plt.title(images_folders[j])
     d = np.array(dat[-1])
     [plt.plot(d[:, j], d[:, j + 1], ) for j in range(0, d.shape[1], 2)]
     plt.show()"""
+
+# indexes = [data_indexes_I, data_indexes_II, data_indexes_III, data_indexes_max]
+indexes = [data_indexes_can_snapped]
+
+# Vytvoření subplots
+fig, axs = plt.subplots(2, 2, figsize=(12, 8)) if len(indexes) == 4 else plt.subplots(2, 1, figsize=(12, 4)) \
+    if len(indexes) == 2 else plt.subplots(1, 1, figsize=(6, 4))
+try:
+    axs = axs.flatten()
+except AttributeError:
+    axs = [axs]
+
+for i in range(len(indexes)):
+    try:
+        [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values,
+                     c='gray', lw=1, alpha=0.5, zorder=4) for j in np.hstack(indexes[:i] + indexes[i + 1:])]
+    except ValueError:
+        pass
+
+    [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values,
+                 lw=2, label=all_datas[j][0], zorder=5) for j in indexes[i]]
+
+    axs[i].grid()
+    axs[i].legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    axs[i].set_xlabel('Distance [mm]')
+    axs[i].set_ylabel('Force [N]')
+
+    axs[i].set_aspect('auto', adjustable='box')
+
+plt.tight_layout()
+plt.show()
