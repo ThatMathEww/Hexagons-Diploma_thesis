@@ -1,64 +1,3 @@
-def execute_command(port, command):
-    if not port.is_open:
-        print(f"{port} nelze otevřít.")
-    else:
-        port.write(command.encode())
-        print("Příkaz odeslán:", command)
-        time.sleep(1)
-        while True:
-            received_data = port.readline().decode().strip()
-            if received_data != command and received_data != "" or command == "P":
-                if command == "P":
-                    print("\t", "Photo taken")
-                    time.sleep(2)
-                else:
-                    print("\t", received_data)
-
-                time.sleep(1)
-                break
-
-
-def execute_command_and_measure(port, distance, period, camera, x_lim, y_lim):
-    if not port.is_open:
-        print(f"{port} nelze otevřít.")
-        return None
-    else:
-        images = []
-        _, frame = camera.read()  # Načtení snímku z kamery
-        log = []
-
-        images.append(frame[y_lim:-y_lim, x_lim:-x_lim])
-
-        command = f"MMDIC {distance} {period}"
-        port.write(command.encode())
-        print(f"\033[37mPříkaz odeslán: {command}\033[0m")
-
-        time.sleep(0.5)
-
-        def measure():
-            start_time = time.time()
-            while True:
-                log_output = port.readline().decode().strip()
-                log.append(log_output)
-                current_time = time.time()
-                if start_time + period >= current_time:
-                    _, frame_ = camera.read()  # Načtení snímku z kamery
-                    images.append(frame_[y_lim:-y_lim, x_lim:-x_lim])
-                    start_time = current_time
-
-                if "HOTOVO " in log_output:
-                    break
-
-        while True:
-            output_line = port.readline().decode().strip()
-
-            if "Photo 0 taken at this point" in output_line:
-                measure()
-                break
-
-    return images
-
-
 def get_available_cameras(cam_type=None):
     if cam_type is None:
         cam_type = cv2.CAP_MSMF
@@ -159,7 +98,7 @@ def remove_folder(folder):
     os.rmdir(folder)
 
 
-def make_measurement(camera_index, port, output_folder, x_limit=1, y_limit=1, command_input1=0, command_input2=0,
+def make_measurement(camera_index, output_folder, txt_path, x_limit=1, y_limit=1, command_distance=0, command_period=0,
                      cam_width=1920, cam_height=1080, cam_fps=60):
     cap = cv2.VideoCapture(camera_index)  # CAP_ANY // CAP_MSMF
 
@@ -183,9 +122,69 @@ def make_measurement(camera_index, port, output_folder, x_limit=1, y_limit=1, co
         print("\n\033[31;1mChyba: Snímek nebyl pořízen.\033[0m")
         return
 
-    photos = execute_command_and_measure(port, command_input1, command_input2, cap, x_limit, y_limit)
+    images = []
+    _, frame = cap.read()  # Načtení snímku z kamery
 
-    [cv2.imwrite(os.path.join(output_folder, f"Frame_{i + 1: 03d}.png"), frame) for i, frame in enumerate(photos)]
+    images.append(frame[y_limit:-y_limit, x_limit:-x_limit])
+
+    command = f"MMDIC2 {command_distance} {command_period}"
+
+    print("Dejte myš na dané místo.")
+    time.sleep(15)
+    print("Start")
+
+    print(f"\033[37mPříkaz odeslán: {command}\033[0m")
+
+    file_path = "settings.txt"
+
+    time.sleep(0.5)
+
+    relative_text_field_position = (100, 100)
+
+    relative_button_position = (500, 40)
+
+    current_mouse_x, current_mouse_y = pyautogui.position()  # Získání aktuální pozice myši
+
+    text_field_position = (
+        current_mouse_x + relative_text_field_position[0], current_mouse_y + relative_text_field_position[1])
+    button_position = (current_mouse_x + relative_button_position[0], current_mouse_y + relative_button_position[1])
+
+    time.sleep(1)
+
+    pyautogui.click(*text_field_position)
+
+    time.sleep(1)
+
+    # Simulace klávesové zkratky pro označení všeho (Ctrl+A)
+    pyautogui.hotkey('ctrl', 'a')
+
+    time.sleep(1)
+
+    pyautogui.typewrite(command)
+
+    time.sleep(1)
+
+    # Simulace kliknutí na tlačítko
+    pyautogui.click(*button_position)
+
+    start_time = time.time()
+
+    while True:
+        current_time = time.time()
+        if start_time + command_period >= current_time:
+            # if "taken photo" in log_output:
+            _, frame_ = cap.read()  # Načtení snímku z kamery
+            images.append(frame_[y_limit:-y_limit, x_limit:-x_limit])
+            start_time = current_time
+        elif start_time + command_period * 0.55 >= current_time >= start_time + command_period * 0.45:
+            if os.path.getsize(txt_path) > 0:
+                break
+            # Otevření souboru v režimu čtení ('r' znamená čtení)
+            # with open(file_path, 'r') as file:
+            #    if 1 == int(file.readline().strip()):
+            #        break
+
+    [cv2.imwrite(os.path.join(output_folder, f"Frame_{i + 1:03d}.jpg"), frame) for i, frame in enumerate(images)]
 
     print(f"\n\tMěření: \033[34;1m{os.path.basename(output_folder)}\033[0m\n")
 
@@ -276,57 +275,7 @@ def live_webcam(camera_index=None, width=1920, height=1080, cam_fps=60, camera=N
     cv2.destroyAllWindows()
 
 
-def manage_ports():
-    available_ports = [ports.device for ports in list_ports.comports()]
-
-    if not available_ports:
-        end_program("\nNebyly nalezeny žádné dostupné COM porty.")
-
-    print("\nDostupné COM porty:")
-    for i, port in enumerate(available_ports):
-        print(f"\t{i}: {port}")
-
-    if len(available_ports) == 1:
-        selected_port_index = 0
-    else:
-        while True:
-            selected_port_index = input("Vyber číslo COM portu: ")
-            try:
-                selected_port_index = int(selected_port_index)
-                if selected_port_index < 0 or selected_port_index >= len(available_ports):
-                    print("Neplatná volba COM portu!")
-                else:
-                    break
-            except ValueError:
-                print("Neplatná volba COM portu!")
-
-    port = available_ports[selected_port_index]
-    print(f"Vybrán port: [ {port} ]")
-
-    return port
-
-
-def manage_cameras(port):
-    ser_port = None
-    try:
-        ser_port = Serial(port, baudrate=9600, timeout=1)
-        time.sleep(2)
-        data, empty_count = None, 0
-        print("\n")
-        while data != "Testing pin: 21 ON OFF":
-            data = ser_port.readline().decode().strip()
-            if data != "":
-                print(data)
-            elif empty_count == 5:
-                break
-            else:
-                empty_count += 1
-
-        del empty_count, data
-    except (ValueError, SerialException, Exception) as e:
-        end_program(f"\n\033[31;1mChyba serial port, {e}\033[0m")
-    print("\n")
-
+def manage_cameras():
     if speed_mode:
         print("Auto výběr kamery číslo: 1")
         camera_index = 0
@@ -350,7 +299,7 @@ def manage_cameras(port):
             except ValueError:
                 print("Neplatná volba kamery!")
 
-    return ser_port, camera_index
+    return camera_index
 
 
 def end_program(text=None):
@@ -364,7 +313,7 @@ def main():
     windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)
     cv2.setLogLevel(0)
 
-    ser, selected_camera_index = manage_cameras(manage_ports())
+    selected_camera_index = manage_cameras()
     print("\n")
 
     capture = None  # cv2.VideoCapture(selected_camera_index)
@@ -409,59 +358,44 @@ def main():
             else:
                 print("\n Zadejte platnou odpověď.")
 
-        folder_path = os.path.join(output, name)
+        folder_path_photos = os.path.join(output_photos, name, "detail_original")
+        folder_path_txt = os.path.join(output_txt, name + ".txt")
 
-        if os.path.exists(folder_path):
+        if os.path.exists(folder_path_photos):
             while True:
-                folder_path = folder_path + f"_{time.strftime('%H-%M-%S_%d-%m-%Y', time.localtime(time.time()))}"
-                folder_path = folder_path
-                if not os.path.exists(folder_path):
-                    os.makedirs(folder_path)
+                folder_path_photos = (folder_path_photos +
+                                      f"_{time.strftime('%H-%M-%S_%d-%m-%Y', time.localtime(time.time()))}")
+                if not os.path.exists(folder_path_photos):
+                    os.makedirs(folder_path_photos)
                     break
         else:
-            os.makedirs(folder_path)
+            os.makedirs(folder_path_photos)
 
-        make_measurement(camera_index=selected_camera_index, port=ser, output_folder=folder_path,
-                         command_input1=measurement_distance, command_input2=measurement_periods, x_limit=x_lim,
+        while True:
+            if os.path.exists(folder_path_txt):
+                break
+            else:
+                print(f"\nSoubor \033[36;1m{name + '.txt'} neexistuje."
+                      "\n\t\033[0m \033[34;1mZadejte 'Y' až bude vytvořen.\033[0m")
+                while True:
+                    ans_end = input("\t\tZadejte Y / N: ")
+                    if ans_end == "Y":
+                        print("\n\tZvolena možnost 'Y'\n")
+                        break
+                    elif ans_end == "N":
+                        print("\n\tZvolena možnost 'N'\nSoubor nevytvořen.")
+                    else:
+                        print("\n Zadejte platnou odpověď.")
+
+        make_measurement(camera_index=selected_camera_index, output_folder=folder_path_photos, txt_path=folder_path_txt,
+                         command_distance=measurement_distance, command_period=measurement_periods, x_limit=x_lim,
                          y_limit=y_lim, cam_width=camera_width, cam_height=camera_height, cam_fps=camera_fps)
-
-        execute_command(ser, f"M -{measurement_distance} 2")
 
         print("\n\033[34;1mChcete provést další měření?\033[0m")
         while True:
             ans_end = input("\t\tZadejte Y / N: ")
             if ans_end == "Y":
                 print("\n\tZvolena možnost 'Y'\n")
-
-                print("\n\033[34;1mChcete provést posun?\033[0m")
-                while True:
-                    ans = input("\t\tZadejte Y / N: ")
-                    if ans == "Y":
-                        print("\n\tZvolena možnost 'Y'\n")
-                        move = input("\n\tZadejte číslo:  ")
-                        try:
-                            move = float(move)
-                            execute_command(ser, f"M {move} 1")
-
-                            print("Chcete provést další posun?")
-                            ans = input("\t\tZadejte Y / N: ")
-                            if ans == "Y":
-                                print("\n\tZvolena možnost 'Y'\n")
-                            elif ans == "N":
-                                print("\n\tZvolena možnost 'N'\n")
-                                break
-                            else:
-                                print("\n Zadejte platnou odpověď.")
-
-                        except (ValueError, Exception):
-                            print("Špatně zadané číslo.")
-
-                    elif ans == "N":
-                        print("\n\tZvolena možnost 'N'\n")
-                        break
-                    else:
-                        print("\n Zadejte platnou odpověď.")
-
                 break
             elif ans_end == "N":
                 print("\n\tZvolena možnost 'N'\n")
@@ -471,7 +405,6 @@ def main():
         if ans_end == "N":
             break
 
-    ser.close()
     # původní stav
     windll.kernel32.SetThreadExecutionState(0x80000000)
 
@@ -480,20 +413,22 @@ if __name__ == "__main__":
     import os
     import cv2
     import time
-    # import threading
+    import pyautogui
     import numpy as np
     from ctypes import windll
-    from serial.tools import list_ports
-    from serial import Serial, SerialException
 
-    output = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos"
+    output_photos = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos"
+    output_txt = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos"
 
-    camera_width = 1920  # cam_width = 3840
-    camera_height = 1080  # cam_height = 2160
-    camera_fps = 60  # 100
+    camera_width = 4032  # cam_width = 3840
+    camera_height = 3040  # cam_height = 2160
+    camera_fps = 10  # 100
 
-    measurement_distance = 10
-    measurement_periods = 10
+    # 4032×3040@10fps; 3840×2160@20fps; 2592×1944@30fps; 2560×1440@30fps; 1920×1080@60fps; 1600×1200@50fps;
+    # 1280×960@100fps; 1280×760@100fps; 640×480@80fps
+
+    measurement_distance = 5
+    measurement_periods = 5
 
     speed_mode = True
 
