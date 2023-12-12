@@ -122,10 +122,15 @@ def make_measurement(camera_index, output_folder, txt_path, x_limit=1, y_limit=1
         print("\n\033[31;1mChyba: Snímek nebyl pořízen.\033[0m")
         return
 
-    images = []
+    images = 1
+    cycler = True
+
     _, frame = cap.read()  # Načtení snímku z kamery
 
-    images.append(frame[y_limit:-y_limit, x_limit:-x_limit])
+    _, frame = cap.read()  # Načtení snímku z kamery
+
+    # images.append(frame[y_limit:-y_limit, x_limit:-x_limit])
+    cv2.imwrite(os.path.join(output_folder, f"Frame_{0:03d}.jpg"), frame[y_limit:-y_limit, x_limit:-x_limit])
 
     command = f"MMDIC2 {command_distance} {command_period}"
 
@@ -133,58 +138,85 @@ def make_measurement(camera_index, output_folder, txt_path, x_limit=1, y_limit=1
     time.sleep(15)
     print("Start")
 
-    print(f"\033[37mPříkaz odeslán: {command}\033[0m")
+    print(f"\033[37mPříkaz k odeslání: {command}\033[0m")
 
-    file_path = "settings.txt"
+    # Pauza na případné otevření cílové aplikace nebo okna
+    time.sleep(1)
 
+    # Kliknutí na střed obrazovky
+    pyautogui.click(pyautogui.size()[0] // 2, pyautogui.size()[1] // 2)
+
+    # Stisk kláves Ctrl + R
+    pyautogui.hotkey('ctrl', 'r')
+
+    # Pauza pro načtení a zpracování stránky (přizpůsobte podle potřeby)
+    time.sleep(1)
+
+    # Vložení textu a stisk Enter
+    pyautogui.typewrite(txt_path)
+    # pyautogui.write(txt_path)
+    pyautogui.press('enter')
+
+    # Pauza mezi operacemi
     time.sleep(0.5)
 
-    relative_text_field_position = (100, 100)
+    # Stisk kláves Ctrl + T
+    pyautogui.hotkey('ctrl', 't')
 
-    relative_button_position = (500, 40)
+    # Pauza pro načtení a zpracování nové stránky (přizpůsobte podle potřeby)
+    time.sleep(0.5)
 
-    current_mouse_x, current_mouse_y = pyautogui.position()  # Získání aktuální pozice myši
-
-    text_field_position = (
-        current_mouse_x + relative_text_field_position[0], current_mouse_y + relative_text_field_position[1])
-    button_position = (current_mouse_x + relative_button_position[0], current_mouse_y + relative_button_position[1])
-
-    time.sleep(1)
-
-    pyautogui.click(*text_field_position)
-
-    time.sleep(1)
-
-    # Simulace klávesové zkratky pro označení všeho (Ctrl+A)
-    pyautogui.hotkey('ctrl', 'a')
-
-    time.sleep(1)
-
+    # Přejde na specifické souřadnice, klikne a vloží text
+    # pyautogui.click(*(940, 300))
+    # pyautogui.hotkey('ctrl', 'a')
     pyautogui.typewrite(command)
 
-    time.sleep(1)
+    # Pauza mezi operacemi
+    time.sleep(0.5)
 
-    # Simulace kliknutí na tlačítko
-    pyautogui.click(*button_position)
+    # Přejde na další souřadnice a klikne
+    # pyautogui.click(*(1180, 230))
+    # Simulace stisknutí klávesy Tab + Shift
+    pyautogui.hotkey('shift', 'tab')
+    pyautogui.press('enter')
+
+    # Stisk kláves Ctrl + W
+    pyautogui.hotkey('ctrl', 'w')
 
     start_time = time.time()
 
-    while True:
+    while cycler:
         current_time = time.time()
-        if start_time + command_period >= current_time:
+        if start_time + command_period <= current_time:
             # if "taken photo" in log_output:
             _, frame_ = cap.read()  # Načtení snímku z kamery
-            images.append(frame_[y_limit:-y_limit, x_limit:-x_limit])
+            cv2.imwrite(os.path.join(output_folder, f"Frame_{images + 1:03d}.jpg"),
+                        frame[y_limit:-y_limit, x_limit:-x_limit])
+            images += 1
+            # images.append(frame_[y_limit:-y_limit, x_limit:-x_limit])
             start_time = current_time
-        elif start_time + command_period * 0.55 >= current_time >= start_time + command_period * 0.45:
-            if os.path.getsize(txt_path) > 0:
-                break
+        elif start_time + command_period * 0.5 <= current_time <= start_time + command_period * 0.55:
+            with open(txt_path, 'r') as file:
+                # f = file.readlines()[-1].strip()
+                # print("čtení souboru:", f)
+                if "HOTOVO" == file.readlines()[-1].strip():
+                    cycler = False
+                    break
+
+            # if os.path.getsize(txt_path) > 0:
+            #    break
             # Otevření souboru v režimu čtení ('r' znamená čtení)
             # with open(file_path, 'r') as file:
             #    if 1 == int(file.readline().strip()):
             #        break
 
-    [cv2.imwrite(os.path.join(output_folder, f"Frame_{i + 1:03d}.jpg"), frame) for i, frame in enumerate(images)]
+    # Pauza mezi operacemi
+    time.sleep(0.5)
+
+    # Stisk kláves Ctrl + Shift + R
+    pyautogui.hotkey('ctrl', 'shift', 'r')
+
+    # [cv2.imwrite(os.path.join(output_folder, f"Frame_{i + 1:03d}.jpg"), frame) for i, frame in enumerate(images)]
 
     print(f"\n\tMěření: \033[34;1m{os.path.basename(output_folder)}\033[0m\n")
 
@@ -359,7 +391,7 @@ def main():
                 print("\n Zadejte platnou odpověď.")
 
         folder_path_photos = os.path.join(output_photos, name, "detail_original")
-        folder_path_txt = os.path.join(output_txt, name + ".txt")
+        file_path_txt = os.path.join(output_folder_txt, name + ".txt")
 
         if os.path.exists(folder_path_photos):
             while True:
@@ -371,8 +403,8 @@ def main():
         else:
             os.makedirs(folder_path_photos)
 
-        while True:
-            if os.path.exists(folder_path_txt):
+        """while True:
+            if os.path.exists(file_path_txt):
                 break
             else:
                 print(f"\nSoubor \033[36;1m{name + '.txt'} neexistuje."
@@ -385,9 +417,9 @@ def main():
                     elif ans_end == "N":
                         print("\n\tZvolena možnost 'N'\nSoubor nevytvořen.")
                     else:
-                        print("\n Zadejte platnou odpověď.")
+                        print("\n Zadejte platnou odpověď.")"""
 
-        make_measurement(camera_index=selected_camera_index, output_folder=folder_path_photos, txt_path=folder_path_txt,
+        make_measurement(camera_index=selected_camera_index, output_folder=folder_path_photos, txt_path=file_path_txt,
                          command_distance=measurement_distance, command_period=measurement_periods, x_limit=x_lim,
                          y_limit=y_lim, cam_width=camera_width, cam_height=camera_height, cam_fps=camera_fps)
 
@@ -418,7 +450,7 @@ if __name__ == "__main__":
     from ctypes import windll
 
     output_photos = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos"
-    output_txt = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos"
+    output_folder_txt = r"C:\Users\matej\Desktop\mereni"
 
     camera_width = 4032  # cam_width = 3840
     camera_height = 3040  # cam_height = 2160
