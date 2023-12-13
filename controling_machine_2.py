@@ -98,13 +98,22 @@ def remove_folder(folder):
     os.rmdir(folder)
 
 
-def make_measurement(camera_index, output_folder, txt_path, x_limit=1, y_limit=1, command_distance=0, command_period=0,
-                     cam_width=1920, cam_height=1080, cam_fps=60):
-    cap = cv2.VideoCapture(camera_index)  # CAP_ANY // CAP_MSMF
+def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_path="output.txt", x_limit=1, y_limit=1,
+                     command_distance=0, command_period=0, cam_width=1920, cam_height=1080, cam_fps=60,
+                     measurement_name="Measurement"):
+    # Otevřít video nebo kamery
+    if camera is None:
+        if isinstance(camera_index, int):
+            cap = cv2.VideoCapture(camera_index)  # CAP_ANY // CAP_MSMF
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, cam_width)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cam_height)
+            cap.set(cv2.CAP_PROP_FPS, cam_fps)
 
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, cam_width)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cam_height)
-    cap.set(cv2.CAP_PROP_FPS, cam_fps)
+        else:
+            print("Špatný index kamery, ukončení měření.")
+            return
+    else:
+        cap = camera
 
     if not cap.isOpened():
         try:
@@ -134,54 +143,77 @@ def make_measurement(camera_index, output_folder, txt_path, x_limit=1, y_limit=1
 
     command = f"MMDIC2 {command_distance} {command_period}"
 
-    print("Dejte myš na dané místo.")
-    time.sleep(15)
-    print("Start")
+    print("Začíná kontrola stroje za 5 sekund:")
+    for _ in range(1, 6):
+        print('\t', _)
+        time.sleep(1)
+    print("\033[32;1mSTART\033[0m\n")
 
-    print(f"\033[37mPříkaz k odeslání: {command}\033[0m")
+    print(f"\n\033[37;1mPříkaz k odeslání: {command}\033[0m")
 
     # Pauza na případné otevření cílové aplikace nebo okna
     time.sleep(1)
 
-    # Kliknutí na střed obrazovky
-    pyautogui.click(pyautogui.size()[0] // 2, pyautogui.size()[1] // 2)
+    # Najde okno podle názvu
+    cool_term_window = gw.getWindowsWithTitle("Untitled_0")
 
-    # Stisk kláves Ctrl + R
-    pyautogui.hotkey('ctrl', 'r')
+    if cool_term_window:
+        # Zajistí, že okno bude na popředí
+        cool_term_window[0].activate()
+        time.sleep(1)
+    else:
+        # Spuštění programu Notepad
+        subprocess.Popen([r'C:\Programy\CoolTermWin\CoolTermWin\CoolTerm.exe'])
 
-    # Pauza pro načtení a zpracování stránky (přizpůsobte podle potřeby)
+        time.sleep(10)
+        pyautogui.press('enter')
+        pyautogui.hotkey('ctrl', 'k')
+        time.sleep(6)
+
+        cool_term_window = gw.getWindowsWithTitle("Untitled_0")
+        cool_term_window[0].activate()
+        time.sleep(1)
+
+    # pyautogui.click(pyautogui.size()[0] // 2, pyautogui.size()[1] // 2)
+    # pyautogui.click(400, 400)
+
+    #####################################################################################################
+    # Nastavení záznamu:
+    pyautogui.hotkey('ctrl', 'r')  # zahájení záznamu
+
     time.sleep(1)
 
-    # Vložení textu a stisk Enter
+    if os.path.isfile(txt_path):
+        print("\t\033[31;1;21mSoubor záznamu již existuje, bude zvolené nové jméno.\033[0m")
+        txt_path = os.path.join(output_folder_txt, measurement_name + f"{int(time.time())}" + ".txt")
+
     pyautogui.typewrite(txt_path)
     # pyautogui.write(txt_path)
+    time.sleep(0.5)
     pyautogui.press('enter')
 
-    # Pauza mezi operacemi
     time.sleep(0.5)
 
-    # Stisk kláves Ctrl + T
+    #####################################################################################################
+    # Odeslání příkazu k měření:
     pyautogui.hotkey('ctrl', 't')
 
-    # Pauza pro načtení a zpracování nové stránky (přizpůsobte podle potřeby)
-    time.sleep(0.5)
+    time.sleep(1)
 
-    # Přejde na specifické souřadnice, klikne a vloží text
     # pyautogui.click(*(940, 300))
     # pyautogui.hotkey('ctrl', 'a')
     pyautogui.typewrite(command)
 
-    # Pauza mezi operacemi
     time.sleep(0.5)
 
-    # Přejde na další souřadnice a klikne
     # pyautogui.click(*(1180, 230))
     # Simulace stisknutí klávesy Tab + Shift
     pyautogui.hotkey('shift', 'tab')
     pyautogui.press('enter')
 
-    # Stisk kláves Ctrl + W
-    pyautogui.hotkey('ctrl', 'w')
+    pyautogui.hotkey('ctrl', 'w')  # zavření okna
+
+    #####################################################################################################
 
     start_time = time.time()
 
@@ -210,34 +242,76 @@ def make_measurement(camera_index, output_folder, txt_path, x_limit=1, y_limit=1
             #    if 1 == int(file.readline().strip()):
             #        break
 
-    # Pauza mezi operacemi
+    #####################################################################################################
+    # Ukončení měření:
+    time.sleep(1)
+
+    toast = Notification(app_id="Controlling machine", title="Dokončení měření:", msg="Neklikejte myší.",
+                         duration="long", )
+    toast.set_audio(audio.Default, loop=False)
+    toast.show()
+
+    time.sleep(5)
+
+    cool_term_window = gw.getWindowsWithTitle("Untitled_0")
+    if cool_term_window:
+        # Zajistí, že okno bude na popředí
+        cool_term_window[0].activate()
+        time.sleep(1)
+    else:
+        # Spuštění programu Notepad
+        subprocess.Popen([r'C:\Programy\CoolTermWin\CoolTermWin\CoolTerm.exe'])
+        time.sleep(10)
+        pyautogui.press('enter')
+        pyautogui.hotkey('ctrl', 'k')
+        time.sleep(6)
+
+    pyautogui.hotkey('ctrl', 'shift', 'r')  # ukončení záznamu
+
     time.sleep(0.5)
 
-    # Stisk kláves Ctrl + Shift + R
-    pyautogui.hotkey('ctrl', 'shift', 'r')
+    #####################################################################################################
+    # Odeslání příkazu k zvednutí stroje:
+    pyautogui.hotkey('ctrl', 't')
 
+    time.sleep(1)
+
+    pyautogui.typewrite(f"M -{command_distance} 1")
+
+    time.sleep(0.5)
+
+    pyautogui.hotkey('shift', 'tab')
+    pyautogui.press('enter')
+
+    pyautogui.hotkey('ctrl', 'w')  # zavření okna
+
+    #####################################################################################################
     # [cv2.imwrite(os.path.join(output_folder, f"Frame_{i + 1:03d}.jpg"), frame) for i, frame in enumerate(images)]
 
-    print(f"\n\tMěření: \033[34;1m{os.path.basename(output_folder)}\033[0m\n")
+    print(f"\n\tMěření: \033[34;1m{measurement_name}\033[0m\n")
+    print(f"\t\tFotografie uloženy do: [ \033[35m{output_folder}\033[0m ]\n")
 
-    cap.release()
+    if camera is None:
+        cap.release()
 
 
 def capture_webcam_photo(camera_index=None, filename="photo.jpg", save_photo=False, width=1920, height=1080, cam_fps=60,
                          camera=None):
     # Otevření kamery
     if camera is None:
-        capture = cv2.VideoCapture(camera_index)
+        if isinstance(camera_index, int):
+            capture = cv2.VideoCapture(camera_index)  # CAP_ANY // CAP_MSMF
+            capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+            capture.set(cv2.CAP_PROP_FPS, cam_fps)
+        else:
+            end_program("Špatný index kamery.")
     else:
         capture = camera
 
     if not capture.isOpened():
         print("\n\033[31;1mKamera nenalezena!\033[0m")
         return None
-
-    capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    capture.set(cv2.CAP_PROP_FPS, cam_fps)
 
     # Získání snímku z kamery
     ret, frame = capture.read()
@@ -265,13 +339,15 @@ def capture_webcam_photo(camera_index=None, filename="photo.jpg", save_photo=Fal
 def live_webcam(camera_index=None, width=1920, height=1080, cam_fps=60, camera=None):
     # Otevřít video nebo kamery
     if camera is None:
-        cap = cv2.VideoCapture(camera_index)
+        if isinstance(camera_index, int):
+            cap = cv2.VideoCapture(camera_index)  # CAP_ANY // CAP_MSMF
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+            cap.set(cv2.CAP_PROP_FPS, cam_fps)
+        else:
+            end_program("Špatný index kamery.")
     else:
         cap = camera
-
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    cap.set(cv2.CAP_PROP_FPS, cam_fps)
 
     ret, frame = cap.read()
     if not ret:
@@ -348,19 +424,23 @@ def main():
     selected_camera_index = manage_cameras()
     print("\n")
 
-    capture = None  # cv2.VideoCapture(selected_camera_index)
-
-    live_webcam(camera_index=selected_camera_index, camera=capture, width=camera_width, height=camera_height,
+    live_webcam(camera_index=selected_camera_index, camera=None, width=camera_width, height=camera_height,
                 cam_fps=camera_fps)
 
     crop_photo = True
     x_lim, y_lim = None, None
+
+    capture = cv2.VideoCapture(selected_camera_index)
+    capture.set(cv2.CAP_PROP_FRAME_WIDTH, camera_width)
+    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_height)
+    capture.set(cv2.CAP_PROP_FPS, camera_fps)
+
     while True:
         photo = capture_webcam_photo(camera_index=selected_camera_index, camera=capture, save_photo=False,
                                      width=camera_width, height=camera_height, cam_fps=camera_fps)
 
-        if capture is not None:
-            capture.release()
+        # if capture is not None:
+        #    capture.release()
 
         if photo is None:
             end_program("\nNebyla pořízena fotografie.")
@@ -391,17 +471,19 @@ def main():
                 print("\n Zadejte platnou odpověď.")
 
         folder_path_photos = os.path.join(output_photos, name, "detail_original")
-        file_path_txt = os.path.join(output_folder_txt, name + ".txt")
 
         if os.path.exists(folder_path_photos):
             while True:
-                folder_path_photos = (folder_path_photos +
-                                      f"_{time.strftime('%H-%M-%S_%d-%m-%Y', time.localtime(time.time()))}")
+                name = name + f"_{time.strftime('%H-%M-%S_%d-%m-%Y', time.localtime(time.time()))}"
+                folder_path_photos = os.path.join(output_photos, name, "detail_original")
                 if not os.path.exists(folder_path_photos):
                     os.makedirs(folder_path_photos)
+                    print("\033[31;1;21mSložka již existuje, nové jméno:\033[0m", name)
                     break
         else:
             os.makedirs(folder_path_photos)
+
+        file_path_txt = os.path.join(output_folder_txt, name + ".txt")
 
         """while True:
             if os.path.exists(file_path_txt):
@@ -421,9 +503,10 @@ def main():
 
         make_measurement(camera_index=selected_camera_index, output_folder=folder_path_photos, txt_path=file_path_txt,
                          command_distance=measurement_distance, command_period=measurement_periods, x_limit=x_lim,
-                         y_limit=y_lim, cam_width=camera_width, cam_height=camera_height, cam_fps=camera_fps)
+                         y_limit=y_lim, cam_width=camera_width, cam_height=camera_height, cam_fps=camera_fps,
+                         measurement_name=name)
 
-        print("\n\033[34;1mChcete provést další měření?\033[0m")
+        print("\n\033[34;1mChcete provést další měření?\033[0m")  #
         while True:
             ans_end = input("\t\tZadejte Y / N: ")
             if ans_end == "Y":
@@ -436,6 +519,9 @@ def main():
                 print("\n Zadejte platnou odpověď.")
         if ans_end == "N":
             break
+        else:
+            live_webcam(camera_index=selected_camera_index, camera=capture, width=camera_width, height=camera_height,
+                        cam_fps=camera_fps)
 
     # původní stav
     windll.kernel32.SetThreadExecutionState(0x80000000)
@@ -446,8 +532,11 @@ if __name__ == "__main__":
     import cv2
     import time
     import pyautogui
+    import subprocess
     import numpy as np
+    import pygetwindow as gw
     from ctypes import windll
+    from winotify import Notification, audio
 
     output_photos = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos"
     output_folder_txt = r"C:\Users\matej\Desktop\mereni"
@@ -459,10 +548,13 @@ if __name__ == "__main__":
     # 4032×3040@10fps; 3840×2160@20fps; 2592×1944@30fps; 2560×1440@30fps; 1920×1080@60fps; 1600×1200@50fps;
     # 1280×960@100fps; 1280×760@100fps; 640×480@80fps
 
-    measurement_distance = 5
+    measurement_distance = 2
     measurement_periods = 5
 
     speed_mode = True
+
+    # while True:
+    #    print(pyautogui.position())
 
     main()
     print("\n\033[35;1mKonec.\033[0m")
