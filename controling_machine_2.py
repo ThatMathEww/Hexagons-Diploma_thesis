@@ -143,6 +143,11 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
 
     command = f"MMDIC2 {command_distance} {command_period}"
 
+    toast = Notification(app_id="Controlling machine", title="Zahájení měření za 5s", msg="Neklikejte myší.",
+                         duration="short", )
+    toast.set_audio(audio.Default, loop=False)
+    toast.show()
+
     print("Začíná kontrola stroje za 5 sekund:")
     for _ in range(1, 6):
         print('\t', _)
@@ -162,15 +167,17 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
         cool_term_window[0].activate()
         time.sleep(1)
     else:
-        # Spuštění programu Notepad
+        # Spuštění programu
         subprocess.Popen([r'C:\Programy\CoolTermWin\CoolTermWin\CoolTerm.exe'])
+        cool_term_window = []
+        while not cool_term_window:
+            cool_term_window = gw.getWindowsWithTitle("Untitled_0")
 
-        time.sleep(10)
+        cool_term_window[0].activate()
         pyautogui.press('enter')
         pyautogui.hotkey('ctrl', 'k')
         time.sleep(6)
 
-        cool_term_window = gw.getWindowsWithTitle("Untitled_0")
         cool_term_window[0].activate()
         time.sleep(1)
 
@@ -179,6 +186,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
 
     #####################################################################################################
     # Nastavení záznamu:
+    cool_term_window[0].activate()
     pyautogui.hotkey('ctrl', 'r')  # zahájení záznamu
 
     time.sleep(1)
@@ -196,6 +204,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
 
     #####################################################################################################
     # Odeslání příkazu k měření:
+    cool_term_window[0].activate()
     pyautogui.hotkey('ctrl', 't')
 
     time.sleep(1)
@@ -207,8 +216,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
     time.sleep(0.5)
 
     # pyautogui.click(*(1180, 230))
-    # Simulace stisknutí klávesy Tab + Shift
-    pyautogui.hotkey('shift', 'tab')
+    pyautogui.hotkey('shift', 'tab')  # překliknutí na tlačítko
     pyautogui.press('enter')
 
     pyautogui.hotkey('ctrl', 'w')  # zavření okna
@@ -222,7 +230,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
         if start_time + command_period <= current_time:
             # if "taken photo" in log_output:
             _, frame_ = cap.read()  # Načtení snímku z kamery
-            cv2.imwrite(os.path.join(output_folder, f"Frame_{images + 1:03d}.jpg"),
+            cv2.imwrite(os.path.join(output_folder, f"Frame_{images + 1:04d}.jpg"),
                         frame[y_limit:-y_limit, x_limit:-x_limit])
             images += 1
             # images.append(frame_[y_limit:-y_limit, x_limit:-x_limit])
@@ -259,9 +267,13 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
         cool_term_window[0].activate()
         time.sleep(1)
     else:
-        # Spuštění programu Notepad
+        # Spuštění programu
         subprocess.Popen([r'C:\Programy\CoolTermWin\CoolTermWin\CoolTerm.exe'])
-        time.sleep(10)
+        cool_term_window = []
+        while not cool_term_window:
+            cool_term_window = gw.getWindowsWithTitle("Untitled_0")
+
+        cool_term_window[0].activate()
         pyautogui.press('enter')
         pyautogui.hotkey('ctrl', 'k')
         time.sleep(6)
@@ -272,6 +284,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
 
     #####################################################################################################
     # Odeslání příkazu k zvednutí stroje:
+    cool_term_window[0].activate()
     pyautogui.hotkey('ctrl', 't')
 
     time.sleep(1)

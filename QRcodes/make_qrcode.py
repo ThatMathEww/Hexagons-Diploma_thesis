@@ -5,12 +5,12 @@ from PIL import Image
 # import json
 # import yaml
 
-output_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Friction\_qr_codes_names'
+output_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\obr'
 
-for i in range(1, 6):
+for i in range(1, 7):
     # Text nebo data, která chcete zakódovat do QR kódu
-    data = f"F05_{i:03d}"   # f"F04_{i:03d}"  # f"T02_{i:02d}-I_1s"  # "H02_01_12s"  # ".*CP*._N#3"
-    name = "qr_Friction_test_" + data  # "Measurement_" + data  # "calibration_point05"
+    data = f"H02_{i:02d}-I_10s_n"   # f"F04_{i:03d}"  # f"T02_{i:02d}-I_1s"  # "H02_{i:02d}_10s"  # ".*CP*._N#3"
+    name = "qr_Hex_test_" + data  # "Measurement_" + data  # "calibration_point05" # "qr_Friction_test_"
     short_name = data
 
     use_logo = False
