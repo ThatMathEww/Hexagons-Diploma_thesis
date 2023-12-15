@@ -7,9 +7,9 @@ from PIL import Image
 
 output_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\obr'
 
-for i in range(1, 7):
+for i in range(5, 7):
     # Text nebo data, která chcete zakódovat do QR kódu
-    data = f"H02_{i:02d}-I_10s_n"   # f"F04_{i:03d}"  # f"T02_{i:02d}-I_1s"  # "H02_{i:02d}_10s"  # ".*CP*._N#3"
+    data = f"H02_{i:02d}-III-max_12s_k"   # f"F04_{i:03d}"  # f"T02_{i:02d}-I_1s"  # "H02_{i:02d}_10s"  # ".*CP*._N#3"
     name = "qr_Hex_test_" + data  # "Measurement_" + data  # "calibration_point05" # "qr_Friction_test_"
     short_name = data
 

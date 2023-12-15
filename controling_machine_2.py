@@ -131,10 +131,10 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
         print("\n\033[31;1mChyba: Snímek nebyl pořízen.\033[0m")
         return
 
-    images = 1
-    cycler = True
+    print(f"\nNastavení kamery:\n\tObraz: {frame.shape[1]} x {frame.shape[0]}\n\tFPS: {int(cap.get(cv2.CAP_PROP_FPS))}")
 
-    _, frame = cap.read()  # Načtení snímku z kamery
+    images = 2
+    cycler = True
 
     _, frame = cap.read()  # Načtení snímku z kamery
 
@@ -143,8 +143,14 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
 
     command = f"MMDIC2 {command_distance} {command_period}"
 
+    _, frame = cap.read()  # Načtení snímku z kamery
+
+    # images.append(frame[y_limit:-y_limit, x_limit:-x_limit])
+    cv2.imwrite(os.path.join(output_folder, f"Frame_{0:03d}.jpg"), frame[y_limit:-y_limit, x_limit:-x_limit])
+
     toast = Notification(app_id="Controlling machine", title="Zahájení měření za 5s", msg="Neklikejte myší.",
-                         duration="short", )
+                         duration="short", icon=r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects'
+                                                r'\HEXAGONS\Hexagons-Diploma_thesis\machine_icon.png')
     toast.set_audio(audio.Default, loop=False)
     toast.show()
 
@@ -186,6 +192,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
 
     #####################################################################################################
     # Nastavení záznamu:
+    time.sleep(0.5)
     cool_term_window[0].activate()
     pyautogui.hotkey('ctrl', 'r')  # zahájení záznamu
 
@@ -229,8 +236,8 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
         current_time = time.time()
         if start_time + command_period <= current_time:
             # if "taken photo" in log_output:
-            _, frame_ = cap.read()  # Načtení snímku z kamery
-            cv2.imwrite(os.path.join(output_folder, f"Frame_{images + 1:04d}.jpg"),
+            _, frame = cap.read()  # Načtení snímku z kamery
+            cv2.imwrite(os.path.join(output_folder, f"Frame_{images:04d}.jpg"),
                         frame[y_limit:-y_limit, x_limit:-x_limit])
             images += 1
             # images.append(frame_[y_limit:-y_limit, x_limit:-x_limit])
@@ -255,7 +262,8 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
     time.sleep(1)
 
     toast = Notification(app_id="Controlling machine", title="Dokončení měření:", msg="Neklikejte myší.",
-                         duration="long", )
+                         duration="short", icon=r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects'
+                                                r'\HEXAGONS\Hexagons-Diploma_thesis\machine_icon.png')
     toast.set_audio(audio.Default, loop=False)
     toast.show()
 
@@ -264,6 +272,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
     cool_term_window = gw.getWindowsWithTitle("Untitled_0")
     if cool_term_window:
         # Zajistí, že okno bude na popředí
+        time.sleep(0.5)
         cool_term_window[0].activate()
         time.sleep(1)
     else:
@@ -273,11 +282,13 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
         while not cool_term_window:
             cool_term_window = gw.getWindowsWithTitle("Untitled_0")
 
+        time.sleep(0.5)
         cool_term_window[0].activate()
         pyautogui.press('enter')
         pyautogui.hotkey('ctrl', 'k')
         time.sleep(6)
 
+    cool_term_window[0].activate()
     pyautogui.hotkey('ctrl', 'shift', 'r')  # ukončení záznamu
 
     time.sleep(0.5)
@@ -362,11 +373,11 @@ def live_webcam(camera_index=None, width=1920, height=1080, cam_fps=60, camera=N
     else:
         cap = camera
 
-    ret, frame = cap.read()
+    ret, frame_ = cap.read()
     if not ret:
         end_program("\nNebyla pořízeno video z webkamery.")
 
-    h, w = frame.shape[:2]
+    h, w = frame_.shape[:2]
 
     if w != width or h != height:
         print("\n\033[31;1mNesouhlasí zadaný formát videa a pořízenou fotografií.\033[0m"
@@ -376,15 +387,15 @@ def live_webcam(camera_index=None, width=1920, height=1080, cam_fps=60, camera=N
 
     cv2.namedWindow("WebCam", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("WebCam", np.int32(0.7 * w), np.int32(0.7 * h))
-    cv2.imshow("WebCam", frame)
+    cv2.imshow("WebCam", frame_)
 
     while True:
         if cv2.getWindowProperty("WebCam", cv2.WND_PROP_VISIBLE) < 1:
             cv2.namedWindow("WebCam", cv2.WINDOW_NORMAL)
 
         cv2.resizeWindow("WebCam", np.int32(0.7 * w), np.int32(0.7 * h))
-        _, frame = cap.read()
-        cv2.imshow('WebCam', frame)
+        _, frame_ = cap.read()
+        cv2.imshow('WebCam', frame_)
 
         key = cv2.waitKey(1)  # Čekat na klávesu po dobu 1 ms
         if key == 27:
@@ -517,7 +528,7 @@ def main():
         make_measurement(camera_index=selected_camera_index, output_folder=folder_path_photos, txt_path=file_path_txt,
                          command_distance=measurement_distance, command_period=measurement_periods, x_limit=x_lim,
                          y_limit=y_lim, cam_width=camera_width, cam_height=camera_height, cam_fps=camera_fps,
-                         measurement_name=name)
+                         measurement_name=name, camera=capture)
 
         print("\n\033[34;1mChcete provést další měření?\033[0m")  #
         while True:
@@ -554,15 +565,15 @@ if __name__ == "__main__":
     output_photos = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos"
     output_folder_txt = r"C:\Users\matej\Desktop\mereni"
 
-    camera_width = 4032  # cam_width = 3840
-    camera_height = 3040  # cam_height = 2160
-    camera_fps = 10  # 100
+    camera_width = 2560  # cam_width = 3840
+    camera_height = 1440  # cam_height = 2160
+    camera_fps = 30  # 100
 
-    # 4032×3040@10fps; 3840×2160@20fps; 2592×1944@30fps; 2560×1440@30fps; 1920×1080@60fps; 1600×1200@50fps;
-    # 1280×960@100fps; 1280×760@100fps; 640×480@80fps
+    # 4032×3040@10 fps; 3840×2160@20 fps; 2592×1944@30 fps; 2560×1440@30 fps; 1920×1080@60 fps; 1600×1200@50 fps;
+    # 1280×960@100 fps; 1280×760@100 fps; 640×480@80 fps
 
-    measurement_distance = 2
-    measurement_periods = 5
+    measurement_distance = 30
+    measurement_periods = 12
 
     speed_mode = True
 
