@@ -133,7 +133,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
 
     print(f"\nNastavení kamery:\n\tObraz: {frame.shape[1]} x {frame.shape[0]}\n\tFPS: {int(cap.get(cv2.CAP_PROP_FPS))}")
 
-    images = 2
+    images = 1
     cycler = True
 
     _, frame = cap.read()  # Načtení snímku z kamery
@@ -237,7 +237,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
         if start_time + command_period <= current_time:
             # if "taken photo" in log_output:
             _, frame = cap.read()  # Načtení snímku z kamery
-            cv2.imwrite(os.path.join(output_folder, f"Frame_{images:04d}.jpg"),
+            cv2.imwrite(os.path.join(output_folder, f"Frame_{images:03d}.jpg"),
                         frame[y_limit:-y_limit, x_limit:-x_limit])
             images += 1
             # images.append(frame_[y_limit:-y_limit, x_limit:-x_limit])
@@ -248,6 +248,9 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
                 # print("čtení souboru:", f)
                 if "HOTOVO" == file.readlines()[-1].strip():
                     cycler = False
+                    _, frame = cap.read()
+                    cv2.imwrite(os.path.join(output_folder, f"Frame_{images:03d}.jpg"),
+                                frame[y_limit:-y_limit, x_limit:-x_limit])
                     break
 
             # if os.path.getsize(txt_path) > 0:
@@ -385,6 +388,11 @@ def live_webcam(camera_index=None, width=1920, height=1080, cam_fps=60, camera=N
     else:
         print(f"\nNastavení kamery:\n\tObraz: {w} x {h}\n\tFPS: {int(cap.get(cv2.CAP_PROP_FPS))}")
 
+    # frame_ = frame_[500:550, 1200:1250]
+    # h, w = frame_.shape[0] * 20, frame_.shape[1] * 20
+    h, w = frame_.shape[:2]
+
+
     cv2.namedWindow("WebCam", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("WebCam", np.int32(0.7 * w), np.int32(0.7 * h))
     cv2.imshow("WebCam", frame_)
@@ -396,6 +404,7 @@ def live_webcam(camera_index=None, width=1920, height=1080, cam_fps=60, camera=N
         cv2.resizeWindow("WebCam", np.int32(0.7 * w), np.int32(0.7 * h))
         _, frame_ = cap.read()
         cv2.imshow('WebCam', frame_)
+        # cv2.imshow('WebCam', frame_[500:550, 1200:1250])
 
         key = cv2.waitKey(1)  # Čekat na klávesu po dobu 1 ms
         if key == 27:
