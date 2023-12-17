@@ -4,7 +4,7 @@ def execute_command(port, command):
     else:
         port.write(command.encode())
         print("Příkaz odeslán:", command)
-        time.sleep(1)
+        time.sleep(2)
         start_time, received_data = time.time(), None
         while True:
             received_data = port.readline().decode().strip()
@@ -15,7 +15,7 @@ def execute_command(port, command):
                 else:
                     print("\t", received_data)
 
-                time.sleep(1)
+                time.sleep(0.5)
                 break
             elif start_time + command_time_limit < time.time():
                 print(f"\tChyba: nepřijetí odpovědi příkazu s časovým limitem {command_time_limit // 60} minut.")
@@ -28,25 +28,29 @@ def execute_command_and_measure(port, command, camera, x_lim, y_lim):
         return None
     else:
         images = []
+        cap_stamps = []
         frame, _, received_data = None, None, None
+        cap_time: float = time.time()
 
         start_time = time.time()
         port.write(command.encode())
         print(f"\033[37mPříkaz odeslán: {command}\033[0m")
-        time.sleep(1)
+        time.sleep(0.2)
         while True:
+            cap_time = time.time()
             _, frame = camera.read()  # Načtení snímku z kamery
             images.append(frame[y_lim:-y_lim, x_lim:-x_lim])
+            cap_stamps.append(cap_time)
             received_data = port.readline().decode().strip()
 
             if received_data != command and received_data != "":
                 print(f"\t\033[37m{received_data}\033[0m")
                 break
-            elif start_time + command_time_limit < time.time():
+            elif start_time + command_time_limit < cap_time:
                 print("\nChyba: nepřijetí odpovědi posunu s měřením,"
                       f" s časovým limitem {command_time_limit // 60} minut.")
                 return None
-    return images
+    return images, cap_stamps
 
 
 def get_available_cameras(cam_type=None):
@@ -232,14 +236,18 @@ def make_measurement(camera_index, port, output_folder, x_limit=1, y_limit=1, di
 
     counter, moment = 0, None
     total_time = time.time()
+    cur_time: float = time.time()
     while True:
         photos = []
+        cap_times = []
         start_time = time.time()
         while True:
+            cur_time = time.time()
             _, frame = cap.read()  # Načtení snímku z kamery
             photos.append(frame[y_limit:-y_limit, x_limit:-x_limit])
+            cap_times.append(cur_time)
 
-            if start_time + time_span <= time.time():
+            if start_time + time_span <= cur_time:
                 break
 
         match = cv2.matchTemplate(photos[-1], template, cv2.TM_CCOEFF_NORMED)
@@ -249,10 +257,10 @@ def make_measurement(camera_index, port, output_folder, x_limit=1, y_limit=1, di
         if np.max(match) < 0.75:
             break
         else:
-            time.sleep(1)
+            time.sleep(0.1)
             print(f"\033[37mPosun číslo: \033[0m{counter}")
             counter += 1
-            photos = execute_command_and_measure(port, f"M {distance} {speed}", cap, x_limit, y_limit)
+            photos, cap_times = execute_command_and_measure(port, f"M {distance} {speed}", cap, x_limit, y_limit)
 
             if photos is None:
                 print("\n\033[31;1mChyba pořízeny fotografie během měření.\033[0m")
@@ -272,10 +280,17 @@ def make_measurement(camera_index, port, output_folder, x_limit=1, y_limit=1, di
 
     # Uvolnění kamery a uložení fotek
     execute_command(port, f"M -{distance * counter} 1")
+
     """output_folder = os.path.join(output_folder, f"photos_output_{measurement_name}")
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)"""
-    [cv2.imwrite(os.path.join(output_folder, f"cam_frame_{i + 1: 03d}.png"), frame) for i, frame in enumerate(photos)]
+
+    [cv2.imwrite(os.path.join(output_folder, f"cam_frame_{i + 1:03d}.png"), frame) for i, frame in enumerate(photos)]
+    if len(cap_times) == len(photos):
+        [os.utime(os.path.join(output_folder, f"cam_frame_{i + 1:03d}.png"), (c_time, c_time)) for i, c_time in
+         enumerate(cap_times)]
+    else:
+        print("\n\033[31;1mChyba počtu snímků a časů.\033[0m")
 
     information = dict(moment=str(moment),
                        width=int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
@@ -416,7 +431,7 @@ def manage_cameras(port):
     ser_port = None
     try:
         ser_port = Serial(port, baudrate=9600, timeout=1)
-        time.sleep(2)
+        time.sleep(1)
         data, empty_count = None, 0
         print("\n")
         while data != "Testing pin: 21 ON OFF":

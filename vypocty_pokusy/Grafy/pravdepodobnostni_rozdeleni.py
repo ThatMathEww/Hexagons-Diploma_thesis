@@ -1,12 +1,38 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 
 
-def gradient_bars(bars):
-    # color = np.atleast_2d(np.linspace(1, 0, 256)).T
-    grad = np.clip(np.atleast_2d(np.linspace(0.85, 0.15, 256)).T, a_min=0, a_max=1)
-    color = np.tile(plt.cm.colors.to_rgba('dodgerblue'), (grad.shape[0], 1, 1))
-    color[:, :, -1] = grad
+def gradient_bars(bars, x_data, y_data, up_alpha=0.9, down_alpha=0.15, bin_alpha=0.9, line_color='tab:blue',
+                  grad_num=256, line_alpha=0.85, line_width=1.1, multiple_colors=True, multi_grad_colors=True,
+                  equal_grad_color=True, c_map: str = None):
+    grad = np.clip(np.atleast_2d(np.linspace(up_alpha, down_alpha, 256)).T, a_min=0, a_max=1)
+
+    if multiple_colors:
+        if equal_grad_color:
+            center = x_data[np.argmax(y_data)]
+            # Najít největší hodnotu
+            diff = np.max(np.abs(x_data - center))
+            min_diff = center - diff
+            max_diff = center + diff
+        else:
+            min_diff = np.min(x_data)
+            max_diff = np.max(x_data)
+
+        if c_map is not None:
+            color_map = plt.cm.get_cmap(c_map)  # 'Blues'
+        else:
+            colors = ['#b9e5fb', '#8ed8f8', '#6dcff6', '#20c4f4', '#00b9f2', '#00aeef', '#00a1e4', '#0095da', '#0083ca']
+            color_map = LinearSegmentedColormap.from_list("custom", colors + colors[::-1][1:],
+                                                          N=max(grad_num, len(colors) * 2))
+
+        sm = plt.cm.ScalarMappable(cmap=color_map)  # Inicializace ScalarMappable
+        sm.set_clim(min_diff, max_diff)  # Nastavení rozsahu hodnot pro ScalarMappable
+    else:
+        # color = np.atleast_2d(np.linspace(1, 0, 256)).T
+        color = np.tile(plt.cm.colors.to_rgba('dodgerblue'), (grad.shape[0], 1, 1))
+        color[:, :, -1] = grad
+
     bar_ax = bars[0].axes
     lim = bar_ax.get_xlim() + bar_ax.get_ylim()
     ax.axis(lim)
@@ -16,9 +42,20 @@ def gradient_bars(bars):
         b.set_visible(False)
         x_b, y_b = b.get_xy()
         w_b, h_b = b.get_width(), b.get_height()
-        bar_ax.imshow(color, extent=[x_b, x_b + w_b, y_b, y_b + h_b], aspect="auto", zorder=0, alpha=0.5)
+
+        if multiple_colors:
+            if multi_grad_colors:
+                # Převedení hodnot na barvy pomocí ScalarMappable
+                color_gradient = sm.to_rgba(np.linspace(x_b, x_b + w_b, 256))
+                color = np.tile(color_gradient.T[:, :, np.newaxis], grad.shape[0]).T  # barevný přechod v rámci binu
+            else:
+                color = np.tile(sm.to_rgba((x_b + (x_b + w_b)) / 2), (grad.shape[0], 1, 1))  # barvy pro danou hodnotu
+            color[:, :, -1] = grad
+
+        bar_ax.imshow(color, extent=[x_b, x_b + w_b, y_b, y_b + h_b], aspect="auto", zorder=3, alpha=bin_alpha)
         # cmap='Blues'
-        bar_ax.add_patch(plt.Rectangle((x_b, y_b), w_b, h_b, edgecolor='tab:blue', facecolor='none', alpha=0.85))
+        bar_ax.add_patch(plt.Rectangle((x_b, y_b), w_b, h_b, edgecolor=line_color, linewidth=line_width,
+                                       facecolor='none', alpha=line_alpha, zorder=4))
 
 
 # Nastavení parametrů gausovského rozdělení
@@ -36,8 +73,7 @@ mean = np.mean(data)
 fig, ax = plt.subplots()
 
 # Vykreslení histogramu dat
-bar = plt.hist(data, bins=30, density=False, label='Hustota pravděpodobnosti')
-gradient_bars(bar[2])
+bar = plt.hist(data, bins=20, density=False, label='Hustota pravděpodobnosti')
 
 # Vykreslení teoretického gausovského rozdělení
 # x = np.linspace(mean - 3 * std, mean + 3 * std, 100)
@@ -46,11 +82,13 @@ pdf = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / std) ** 2)
 # pdf = (((pdf - np.min(pdf)) / (np.max(pdf) - np.min(pdf)))) * np.max(bar[0])
 pdf *= (np.max(bar[0]) / np.max(pdf))
 
+gradient_bars(bar[2], x, pdf)
+
 median_value = x[np.argmax(pdf)]
 print(f"\nStřední hodnota křivky: {median_value:.4f}\n"
       f"Medián dat: {np.median(data):.4f}")
 
-plt.plot(x, pdf, '#28418C', label='Teoretická hustota pravděpodobnosti')
+plt.plot(x, pdf, '#28418C', label='Teoretická hustota pravděpodobnosti', zorder=5)
 
 # Přidání popisků
 plt.title('Gausovské pravděpodobnostní rozdělení')
@@ -78,6 +116,9 @@ addition_y = (max_y - min_y) * 0.05
 ax.set_xlim(min_x - addition_x, max_x + addition_x)
 ax.set_ylim(0 if min_y == 0 else min_y - addition_y, max_y + addition_y)
 plt.yticks(np.arange(min_ax_y, max_ax_y + 1, 1.0))
+
+# ax.set(axisbelow=True)
+ax.grid(axis='y', zorder=0, alpha=0.5)
 
 # Zobrazení grafu
 plt.show()
