@@ -73,7 +73,7 @@ mean = np.mean(data)
 fig, ax = plt.subplots()
 
 # Vykreslení histogramu dat
-bar = plt.hist(data, bins=20, density=False, label='Hustota pravděpodobnosti')
+bar = plt.hist(data, bins=15, density=False)
 
 # Vykreslení teoretického gausovského rozdělení
 # x = np.linspace(mean - 3 * std, mean + 3 * std, 100)
@@ -82,23 +82,39 @@ pdf = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / std) ** 2)
 # pdf = (((pdf - np.min(pdf)) / (np.max(pdf) - np.min(pdf)))) * np.max(bar[0])
 pdf *= (np.max(bar[0]) / np.max(pdf))
 
+
 gradient_bars(bar[2], x, pdf)
 
-median_value = x[np.argmax(pdf)]
-print(f"\nStřední hodnota křivky: {median_value:.4f}\n"
-      f"Medián dat: {np.median(data):.4f}")
+max_value = x[np.argmax(pdf)]
+median_value = np.median(data)
+mean_value = np.mean(data)
+std_value = np.std(data)
+print(f"\nStřední hodnota křivky: {max_value:.4f}\n"
+      f"Medián dat: {median_value:.4f}\n"
+      f"STD dat: {std_value:.4f}\n"
+      f"Mean dat: {mean_value:.4f}\n")
 
-plt.plot(x, pdf, '#28418C', label='Teoretická hustota pravděpodobnosti', zorder=5)
+ax.plot(x, pdf, '#28418C', label='Probability', zorder=6)
+
+ax.vlines(mean_value, 0, np.max(pdf), colors='black', linestyles='dashed', label='Mean', zorder=5)
+# Vybarvení oblasti pod křivkou od 0.5 do 1
+plt.fill_between(x, pdf, where=[(mean_value - std_value <= i <= mean_value + std_value) for i in x],
+                 color='skyblue', alpha=1, label='Std', zorder=1)
+
+condition = mean_value - std_value <= x
+ax.vlines(x[condition][0], 0, pdf[condition][0], colors='tab:blue', linewidth=0.8, zorder=5)
+condition = mean_value + std_value >= x
+ax.vlines(x[condition][-1], 0, pdf[condition][-1], colors='tab:blue', linewidth=0.8, zorder=5)
 
 # Přidání popisků
-plt.title('Gausovské pravděpodobnostní rozdělení')
-plt.xlabel('Hodnota')
-plt.ylabel('Četnost')  # 'Hustota pravděpodobnosti'
+# plt.title('Gausovské pravděpodobnostní rozdělení')
+plt.xlabel('Angle [°]')
+plt.ylabel('Frequency')  # 'Hustota pravděpodobnosti'
 box = ax.get_position()
 ax.set_position([box.x0, box.y0 + box.height * 0.15, box.width, box.height * 0.85])
 
 h, n = ax.get_legend_handles_labels()
-h[0] = plt.Rectangle((0, 0), 1, 1, fc="tab:blue", alpha=0.7)  # Vytvoření obdélníku pro značku
+# h[0] = plt.Rectangle((0, 0), 1, 1, fc="tab:blue", alpha=0.7)  # Vytvoření obdélníku pro značku
 # plt.Line2D((0, 0), (1, 1), color="tab:blue", alpha=0.75)
 # Put a legend below current axis
 ax.legend(h, n, loc='upper center', bbox_to_anchor=(0.5, -0.15), fancybox=True, shadow=True, ncol=5)

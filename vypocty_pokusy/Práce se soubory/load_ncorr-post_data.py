@@ -53,13 +53,13 @@ plt.title(f"{column_name}: {i} photo")
 
 
 # Předpokládejme, že máte vektor x, vektor y a matici hodnot Z
-x = np.linspace(0, 10, 100)
-y = np.linspace(0, 5, 50)
+x = np.arange(0, 10000, 100)
+y = np.arange(0, 5000, 50)
 X, Y = np.meshgrid(x, y)
 Z = np.sin(X) * np.cos(Y)  # Předpokládaná matice hodnot
 
 # Předpokládaná maska (můžete ji nahradit vaší vlastní maskou)
-mask = (X + Y) < 5
+mask = (0.1 < np.sin(X)) & (np.sin(X) < 0.9) & (0.1 < np.cos(Y)) & (np.cos(Y) < 0.9)
 
 # Oříznutí hodnot podle masky
 Z_masked = np.ma.masked_where(mask, Z)
@@ -70,7 +70,7 @@ plt.pcolormesh(X, Y, Z_masked, cmap='viridis')
 plt.colorbar(label='Hodnota')
 
 # Přidání horizontální mřížky (např. na hodnotě y=2)
-plt.axhline(y=2, color='red', linestyle='--', linewidth=2, label='Horizontal Grid')
+plt.axhline(y=2000, color='red', linestyle='--', linewidth=2, label='Horizontal Grid')
 
 plt.xlabel('X')
 plt.ylabel('Y')
