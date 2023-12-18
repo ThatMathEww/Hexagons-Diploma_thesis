@@ -99,12 +99,12 @@ ax.plot(x, pdf, '#28418C', label='Probability', zorder=6)
 ax.vlines(mean_value, 0, np.max(pdf), colors='black', linestyles='dashed', label='Mean', zorder=5)
 # Vybarvení oblasti pod křivkou od 0.5 do 1
 plt.fill_between(x, pdf, where=[(mean_value - std_value <= i <= mean_value + std_value) for i in x],
-                 color='skyblue', alpha=1, label='Std', zorder=1)
+                 color='darkcyan', alpha=0.5, label='Std', zorder=1)
 
 condition = mean_value - std_value <= x
-ax.vlines(x[condition][0], 0, pdf[condition][0], colors='tab:blue', linewidth=0.8, zorder=5)
+ax.vlines(x[condition][0], 0, pdf[condition][0], colors='teal', linewidth=0.8, zorder=5)
 condition = mean_value + std_value >= x
-ax.vlines(x[condition][-1], 0, pdf[condition][-1], colors='tab:blue', linewidth=0.8, zorder=5)
+ax.vlines(x[condition][-1], 0, pdf[condition][-1], colors='teal', linewidth=0.8, zorder=5)
 
 # Přidání popisků
 # plt.title('Gausovské pravděpodobnostní rozdělení')

@@ -12,7 +12,9 @@ for s in settings:
     capture.set(cv2.CAP_PROP_FPS, s[2])
 
     _, frame = capture.read()  # Načtení snímku z kamery
+    _, frame = capture.read()  # Načtení snímku z kamery
 
-    # images.append(frame[y_limit:-y_limit, x_limit:-x_limit])
-    cv2.imwrite(f"Frame_{s}.jpg", frame)
+    # cv2.imwrite(f"makrobloking_photos/Frame_new_{s}.jpg", frame)
+    # cv2.imwrite(f'makrobloking_photos/Frame_uncompressed_{s}.png', frame, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+    cv2.imwrite(f'makrobloking_photos/Frame_q10_{s}.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 10])
     capture.release()
