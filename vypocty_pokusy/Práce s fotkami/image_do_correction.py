@@ -4,13 +4,14 @@ import os
 import yaml
 import glob
 
-with open('calibration.yaml') as f:
+n = "2560x1440"  # "1280x960" # "1920x1080" # "2560x1440"
+with open(f'calibration_{n}.yaml') as f:
     loaded_dict = yaml.safe_load(f)
 
 mtx_loaded = np.array(loaded_dict.get('camera_matrix'))
 dist_loaded = np.array(loaded_dict.get('dist_coeff'))
 
-images = glob.glob('./*.jpg')
+images = glob.glob(f'./{n}/*.jpg')
 
 for frame in images:
     img = cv2.imread(frame)
@@ -18,6 +19,8 @@ for frame in images:
     img_undistorted = cv2.undistort(img, mtx_loaded, dist_loaded, None, mtx_loaded)
 
     # Zobrazení originálního a opraveného obrazu
+    cv2.namedWindow('Original', cv2.WINDOW_NORMAL)
+    cv2.namedWindow('Modified', cv2.WINDOW_NORMAL)
     cv2.imshow('Original', img)
     cv2.imshow('Modified', img_undistorted)
     cv2.waitKey(0)

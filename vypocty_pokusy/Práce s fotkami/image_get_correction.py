@@ -6,6 +6,11 @@ import yaml
 
 # Defining the dimensions of checkerboard
 CHECKERBOARD = (6, 9)
+n = "1280x960"   # "1280x960" # "1920x1080" # "2560x1440"
+
+output_file = f"calibration_{n}.yaml"
+images = glob.glob(f'./{n}/*.jpg')
+
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
 # Creating vector to store vectors of 3D points for each checkerboard image
@@ -19,7 +24,6 @@ objp[0, :, :2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2)
 prev_img_shape = None
 
 # Extracting path of individual image stored in a given directory
-images = glob.glob('./corr_imgs/*.jpg')
 for frame in images:
     img = cv2.imread(frame)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -41,10 +45,47 @@ for frame in images:
 
         img_points.append(corners2)
 
+        im = img.copy()
+        # Nastavte tloušťku čáry
+        line_thickness = 3
+
+        # Nastavte velikost a tloušťku markeru
+        marker_size = 20
+        marker_thickness = 2
+
+        # Nastavte velikost a tloušťku kolečka
+        circle_radius = 10
+        circle_thickness = 2
+
+        # Vykreslete čáry spojující rohy
+        for i in range(len(corners) - 1):
+            start_point = np.int32(np.round(corners[i][0]))
+            end_point = np.int32(np.round(corners[(i + 1) % len(corners)][0]))
+            cv2.line(im, start_point, end_point, (255, 144, 30), line_thickness)
+
+            cv2.circle(im, start_point, circle_radius, (30, 144, 255), thickness=circle_thickness)
+
+            # Vykreslete marker pro každý roh
+            cv2.drawMarker(im, start_point, (30, 144, 255), markerType=cv2.CALIB_CB_MARKER, markerSize=marker_size,
+                           thickness=marker_thickness)
+
+        cv2.drawMarker(im, end_point, (30, 144, 255), markerType=cv2.CALIB_CB_MARKER, markerSize=marker_size,
+                       thickness=marker_thickness)
+
+        cv2.circle(im, end_point, circle_radius, (30, 144, 255), thickness=circle_thickness)
+        # cv2.imwrite(f"chess_.png", im)
+        # Zobrazte výsledek
+        # cv2.imshow('Vykreslené rohy', im)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+
         # Draw and display the corners
         img = cv2.drawChessboardCorners(img, CHECKERBOARD, corners2, ret)
 
+    cv2.namedWindow('img', cv2.WINDOW_NORMAL)
+    cv2.namedWindow('corners', cv2.WINDOW_NORMAL)
     cv2.imshow('img', img)
+    cv2.imshow('corners', im)
     cv2.waitKey(0)
 
 cv2.destroyAllWindows()
@@ -62,7 +103,6 @@ ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, gray.
 data = {'camera_matrix': np.asarray(mtx).tolist(), 'dist_coeff': np.asarray(dist).tolist()}
 
 i = 1
-output_file = "calibration.yaml"
 while os.path.exists(output_file):
     output_file = f"calibration_{i}.yaml"
     i += 1
