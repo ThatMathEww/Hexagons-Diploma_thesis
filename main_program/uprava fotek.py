@@ -732,7 +732,7 @@ if __name__ == '__main__':
 
     template_path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\t\t01_max'
     template_img_index = 2
-    type_ = "T01"
+    type_ = "M01"
 
     img_format = 'JPG'
 
