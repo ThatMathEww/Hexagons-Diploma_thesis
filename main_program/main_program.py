@@ -219,14 +219,11 @@ def mark_points_on_canvas(index, window_name="Přidání bodů", graph_title="Ma
 
     # Zobrazení obrázku v matplotlib
     if index == 1:
-        # Definice vrcholů prvního mnohoúhelníku
-        vertices1 = np.int32(np.round(points_pos))
-
         # Vytvoření prázdných mask pro obě oblasti
         mask = np.zeros(img.shape[:2], dtype=np.uint8)
 
         # Vykreslení mnohoúhelníků na maskách
-        cv2.fillPoly(mask, [vertices1], 255)
+        [cv2.fillPoly(mask, [np.int32(np.round(p))], 255) for p in points_pos]
 
         # Aplikace mask na obraz
         masked_image1 = img & mask
@@ -250,7 +247,7 @@ def mark_points_on_canvas(index, window_name="Přidání bodů", graph_title="Ma
     axes.autoscale(True)
     plt.show()
 
-    if index == 2 or index == 3 or index == 4:
+    if 2 < index <= 4:
         try:
             sorted_points = reorder(marked_points)
 
@@ -264,6 +261,8 @@ def mark_points_on_canvas(index, window_name="Přidání bodů", graph_title="Ma
         except (ValueError, IndexError) as e:
             print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba v označení bodů.\n\t➤ POPIS: {e}\n\nZadejte znovu")
             return []
+    elif index == 2:
+        marked_points = sorted(marked_points, key=lambda point: point[0])
 
     return marked_points
 
@@ -811,7 +810,7 @@ def mark_ellipse_on_canvas(window_name="Adding points", graph_title="Mark points
 
 def reorder(points):
     if len(points) < 3:
-        return np.array([])
+        return points
 
     points = np.float64(points)
     # Vypočítání středu bodů
@@ -1067,12 +1066,13 @@ def set_roi(finish_marking=False, just_load=False):
             rectangle_region //= 2
             cv2.rectangle(masked_img, points[0], points[1], (255, 255, 255), 2)
             cv2.rectangle(masked_img, points[0], points[1], 0, 1)
-    if (isinstance(points_pos[0], np.ndarray) and isinstance(points_pos, list) and
-            len(points_pos[0]) > 2 and len(points_pos) > 0):
-        mask = np.zeros(masked_img.shape[:2], dtype=np.uint8)
-        cv2.fillPoly(mask, [points_pos], 255)
-        masked_img = cv2.addWeighted((masked_img * 0.3).astype(np.uint8), 1.0,
-                                     cv2.bitwise_and(masked_img, masked_img, mask=mask), 0.5, 0)
+    if (isinstance(points_pos, list) and len(points_pos) > 0 and isinstance(points_pos[0], np.ndarray) and
+            len(points_pos[0]) > 2):
+        for points in points_pos:
+            mask = np.zeros(masked_img.shape[:2], dtype=np.uint8)
+            cv2.fillPoly(mask, [points], 255)
+            masked_img = cv2.addWeighted((masked_img * 0.3).astype(np.uint8), 1.0,
+                                         cv2.bitwise_and(masked_img, masked_img, mask=mask), 0.5, 0)
     if isinstance(points_neg, np.ndarray) and len(points_neg) > 2:
         mask = np.zeros(masked_img.shape[:2], dtype=np.uint8)
         cv2.fillPoly(mask, [points_neg], 255)
@@ -1180,7 +1180,7 @@ def set_roi(finish_marking=False, just_load=False):
         file.close()
         return None, None
 
-    if (((not isinstance(points_pos[0], np.ndarray) and not isinstance(points_pos, list)) and
+    if (((not isinstance(points_pos, list) or len(points_pos) == 0) and
          mark_points_by_hand) or (isinstance(points_pos[0], np.ndarray) and len(points_pos[0]) == 0 and
                                   len(points_pos) == 0 and
                                   any((do_calculations['Do Rough detection'], do_calculations['Do Fine detection'],
@@ -1409,6 +1409,7 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
     triangle_centers = []
     triangle_points = []
     triangle_indexes = []
+    mesh = []
 
     with pygmsh.occ.Geometry() as geom:
         geom.characteristic_length_max = mesh_size
@@ -1437,14 +1438,15 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
 
                 geom.boolean_difference(poly1, poly2)
 
-            mesh = geom.generate_mesh(dim=2)
+            m = geom.generate_mesh(dim=2)
 
             if printout:
                 print("\n\tTriangulation is done.\n")
 
-            triangle_centers.append(np.mean(mesh.points[mesh.get_cells_type("triangle")][:, :, :2], axis=1))
-            triangle_points.append(mesh.points)
-            triangle_indexes.append(mesh.get_cells_type("triangle"))
+            triangle_centers.append(np.mean(m.points[m.get_cells_type("triangle")][:, :, :2], axis=1))
+            triangle_points.append(m.points)
+            triangle_indexes.append(m.get_cells_type("triangle"))
+            mesh.append(m)
 
     if printout:
         print("\tVytvořeno", np.sum([len(c) for c in triangle_centers]), "elementů.")
@@ -1484,7 +1486,7 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
         # Obraz barevných elementů
         # Vykreslení všech trojúhelníků
         for i in range(n):
-            [ax2.triplot(mesh.points[cell][:, 0], mesh.points[cell][:, 1]) for cell in triangle_indexes[i]]
+            [ax2.triplot(triangle_points[i][cell, 0], triangle_points[i][cell, 1]) for cell in triangle_indexes[i]]
             """ax2.scatter(triangle_centers[:, 0], triangle_centers[:, 1],
                         s=20,  # Velikost bodů
                         c='orange',  # Barva bodů
@@ -1584,7 +1586,7 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
 
     if not isinstance(mask1, np.ndarray):
         mask1 = np.zeros(gray1.shape[:2], dtype=np.uint8)
-        cv2.fillPoly(mask1, [points_pos], 255)
+        [cv2.fillPoly(mask1, [np.int32(np.round(p))], 255) for p in points_pos]
         try:
             cv2.fillPoly(mask1, [points_neg], 0)
         except cv2.error:
@@ -1614,7 +1616,7 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
 
     if auto_crop and not isinstance(mask2, np.ndarray):
         mask2 = np.zeros(gray2.shape[:2], dtype=np.uint8)
-        if (isinstance(shift_start, (np.ndarray, list, tuple)) and
+        if (isinstance(shift_start, (np.ndarray, list, tuple)) and len(shift_start) > 0 and
                 isinstance(current_shift,
                            (int, float, np.int16, np.int32, np.int64, np.float16, np.float32, np.float64))):
             if not isinstance(shift_start, tuple):
@@ -1622,7 +1624,9 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
             shift_start = np.int32(np.round(shift_start))
             cv2.rectangle(mask2, (shift_start[0, 0], np.int32(np.round(shift_start[0, 1] + current_shift))),
                           (shift_start[1, 0], shift_start[1, 1]), 255, -1)
-        mask2 = cv2.bitwise_and(make_eroded_mask(photo=gray2), mask2)
+            mask2 = cv2.bitwise_and(make_eroded_mask(photo=gray2), mask2)
+        else:
+            mask2 = make_eroded_mask(photo=gray2)
 
         if state == 0:
             print("\n\tChcete zobrazit oříznutou fotografii?")
@@ -1787,14 +1791,14 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
             # matching_indices = [m.queryIdx for m in good_matches]
 
             # Vytvoření seznamu souřadnic odpovídajících good_matches
-            matched_keypoints1 = [selected_keypoints[m.queryIdx].pt for m in good_matches]
-            matched_keypoints2 = [keypoints2[m.trainIdx].pt for m in good_matches]
+            # matched_keypoints1 = [selected_keypoints[m.queryIdx].pt for m in good_matches]
+            # matched_keypoints2 = [unique_keypoints1[m.trainIdx].pt for m in good_matches]
 
             # Převod obrázku z BGR do RGB pro použití s Matplotlib
             image_rgb = cv2.cvtColor(gray1, cv2.COLOR_BGR2RGB)
 
             # Vykreslení bodů na obrázku
-            for point in matched_keypoints1:
+            for point in [kp.pt for kp in unique_keypoints1][:limit_of_points]:  # matched_keypoints1:
                 plt.plot(point[0], point[1], 'ro', markersize=5)
 
             # Zobrazení obrázku s vykreslenými body
@@ -1804,8 +1808,8 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
             plt.show()
 
             # Vykreslení shod na obrazu
-            matched_image = cv2.drawMatches(gray1, selected_keypoints, gray2, keypoints2, good_matches, None,
-                                            flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+            matched_image = cv2.drawMatches(gray1, selected_keypoints, gray2, keypoints2_sift, good_matches,
+                                            None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 
             # Zobrazení výsledku
             cv2.namedWindow('Matched image', cv2.WINDOW_NORMAL)
@@ -1948,7 +1952,7 @@ def results_adjustment(result, old_center, limit, mesh, upper_area_cor=None):
             success = False
 
         if success:
-            transformed_data = cv2.perspectiveTransform(old_center[i].reshape(-1, 1, 2), matrix).reshape(1, 2)
+            transformed_data = cv2.perspectiveTransform(old_center[i].reshape(-1, 1, 2), matrix).reshape(-1, 2)
             new_center = np.append(new_center, transformed_data, axis=0)
         else:
             # Definice kružnic
@@ -2231,24 +2235,26 @@ def rough_calculation(mesh, centers):
 
         gray2 = load_photo(img_index=i, color_type=photo_type)
 
-        key_points, end_marks = point_locator(mesh=mesh, shift_start=points_max, state=i,
-                                              current_shift=(
-                                                      correlation_area_points_all[i][0][0, 1] - points_cor[0][0, 1]),
-                                              n_features=set_n_features,
-                                              n_octave_layers=set_n_octave_layers,
-                                              contrast_threshold=set_contrast_threshold,
-                                              edge_threshold=set_edge_threshold,
-                                              sigma=set_sigma)
+        for j, current_mesh in enumerate(mesh):
+            key_points, end_marks = point_locator(mesh=current_mesh, shift_start=points_max, state=i,
+                                                  current_shift=(
+                                                          correlation_area_points_all[i][0][0, 1] - points_cor[0][
+                                                      0, 1]),
+                                                  n_features=set_n_features,
+                                                  n_octave_layers=set_n_octave_layers,
+                                                  contrast_threshold=set_contrast_threshold,
+                                                  edge_threshold=set_edge_threshold,
+                                                  sigma=set_sigma)
 
-        triangle_vertices, triangle_centers, triangle_indexes, wrong_points_indexes = results_adjustment(
-            key_points, centers, end_marks, mesh, correlation_area_points_all[i])
+            triangle_vertices, triangle_centers, triangle_indexes, wrong_points_indexes = results_adjustment(
+                key_points, centers[j], end_marks, current_mesh, correlation_area_points_all[i])
 
-        triangle_vertices_all.append(triangle_vertices)  # n,2
-        triangle_centers_all.append(triangle_centers)  # n,2
-        triangle_indexes_all.append(triangle_indexes)  # n,3
-        wrong_points_indexes_all.append(wrong_points_indexes)  # n
-        key_points_all.append(key_points)  # n,4 => x_old, y_old, x_new, y_new
-        end_marks_all.append(end_marks)  # n
+            triangle_vertices_all.append(triangle_vertices)  # n,2
+            triangle_centers_all.append(triangle_centers)  # n,2
+            triangle_indexes_all.append(triangle_indexes)  # n,3
+            wrong_points_indexes_all.append(wrong_points_indexes)  # n
+            key_points_all.append(key_points)  # n,4 => x_old, y_old, x_new, y_new
+            end_marks_all.append(end_marks)  # n
 
         print(f"\tCelkový čas: {time.time() - start__time:.2f}")
 
@@ -2925,14 +2931,16 @@ def finding_points():
         if 'key_points_all' not in globals():
             for j in range(tot_im):
                 global set_n_features, set_n_octave_layers, set_contrast_threshold, set_edge_threshold, set_sigma
-                key_points, end_marks = point_locator(mesh=divide_image(points_pos, points_neg, size)[0], state=j,
-                                                      n_features=set_n_features,
-                                                      n_octave_layers=set_n_octave_layers,
-                                                      contrast_threshold=set_contrast_threshold,
-                                                      edge_threshold=set_edge_threshold,
-                                                      sigma=set_sigma)
-                key_points_all.append(key_points)
-                end_marks_all.append(end_marks)
+                mesh = divide_image(points_pos, points_neg, size)[0]
+                for m in mesh:
+                    key_points, end_marks = point_locator(mesh=m, state=j,
+                                                          n_features=set_n_features,
+                                                          n_octave_layers=set_n_octave_layers,
+                                                          contrast_threshold=set_contrast_threshold,
+                                                          edge_threshold=set_edge_threshold,
+                                                          sigma=set_sigma)
+                    key_points_all.append(key_points)
+                    end_marks_all.append(end_marks)
 
         for point_to_track, tracking_area in points_track[-1:]:  # TODO potom změnit na celý seznam
             # points_inside_polygon
@@ -3283,14 +3291,16 @@ def point_tracking_calculation(use_correlation=True, interpolate_new_points=Fals
     if 'key_points_all' not in globals():
         for j in range(tot_im):
             global set_n_features, set_n_octave_layers, set_contrast_threshold, set_edge_threshold, set_sigma
-            key_points, end_marks = point_locator(mesh=divide_image(points_pos, points_neg, size)[0], state=j,
-                                                  n_features=set_n_features,
-                                                  n_octave_layers=set_n_octave_layers,
-                                                  contrast_threshold=set_contrast_threshold,
-                                                  edge_threshold=set_edge_threshold,
-                                                  sigma=set_sigma)
-            key_points_all.append(key_points)
-            end_marks_all.append(end_marks)
+            mesh = divide_image(points_pos, points_neg, size)[0]
+            for m in mesh:
+                key_points, end_marks = point_locator(mesh=m, state=j,
+                                                      n_features=set_n_features,
+                                                      n_octave_layers=set_n_octave_layers,
+                                                      contrast_threshold=set_contrast_threshold,
+                                                      edge_threshold=set_edge_threshold,
+                                                      sigma=set_sigma)
+                key_points_all.append(key_points)
+                end_marks_all.append(end_marks)
 
     if use_correlation or show_graphs:
         gray_1 = load_photo(0, photo_type)
@@ -3775,7 +3785,11 @@ def do_scale(img=None, auto_scale=True):
         else:
             print("\n\033[33;1;21mWARRNING\033[0m\n\tChyba načtení měřítka.\nZadejte ho ručně.")
 
-    dist = mark_points_on_canvas(2)
+    while True:
+        dist = mark_points_on_canvas(2)
+        if dist:
+            break
+
     print("Zadej vzdáolenost v bodů [mm]")
     while True:
         d_mm = askfloat("Vzdálenost", "Vzdálenost.\nZadejte číslo: ")
@@ -3787,7 +3801,7 @@ def do_scale(img=None, auto_scale=True):
             print(f"Vzdálenost ve špatném formátu, zadajete ji znovu.\n\tPOPIS: {ve}")
             pass
 
-    dist_px = (np.sqrt((dist[1, 0] - dist[0, 0]) ** 2 + (dist[1, 1] - dist[0, 1]) ** 2))
+    dist_px = (np.sqrt((dist[1][0] - dist[0][0]) ** 2 + (dist[1][1] - dist[0][1]) ** 2))
     scale = d_mm / dist_px
     print(f"\n\tMěřítko: {scale:.4f}")
 
@@ -5100,7 +5114,7 @@ def load_forces(current_name: str | bytes, zero_stage: int = 10, window_size_ave
         # Načtení CVS z dané cesty
         distances, forces, photo = load_csv(os.path.join(folder_measurements, "data_csv", csv_file_name))
 
-    print("\tData úspěšně načtena.")
+    print("\tUkončení načítání dat.")
 
     return distances, forces, photo
 
@@ -5646,7 +5660,10 @@ def make_angle_correction(image=None, image_to_warp=None, points_to_warp=None):
                 points[int(name.replace(".*CP*._N#", "")) - 1] = np.mean(obj.polygon, axis=0)
             point3, point4, point1, point2 = points
 
-        if point1 is None and point2 is None:
+        if (point1 is None and point2 is None) and not (point3 is None and point4 is None):
+            point1, point2, point3, point4 = point3, point4, None, None
+
+        if (point1 is None and point2 is None):
             print(f"\n\033[33;1;21mWARRNING\033[0m\n\tQR kódy nebyly nalezeny.")
             scale_paths = os.path.join(folder_measurements, "scale")
             template1 = cv2.imread(scale_paths + r"\start_1.png", 0)
@@ -6328,6 +6345,7 @@ def main():
                             try:
                                 perform_calculations()
                             except Exception as e:
+                                print('tady1')
                                 print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
                                 out.close()
                                 del out
@@ -6335,7 +6353,7 @@ def main():
                                 continue
 
                             out.close()
-                            del out
+                            del out0
 
                         try:
                             if try_save_data(zip_name=saved_data_name) is SaveError:
@@ -6351,6 +6369,7 @@ def main():
                         try:
                             perform_calculations()
                         except Exception as e:
+                            print('tady2')
                             print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
                             reset_parameters()
                             continue
@@ -6551,7 +6570,7 @@ def main():
                 image_files = image_files[start:end]  # načátání snímků (první je 0) př: "image_files[2:5] od 2 do 5"
                 """image_files = [image_files[0], image_files[7], image_files[14], image_files[21],
                                image_files[-1]]"""  # TODO ############ potom změnit počet fotek
-                # image_files = [image_files[0], image_files[-1]]
+                image_files = [image_files[0], image_files[15], image_files[-1]]
 
                 if preload_photos:
                     preloaded_images = [load_photo(i, photo_type) for i in range(len(image_files))]
@@ -6660,6 +6679,7 @@ def main():
                     try:
                         calculate()
                     except Exception as e:
+                        print('tady3')
                         print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
                         out.close()
                         reset_parameters()
@@ -6686,6 +6706,7 @@ def main():
                 try:
                     calculate()
                 except Exception as e:
+                    print('tady4')
                     print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
                     reset_parameters()
                     continue
@@ -6862,7 +6883,7 @@ if __name__ == '__main__':
     source_image_type = ['original', 'modified']
 
     saved_data = 'pokus'  # data_export_new
-    save_calculated_data = True
+    save_calculated_data = False
     load_calculated_data = False
     do_finishing_calculation = False
     make_temporary_savings = False
@@ -6932,7 +6953,7 @@ if __name__ == '__main__':
 
     if super_speed:
         block_graphs = False
-    if save_calculated_data or load_calculated_data:
+    if save_calculated_data or load_calculated_data or super_speed:
         import h5py
     # if not do_just_correlation:
     import pygmsh
