@@ -1411,17 +1411,17 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
     triangle_indexes = []
     mesh = []
 
-    with pygmsh.occ.Geometry() as geom:
-        geom.characteristic_length_max = mesh_size
-        geom.characteristic_length_min = mesh_size
+    for p in area1:
+        with pygmsh.occ.Geometry() as geom:
+            geom.characteristic_length_max = mesh_size
+            geom.characteristic_length_min = mesh_size
 
-        """point_entities = [geom.add_point(point, mesh_size) for point in area1]
-        point_entities.append(point_entities[0])
-        s1 = geom.add_spline(point_entities)
-        l1 = geom.add_curve_loop([s1])
-        poly1 = geom.add_plane_surface(l1)"""
+            """point_entities = [geom.add_point(point, mesh_size) for point in area1]
+            point_entities.append(point_entities[0])
+            s1 = geom.add_spline(point_entities)
+            l1 = geom.add_curve_loop([s1])
+            poly1 = geom.add_plane_surface(l1)"""
 
-        for p in area1:
             poly1 = geom.add_polygon(p,  # mesh_size=mesh_size
                                      )
 
@@ -1440,15 +1440,13 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
 
             m = geom.generate_mesh(dim=2)
 
-            if printout:
-                print("\n\tTriangulation is done.\n")
-
             triangle_centers.append(np.mean(m.points[m.get_cells_type("triangle")][:, :, :2], axis=1))
             triangle_points.append(m.points)
             triangle_indexes.append(m.get_cells_type("triangle"))
             mesh.append(m)
 
     if printout:
+        print("\n\tTriangulation is done.\n")
         print("\tVytvořeno", np.sum([len(c) for c in triangle_centers]), "elementů.")
 
     try:
@@ -1516,8 +1514,7 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
 
         ax3.imshow(masked_image, cmap='gray')
         # Obraz jednoho maskovaného elementu
-        for i in range(n):
-            ax3.scatter(triangle_centers[i][triangle, 0] - x_min, triangle_centers[i][triangle, 1] - y_min, s=50,
+        ax3.scatter(triangle_centers[0][triangle, 0] - x_min, triangle_centers[0][triangle, 1] - y_min, s=50,
                         c='red', marker='s')
         ax3.axis('off')
         ax3.set_aspect('equal', adjustable='box')
@@ -1785,7 +1782,7 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
 
         counter += 1
 
-        if False:
+        if True:
             # Vykreslení bodů daného elemenetu
             # Vytvoření seznamu indexů odpovídajících klíčových bodů
             # matching_indices = [m.queryIdx for m in good_matches]
@@ -6353,7 +6350,7 @@ def main():
                                 continue
 
                             out.close()
-                            del out0
+                            del out
 
                         try:
                             if try_save_data(zip_name=saved_data_name) is SaveError:
