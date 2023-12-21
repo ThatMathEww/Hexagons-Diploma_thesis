@@ -1471,8 +1471,11 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
         ax3 = plt.subplot2grid((2, 4), (1, 3))
 
         ax1.imshow(img, cmap='gray')
+        color_cycle = iter(['tab:red', 'tab:green', 'tab:blue', 'tab:purple', 'tab:orange', 'tab:cyan'])
+
         for i in range(n):
-            ax1.triplot(triangle_points[i][:, 0], triangle_points[i][:, 1], triangle_indexes[i])
+            ax1.triplot(triangle_points[i][:, 0], triangle_points[i][:, 1], triangle_indexes[i],
+                        color=next(color_cycle))
             #                                                mesh.get_cells_type("triangle") = mesh.cells[1].data
             ax1.scatter(triangle_centers[i][:, 0], triangle_centers[i][:, 1], s=5, c='orange', marker='o')
 
