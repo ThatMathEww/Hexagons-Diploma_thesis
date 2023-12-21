@@ -955,7 +955,8 @@ def set_roi(finish_marking=False, just_load=False):
     done_changes, roi_areas = False, None
 
     if not finish_marking:
-        (photo_size, points_pos, points_neg, points_cor, points_max, points_track) = 6 * [None]
+        points_pos = []
+        (photo_size, points_neg, points_cor, points_max, points_track) = 5 * [None]
     else:
         just_load = False
     """roi_areas = dict(points_cor=None, positive_roi=None, points_neg=None, points_max=None, 
@@ -1017,12 +1018,15 @@ def set_roi(finish_marking=False, just_load=False):
                 if photo_size != list(img.shape[:2]):
                     program_shutdown("\n\033[31;1;21mERROR\033[0m\n\tNesouhlasí velikost fotografie.", try_save=False)
 
-                (points_pos, points_neg, points_max) = [np.int32(var) if isinstance(var, list) else None
-                                                        for var in (points_pos, points_neg, points_max)]
+                (points_neg, points_max) = [np.int32(var) if isinstance(var, list) else None
+                                            for var in (points_neg, points_max)]
+
                 if isinstance(points_cor, list):
                     points_cor = [np.int32(var) for var in points_cor]
                 if isinstance(points_track, list):
                     points_track = [tuple([np.int32(sub_var) for sub_var in var]) for var in points_track]
+                if isinstance(points_pos, list):
+                    points_pos = [np.int32(var) for var in points_pos]
 
                 if len(roi_areas) < 6 or any(value is None for value in roi_areas.values()):
 
@@ -1063,7 +1067,8 @@ def set_roi(finish_marking=False, just_load=False):
             rectangle_region //= 2
             cv2.rectangle(masked_img, points[0], points[1], (255, 255, 255), 2)
             cv2.rectangle(masked_img, points[0], points[1], 0, 1)
-    if isinstance(points_pos, np.ndarray) and len(points_pos) > 2:
+    if (isinstance(points_pos[0], np.ndarray) and isinstance(points_pos, list) and
+            len(points_pos[0]) > 2 and len(points_pos) > 0):
         mask = np.zeros(masked_img.shape[:2], dtype=np.uint8)
         cv2.fillPoly(mask, [points_pos], 255)
         masked_img = cv2.addWeighted((masked_img * 0.3).astype(np.uint8), 1.0,
@@ -1175,26 +1180,43 @@ def set_roi(finish_marking=False, just_load=False):
         file.close()
         return None, None
 
-    if ((not isinstance(points_pos, np.ndarray) and mark_points_by_hand) or
-            (isinstance(points_pos, np.ndarray) and len(points_pos) == 0 and
-             any((do_calculations['Do Rough detection'], do_calculations['Do Fine detection'],
-                  do_calculations['Do Point detection'])))):
+    if (((not isinstance(points_pos[0], np.ndarray) and not isinstance(points_pos, list)) and
+         mark_points_by_hand) or (isinstance(points_pos[0], np.ndarray) and len(points_pos[0]) == 0 and
+                                  len(points_pos) == 0 and
+                                  any((do_calculations['Do Rough detection'], do_calculations['Do Fine detection'],
+                                       do_calculations['Do Point detection'])))):
 
         while True:
-            points_pos = np.int32(np.round(mark_polygon_on_canvas(
-                names[0], titles[0], edge_color="darkgreen", show_box=False, edge_box_color="olive",
-                back_box_color="yellowgreen", image=masked_img)))
-            if len(points_pos) > 2:
-                # Ztmavení fotografie
-                mask = np.zeros(masked_img.shape[:2], dtype=np.uint8)
-                cv2.fillPoly(mask, [points_pos], 255)  # Vykreslení mnohoúhelníků na maskách
-                # Spojení původního obrazu s intenzitou 0.5 a sledovanými oblastmi
-                masked_img = cv2.addWeighted((masked_img * 0.3).astype(np.uint8), 1.0,
-                                             cv2.bitwise_and(masked_img, masked_img, mask=mask), 0.5, 0)
+            p_num = askinteger("Počet hledaných bodů", "Počet hledaných bod.\nZadejte číslo: ")
+            try:
+                p_num = np.int16(abs(round(np.float16(p_num))))  # pokus o převod na číslo
                 break
-        points_pos = edit_points_on_canvas(points_pos, image=masked_img, path_color="darkgreen")
+            except ValueError as ve:
+                print(f"\n Zadejte platnou odpověď.\n\tPOPIS: {ve}")
+                pass
 
-    if not isinstance(points_neg, np.ndarray) and isinstance(points_pos, np.ndarray) and mark_points_by_hand:
+        # Spojení původního obrazu s intenzitou 0.5 a sledovanými oblastmi
+        masked_img = cv2.addWeighted(masked_img, 0.25, masked_img, 0.25, 0)
+
+        for _ in range(p_num):
+            while True:
+                pos = np.int32(np.round(mark_polygon_on_canvas(
+                    names[0], titles[0], edge_color="darkgreen", show_box=False, edge_box_color="olive",
+                    back_box_color="yellowgreen", image=masked_img)))
+                if len(pos) > 2:
+                    # Ztmavení fotografie
+                    mask = np.zeros_like(img)
+                    cv2.fillPoly(mask, [pos], (255, 255, 255))  # Vykreslení mnohoúhelníků na maskách
+                    # Spojení původního obrazu s intenzitou 0.5 a sledovanými oblastmi
+                    """masked_img = cv2.addWeighted((masked_img * 0.3).astype(np.uint8), 1.0,
+                                                 cv2.bitwise_and(masked_img, masked_img, mask=mask), 0.5, 0)"""
+                    masked_img = cv2.addWeighted(masked_img, 1, mask, 0.5, 0)
+                    break
+            pos = edit_points_on_canvas(pos, image=masked_img, path_color="darkgreen")
+            points_pos.append(pos)
+
+    if (not isinstance(points_neg, np.ndarray) and all(isinstance(p, np.ndarray) for p in points_pos)
+            and mark_points_by_hand):
 
         points_neg = np.int32(np.round(mark_polygon_on_canvas(
             names[1], titles[1], edge_color="red", show_box=False, edge_box_color="firebrick", back_box_color="peru",
@@ -1270,13 +1292,13 @@ def set_roi(finish_marking=False, just_load=False):
                         masked_img[points[0, 1]:points[1, 1], points[0, 0]:points[1, 0]] * 0.75).astype(np.uint8)
                 cv2.rectangle(masked_img, points[0], points[1], (255, 255, 255), 2)
                 cv2.rectangle(masked_img, points[0], points[1], 0, 1)
-        if isinstance(points_pos, np.ndarray) and len(points_pos) > 2:
-            cv2.fillPoly(mask, [points_pos], 255)
+        if points_pos:  # isinstance(points_pos, np.ndarray) and len(points_pos) > 2:
+            [cv2.fillPoly(mask, [p], 255) for p in points_pos if isinstance(p, np.ndarray) and len(p) > 2]
         if isinstance(points_neg, np.ndarray) and len(points_neg) > 2:
             cv2.fillPoly(mask, [points_neg], 0)
 
         # Ztmavení druhé fotografie na 75%
-        img = cv2.addWeighted(masked_img, 0.75, np.zeros_like(masked_img), 0.25, 0)
+        img = cv2.addWeighted(masked_img, 0.65, np.zeros_like(masked_img), 0.25, 0)
         # Aplikace masky
         masked_img = cv2.bitwise_and(masked_img, masked_img, mask=mask)
         masked_img += cv2.bitwise_and(img, img, mask=~mask)  # ~mask inverts the mask
@@ -1379,8 +1401,14 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
     """if 'pygmsh' not in sys.modules:
         import pygmsh"""
 
+    n = len(area1)
+
     if area2 is None:
         area2 = []
+
+    triangle_centers = []
+    triangle_points = []
+    triangle_indexes = []
 
     with pygmsh.occ.Geometry() as geom:
         geom.characteristic_length_max = mesh_size
@@ -1392,32 +1420,34 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
         l1 = geom.add_curve_loop([s1])
         poly1 = geom.add_plane_surface(l1)"""
 
-        poly1 = geom.add_polygon(
-            area1,  # mesh_size=mesh_size,
-        )
+        for p in area1:
+            poly1 = geom.add_polygon(p,  # mesh_size=mesh_size
+                                     )
 
-        if len(area2) > 2:
-            """point_entities = [geom.add_point(point, mesh_size) for point in area2]
-            point_entities.append(point_entities[0])
-            s2 = geom.add_spline(point_entities)
-            l2 = geom.add_curve_loop([s2])
-            poly2 = geom.add_plane_surface(l2)"""
+            if len(area2) > 2:
+                """point_entities = [geom.add_point(point, mesh_size) for point in area2]
+                point_entities.append(point_entities[0])
+                s2 = geom.add_spline(point_entities)
+                l2 = geom.add_curve_loop([s2])
+                poly2 = geom.add_plane_surface(l2)"""
 
-            poly2 = geom.add_polygon(
-                area2,  # mesh_size=0.1,
-            )
+                poly2 = geom.add_polygon(
+                    area2,  # mesh_size=0.1,
+                )
 
-            geom.boolean_difference(poly1, poly2)
+                geom.boolean_difference(poly1, poly2)
 
-        mesh = geom.generate_mesh(dim=2)
+            mesh = geom.generate_mesh(dim=2)
 
-        if printout:
-            print("\n\tTriangulation is done.\n")
+            if printout:
+                print("\n\tTriangulation is done.\n")
 
-    triangle_centers = np.mean(mesh.points[mesh.get_cells_type("triangle")][:, :, :2], axis=1)
+            triangle_centers.append(np.mean(mesh.points[mesh.get_cells_type("triangle")][:, :, :2], axis=1))
+            triangle_points.append(mesh.points)
+            triangle_indexes.append(mesh.get_cells_type("triangle"))
 
     if printout:
-        print("\tVytvořeno", len(triangle_centers), "elementů.")
+        print("\tVytvořeno", np.sum([len(c) for c in triangle_centers]), "elementů.")
 
     try:
         img = gray1
@@ -1441,9 +1471,10 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
         ax3 = plt.subplot2grid((2, 4), (1, 3))
 
         ax1.imshow(img, cmap='gray')
-        ax1.triplot(mesh.points[:, 0], mesh.points[:, 1], mesh.get_cells_type("triangle"))
-        #                                                mesh.get_cells_type("triangle") = mesh.cells[1].data
-        ax1.scatter(triangle_centers[:, 0], triangle_centers[:, 1], s=5, c='orange', marker='o')
+        for i in range(n):
+            ax1.triplot(triangle_points[i][:, 0], triangle_points[i][:, 1], triangle_indexes[i])
+            #                                                mesh.get_cells_type("triangle") = mesh.cells[1].data
+            ax1.scatter(triangle_centers[i][:, 0], triangle_centers[i][:, 1], s=5, c='orange', marker='o')
 
         ax1.set_aspect('equal', adjustable='box')
         ax1.autoscale(True)
@@ -1452,38 +1483,40 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
 
         # Obraz barevných elementů
         # Vykreslení všech trojúhelníků
-        [ax2.triplot(mesh.points[cell][:, 0], mesh.points[cell][:, 1]) for cell in mesh.get_cells_type("triangle")]
-        """ax2.scatter(triangle_centers[:, 0], triangle_centers[:, 1],
-                    s=20,  # Velikost bodů
-                    c='orange',  # Barva bodů
-                    marker='o'  # Znak bodů
-                    )"""
+        for i in range(n):
+            [ax2.triplot(mesh.points[cell][:, 0], mesh.points[cell][:, 1]) for cell in triangle_indexes[i]]
+            """ax2.scatter(triangle_centers[:, 0], triangle_centers[:, 1],
+                        s=20,  # Velikost bodů
+                        c='orange',  # Barva bodů
+                        marker='o'  # Znak bodů
+                        )"""
         ax2.invert_yaxis()
         ax2.set_aspect('equal', adjustable='box')
         ax2.autoscale(True)
 
         print("\t\tSecond graph: finished.")
 
-        # Obraz jednoho maskovaného elementu
-        triangle = min(10, len(mesh.get_cells_type("triangle")))  # který trojúhelník chci vykreslit
+        triangle = min(10, len(triangle_indexes[0]) - 1)  # který trojúhelník chci vykreslit
 
-        triangle_points = mesh.points[mesh.get_cells_type("triangle")[triangle]]
+        triangle_cor = triangle_points[0][triangle_indexes[0][triangle]]
 
         # Vytvoření prázdných mask pro obě oblasti
         mask = np.zeros(img.shape[:2], dtype=np.uint8)
 
         # Vykreslení mnohoúhelníků na maskách
-        cv2.fillPoly(mask, [np.int32(np.round(triangle_points[:, :2]))], 255)
+        cv2.fillPoly(mask, [np.int32(np.round(triangle_cor[:, :2]))], 255)
 
-        x_max, x_min = (np.int32(np.round(max(triangle_points[:, 0]) + 10)),
-                        np.int32(np.round(min(triangle_points[:, 0]) - 10)))
-        y_max, y_min = (np.int32(np.round(max(triangle_points[:, 1]) + 10)),
-                        np.int32(np.round(min(triangle_points[:, 1]) - 10)))
+        x_max, x_min = (np.int32(np.round(max(triangle_cor[:, 0]) + 10)),
+                        np.int32(np.round(min(triangle_cor[:, 0]) - 10)))
+        y_max, y_min = (np.int32(np.round(max(triangle_cor[:, 1]) + 10)),
+                        np.int32(np.round(min(triangle_cor[:, 1]) - 10)))
         masked_image = (img & mask)[y_min:y_max, x_min:x_max]
 
         ax3.imshow(masked_image, cmap='gray')
-        ax3.scatter(triangle_centers[triangle, 0] - x_min, triangle_centers[triangle, 1] - y_min, s=50, c='red',
-                    marker='s')
+        # Obraz jednoho maskovaného elementu
+        for i in range(n):
+            ax3.scatter(triangle_centers[i][triangle, 0] - x_min, triangle_centers[i][triangle, 1] - y_min, s=50,
+                        c='red', marker='s')
         ax3.axis('off')
         ax3.set_aspect('equal', adjustable='box')
         ax3.autoscale(True)
@@ -5600,16 +5633,37 @@ def make_angle_correction(image=None, image_to_warp=None, points_to_warp=None):
         # Vypočtěte střed obrázku
         center = (width // 2, height // 2)
 
-        scale_paths = os.path.join(folder_measurements, "scale")
-        template1 = cv2.imread(scale_paths + r"\start_1.png", 0)
-        template2 = cv2.imread(scale_paths + r"\end_1.png", 0)
-        top_left1 = match(template1, img)[0]
-        top_left2 = match(template2, img)[0]
-        angle_degrees = np.rad2deg(np.arctan2(top_left2[1] - top_left1[1], top_left2[0] - top_left1[0]))
-        # 0.2798794602553504 // 0.3498172464499053
-        print(f"\n\033[93mÚhel pootočení stroje je: \033[95m{angle_degrees} °\033[0m")
+        decoded_objects = qr_detect(img)
 
-        angle_correction_matrix = cv2.getRotationMatrix2D(center, angle_degrees, 1.0)
+        point1, point2, point3, point4 = None, None, None, None
+
+        if decoded_objects and len(decoded_objects) >= 2:
+            points = [None, None, None, None]
+            for obj in decoded_objects:
+                name = obj.data.decode('utf-8')
+                if not name.startswith(".*CP*.") or ".*CP*." not in name:
+                    continue
+                points[int(name.replace(".*CP*._N#", "")) - 1] = np.mean(obj.polygon, axis=0)
+            point3, point4, point1, point2 = points
+
+        if point1 is None and point2 is None:
+            print(f"\n\033[33;1;21mWARRNING\033[0m\n\tQR kódy nebyly nalezeny.")
+            scale_paths = os.path.join(folder_measurements, "scale")
+            template1 = cv2.imread(scale_paths + r"\start_1.png", 0)
+            template2 = cv2.imread(scale_paths + r"\end_1.png", 0)
+            point1 = match(template1, img)[0]
+            point2 = match(template2, img)[0]
+
+        angle_degrees1 = np.rad2deg(np.arctan2(point2[1] - point1[1], point2[0] - point1[0]))
+        # 0.2798794602553504 // 0.3498172464499053
+        print(f"\n\033[93mÚhel pootočení stroje je: \033[95m{angle_degrees1} °\033[0m")
+
+        if point3 is not None and point4 is not None:
+            angle_degrees2 = np.rad2deg(np.arctan2(point4[1] - point3[1], point4[0] - point3[0]))
+            print(f"\033[93mÚhel pootočení příčníku je: \033[95m{angle_degrees2} °\033[0m")
+            print(f"\t\033[93mRozdíl úhlů je: \033[95m{angle_degrees1 - angle_degrees2} °\033[0m")
+
+        angle_correction_matrix = cv2.getRotationMatrix2D(center, angle_degrees1, 1.0)
 
     """for point1, point2 in ((top_left1, top_left2), (points_pos[0], points_pos[-1]),
                            (points_track[0][0], points_track[5][0]), (points_track[2][0], points_track[3][0])):
@@ -5965,9 +6019,9 @@ def main():
     else:
         images_folders = check_folder(main_image_folder, "Složka s fotkami", "neexistuje", "je prázdná")
 
-    images_folders = [name for name in images_folders if name.startswith("H01") or name.startswith("_")]
+    images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(",")]
     # images_folders = images_folders[4:-2]  # TODO ############ potom změnit počet složek
-    images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+    # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6063,7 +6117,11 @@ def main():
         angle_correction_matrix = None
         photos_times = []
 
-        update_text_window(f"{current_image_folder}  [ {main_counter} / {len(images_folders)} ]", text_entry)
+        try:
+            update_text_window(f"{current_image_folder}  [ {main_counter} / {len(images_folders)} ]", text_entry)
+        except tk.TclError:
+            pass
+
         """plt.close("Status")
         plt.figure(num="Status", figsize=(4.5, 1.5))
         plt.gca().axis('off')
@@ -6766,6 +6824,8 @@ if __name__ == '__main__':
     from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
     from tkinter.simpledialog import askfloat, askinteger, askstring
 
+    from pyzbar.pyzbar import decode as qr_detect
+
     # import keyboard
 
     ####################################################################################################################
@@ -6783,7 +6843,7 @@ if __name__ == '__main__':
     send_final_message = False
 
     load_set_points = True
-    do_auto_mark = True
+    do_auto_mark = False
     mark_points_by_hand = True
 
     do_calculations = {'Do Correlation': True,
@@ -6795,14 +6855,16 @@ if __name__ == '__main__':
 
     folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
 
+    data_type = "M01"
+
     templates_path = folder_measurements + r'\templates\templates_H01'
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'data_export_new'
-    save_calculated_data = False
-    load_calculated_data = True
-    do_finishing_calculation = True
+    saved_data = 'pokus'  # data_export_new
+    save_calculated_data = True
+    load_calculated_data = False
+    do_finishing_calculation = False
     make_temporary_savings = False
 
     make_video = False
