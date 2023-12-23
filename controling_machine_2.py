@@ -139,14 +139,14 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
     _, frame = cap.read()  # Načtení snímku z kamery
 
     # images.append(frame[y_limit:-y_limit, x_limit:-x_limit])
-    cv2.imwrite(os.path.join(output_folder, f"Frame_{0:03d}.jpg"), frame[y_limit:-y_limit, x_limit:-x_limit])
+    cv2.imwrite(os.path.join(output_folder, f"Frame_{0:04d}.jpg"), frame[y_limit:-y_limit, x_limit:-x_limit])
 
     command = f"MMDIC2 {command_distance} {command_period}"
 
     _, frame = cap.read()  # Načtení snímku z kamery
 
     # images.append(frame[y_limit:-y_limit, x_limit:-x_limit])
-    cv2.imwrite(os.path.join(output_folder, f"Frame_{0:03d}.jpg"), frame[y_limit:-y_limit, x_limit:-x_limit])
+    cv2.imwrite(os.path.join(output_folder, f"Frame_{0:04d}.jpg"), frame[y_limit:-y_limit, x_limit:-x_limit])
 
     toast = Notification(app_id="Controlling machine", title="Zahájení měření za 5s", msg="Neklikejte myší.",
                          duration="short", icon=r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects'
@@ -237,7 +237,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
         if start_time + command_period <= current_time:
             # if "taken photo" in log_output:
             _, frame = cap.read()  # Načtení snímku z kamery
-            cv2.imwrite(os.path.join(output_folder, f"Frame_{images:03d}.jpg"),
+            cv2.imwrite(os.path.join(output_folder, f"Frame_{images:04d}.jpg"),
                         frame[y_limit:-y_limit, x_limit:-x_limit])
             images += 1
             # images.append(frame_[y_limit:-y_limit, x_limit:-x_limit])
@@ -249,7 +249,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
                 if "HOTOVO" == file.readlines()[-1].strip():
                     cycler = False
                     _, frame = cap.read()
-                    cv2.imwrite(os.path.join(output_folder, f"Frame_{images:03d}.jpg"),
+                    cv2.imwrite(os.path.join(output_folder, f"Frame_{images:04d}.jpg"),
                                 frame[y_limit:-y_limit, x_limit:-x_limit])
                     break
 
@@ -313,7 +313,7 @@ def make_measurement(camera_index=None, camera=None, output_folder="*/", txt_pat
     pyautogui.hotkey('ctrl', 'w')  # zavření okna
 
     #####################################################################################################
-    # [cv2.imwrite(os.path.join(output_folder, f"Frame_{i + 1:03d}.jpg"), frame) for i, frame in enumerate(images)]
+    # [cv2.imwrite(os.path.join(output_folder, f"Frame_{i + 1:04d}.jpg"), frame) for i, frame in enumerate(images)]
 
     print(f"\n\tMěření: \033[34;1m{measurement_name}\033[0m\n")
     print(f"\t\tFotografie uloženy do: [ \033[35m{output_folder}\033[0m ]\n")

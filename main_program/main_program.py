@@ -1201,8 +1201,8 @@ def set_roi(finish_marking=False, just_load=False):
         for _ in range(p_num):
             while True:
                 pos = np.int32(np.round(mark_polygon_on_canvas(
-                    names[0], titles[0], edge_color="darkgreen", show_box=False, edge_box_color="olive",
-                    back_box_color="yellowgreen", image=masked_img)))
+                    names[0], f"Area: [{_ + 1} / {p_num}]  ; " + titles[0], edge_color="darkgreen", show_box=False,
+                    edge_box_color="olive", back_box_color="yellowgreen", image=masked_img)))
                 if len(pos) > 2:
                     # Ztmavení fotografie
                     mask = np.zeros_like(img)
@@ -1459,6 +1459,8 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
     fig_size = 6
 
     if show_graph:
+        from itertools import cycle
+
         plt.close("Regions of interest")
         # Obraz elemntů na fotografii
         # Vytvoření figure a osy v matplotlib
@@ -1471,7 +1473,7 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
         ax3 = plt.subplot2grid((2, 4), (1, 3))
 
         ax1.imshow(img, cmap='gray')
-        color_cycle = iter(['tab:red', 'tab:green', 'tab:blue', 'tab:purple', 'tab:orange', 'tab:cyan'])
+        color_cycle = cycle(['tab:red', 'tab:green', 'tab:blue', 'tab:purple', 'tab:orange', 'tab:pink'])
 
         for i in range(n):
             ax1.triplot(triangle_points[i][:, 0], triangle_points[i][:, 1], triangle_indexes[i],
@@ -1518,7 +1520,7 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
         ax3.imshow(masked_image, cmap='gray')
         # Obraz jednoho maskovaného elementu
         ax3.scatter(triangle_centers[0][triangle, 0] - x_min, triangle_centers[0][triangle, 1] - y_min, s=50,
-                        c='red', marker='s')
+                    c='red', marker='s')
         ax3.axis('off')
         ax3.set_aspect('equal', adjustable='box')
         ax3.autoscale(True)
@@ -1785,7 +1787,7 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
 
         counter += 1
 
-        if True:
+        if False:
             # Vykreslení bodů daného elemenetu
             # Vytvoření seznamu indexů odpovídajících klíčových bodů
             # matching_indices = [m.queryIdx for m in good_matches]
@@ -3711,9 +3713,9 @@ def perform_calculations():
           "\n\033[32;1m:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\033[0m")
 
 
-def match(t, i, tolerance=0.75):
-    h, w = t.shape[:2]
-    r = cv2.matchTemplate(i, t, cv2.TM_CCOEFF_NORMED)
+def match(tem, im, tolerance=0.75, method=cv2.TM_CCOEFF_NORMED):
+    h, w = tem.shape[:2]
+    r = cv2.matchTemplate(im, tem, method)
     _, max_val, _, max_loc = cv2.minMaxLoc(r)
 
     if max_val < tolerance:
@@ -5632,12 +5634,12 @@ def dialog(error_message):
             print("\n Zadejte platnou odpověď.")
 
 
-def make_angle_correction(image=None, image_to_warp=None, points_to_warp=None):
+def make_angle_correction(image_to_get_angle=None, image_to_warp=None, points_to_warp=None):
     global width, height, angle_correction_matrix
-    if image is None:
+    if image_to_get_angle is None:
         img = load_photo(0, 0)
     else:
-        img = image.copy()
+        img = image_to_get_angle.copy()
 
     if 'width' not in globals() or 'height' not in globals():
         # Získání rozměrů obrázku
@@ -5647,7 +5649,20 @@ def make_angle_correction(image=None, image_to_warp=None, points_to_warp=None):
         # Vypočtěte střed obrázku
         center = (width // 2, height // 2)
 
-        decoded_objects = qr_detect(img)
+        qr_path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\templates\QR'
+
+        mask = np.zeros((height, width), dtype=np.uint8)
+        for _ in range(1, 5):
+            qr_img_path = os.path.join(qr_path, f'QR_{_}.png')
+            if os.path.isfile(qr_img_path):
+                qr_img = cv2.imread(qr_img_path, 0)
+                loc, h, w, _ = match(qr_img, img, tolerance=0.001, method=cv2.TM_CCOEFF_NORMED)
+                if loc is not None:
+                    mask[max(loc[1] - 100, 0):min(loc[1] + h + 100, height),
+                    max(loc[0] - 100, 0):min(loc[0] + w + 100, width)] = 255
+
+        masked_img = cv2.convertScaleAbs(cv2.bitwise_and(img, img, mask=mask), alpha=1.1, beta=-50)
+        decoded_objects = qr_detect(masked_img)
 
         point1, point2, point3, point4 = None, None, None, None
 
@@ -6039,6 +6054,7 @@ def main():
     images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(",")]
     # images_folders = images_folders[4:-2]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
+    images_folders = [images_folders[0]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6345,8 +6361,7 @@ def main():
                             try:
                                 perform_calculations()
                             except Exception as e:
-                                print('tady1')
-                                print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
+                                print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu, Error 1.\n\t\tPOPIS: {e}")
                                 out.close()
                                 del out
                                 reset_parameters()
@@ -6369,8 +6384,7 @@ def main():
                         try:
                             perform_calculations()
                         except Exception as e:
-                            print('tady2')
-                            print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
+                            print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu, Error 2.\n\t\tPOPIS: {e}")
                             reset_parameters()
                             continue
 
@@ -6567,6 +6581,9 @@ def main():
             def calculate():
                 global image_files, start, end, all_photos, preloaded_images, photos_times
 
+                image_files = sorted(image_files,
+                                     key=lambda filename: int(os.path.splitext(filename)[0].split('_')[-1]))
+
                 image_files = image_files[start:end]  # načátání snímků (první je 0) př: "image_files[2:5] od 2 do 5"
                 """image_files = [image_files[0], image_files[7], image_files[14], image_files[21],
                                image_files[-1]]"""  # TODO ############ potom změnit počet fotek
@@ -6679,8 +6696,7 @@ def main():
                     try:
                         calculate()
                     except Exception as e:
-                        print('tady3')
-                        print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
+                        print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu, Error 3.\n\t\tPOPIS: {e}")
                         out.close()
                         reset_parameters()
                         continue
@@ -6703,11 +6719,11 @@ def main():
 
                     scale, second_callout, saved_data_name = 1, False, saved_data
             else:
+                calculate()
                 try:
                     calculate()
                 except Exception as e:
-                    print('tady4')
-                    print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu.\n\t\tPOPIS: {e}")
+                    print(f"\n\033[31;1;21mERROR\033[0m\n\tChyba výpočtu, Error 4.\n\t\tPOPIS: {e}")
                     reset_parameters()
                     continue
                 while True:
@@ -6791,7 +6807,10 @@ def main():
     # Navrácení režimu spánku
     plt.close('all')
     # ukončení hlavní smyčky
-    window_status.destroy()
+    try:
+        window_status.destroy()
+    except tk.TclError:
+        pass
     ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
     print("\nUkončení programu.")
 
