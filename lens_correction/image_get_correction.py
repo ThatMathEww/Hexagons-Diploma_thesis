@@ -6,7 +6,7 @@ import yaml
 
 # Defining the dimensions of checkerboard
 CHECKERBOARD = (6, 9)
-n = "canon"   # "1280x960" # "1920x1080" # "2560x1440" # "canon"
+n = "1280x960"   # "1280x960" # "1920x1080" # "2560x1440" # "canon"
 
 output_file = f"calibration_{n}.yaml"
 images = glob.glob(f'./{n}/*.jpg')
@@ -45,7 +45,7 @@ for frame in images:
 
         img_points.append(corners2)
 
-        im = img.copy()
+        im = cv2.cvtColor(cv2.cvtColor(img.copy(), cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
         # Nastavte tloušťku čáry
         line_thickness = 3
 
@@ -109,7 +109,8 @@ while os.path.exists(output_file):
     i += 1
 
 with open(output_file, "w") as f:
-    yaml.dump(data, f)
+    # yaml.dump(data, f)
+    pass
 
 print("Camera matrix : \n")
 print(mtx)

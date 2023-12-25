@@ -1,15 +1,15 @@
 import os
 import re
 import pandas as pd
-import numpy as np
+# import numpy as np
 
 # Zadání cesty ke složce
-folder_path_load = r'data\data_txt'
-folder_path_save = r'data\data_csv'
+folder_path_load = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_txt'
+folder_path_save = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_csv'
 
 # Získání seznamu souborů v dané složce
 files = [file for file in os.listdir(folder_path_load) if os.path.isfile(os.path.join(folder_path_load, file)) and
-         file.lower().endswith(".txt") and file.startswith("S01_")]
+         file.lower().endswith(".txt") and file.startswith("M01_")]
 
 operation = 0
 

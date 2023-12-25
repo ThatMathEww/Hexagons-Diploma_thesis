@@ -5,7 +5,9 @@ import numpy as np
 
 def create_video_from_images(image_folder, output_video_path, fps=24, frame_width=1920, frame_height=1080,
                              video_length=None, codec='none'):
-    images = sorted([img for img in os.listdir(image_folder) if img.endswith((".jpg", ".jpeg", ".png", ".JPG"))])
+    images = [img for img in os.listdir(image_folder) if img.endswith((".jpg", ".jpeg", ".png", ".JPG")) and
+              not img.startswith("_first_photo")]
+    images = sorted(images, key=lambda filename: int(os.path.splitext(filename)[0].split('_')[-1]))
 
     if video_length is not None:
         fps = len(images) / video_length
@@ -101,11 +103,11 @@ def play_video(video_path):
 
 
 if __name__ == "__main__":
-    image_path = "photos"
+    image_path = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Friction_photos\F01_001_II_o"
     output_path = "output_video.mp4"
 
-    create_video_from_images(image_path, output_path, video_length=60, codec='mp4v',
-                             frame_width=3840, frame_height=2160)
+    create_video_from_images(image_path, output_path, fps=60, codec='mp4v',
+                             frame_width=1920, frame_height=1080)
 
     if os.path.exists(output_path):
         play_video(output_path)

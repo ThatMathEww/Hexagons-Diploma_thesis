@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 
 # Načtěte fotku
 img = cv2.imread('Frame_[1920, 1080, 60].jpg', 0)

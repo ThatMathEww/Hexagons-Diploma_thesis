@@ -7,7 +7,7 @@ import os
 path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_csv'
 
 file_names = np.array([p for p in os.listdir(path) if os.path.isfile(os.path.join(path, p))
-                       and p.lower().endswith(".csv") and p.lower().startswith("h01")])
+                       and p.lower().endswith(".csv") and p.lower().startswith("b01")])
 
 if str(file_names[0]).lower().startswith("h01"):
     measurements1 = [4, 9, 14, 19, 24, 29]  # konzola, normal
@@ -35,8 +35,24 @@ elif str(file_names[0]).lower().startswith("s01"):
                               [3, 9, 15, 21],  # MAX II
                               [5, 11, 17, 23]  # MAX III
                               )).T
+elif str(file_names[0]).lower().startswith("h02"):
+    measurements1 = np.array(([6, 14, 22, 30, 38, 46],  # I - k
+                              [4, 12, 20, 28, 36, 44],  # II - k
+                              [2, 10, 18, 26, 34, 42],  # III - k
+                              [0, 8, 16, 24, 32, 40],  # MAX - k
+                              [7, 15, 23, 31, 39, 47],  # I - n
+                              [5, 13, 21, 29, 37, 45],  # II - n
+                              [3, 11, 19, 27, 35, 43],  # III - n
+                              [1, 9, 17, 25, 33, 41]  # MAX - n
+                              )).T
+elif str(file_names[0]).lower().startswith("m01"):
+    measurements1 = np.array(([0, 1, 2]  # Glued / Test / Whole
+                                         )).T
+elif str(file_names[0]).lower().startswith("b01"):
+    measurements1 = np.array(([0, 1, 2]  # Glued / Test / Whole
+                                         )).T
 
-measurement = measurements3[2, :]
+measurement = measurements1[[0, 1, 2]]  # measurements3[2, :]
 # measurements3[:-1, 4] , measurements3[:, :]
 
 file_names = file_names[measurement.flatten() if isinstance(measurement, np.ndarray) else measurement]  # [-1:]
@@ -96,16 +112,16 @@ std = np.std(e)
 e_av = np.mean(e)
 e_med = np.median(e)
 
-print(f"\n{'Směrodatná odchylka:'.ljust(25)} {std: .5f}\n{'Průměr:'.ljust(25)} {e_av: .4f}"
-      f"\n{'Medián:'.ljust(25)} {e_med: .4f}")
+print(f"\nSměrnice:\n\t{'Směrodatná odchylka:'.ljust(25)} {std: .5f}\n\t{'Průměr:'.ljust(25)} {e_av: .4f}"
+      f"\n\t{'Medián:'.ljust(25)} {e_med: .4f}")
 
 mean_x = [np.median([x[i] for x in line_x]) for i in range(np.min([x.shape[0] for x in line_x]))]
 mean_y = [np.median([y[i] for y in line_y]) for i in range(np.min([y.shape[0] for y in line_y]))]
 
-plt.plot(mean_x, mean_y, label=f'MEAN', lw=3, ls='--', c="black")
-plt.scatter(line_x[0][[2200, 2700]], line_y[0][[2200, 2700]], c="black", marker='X', s=100, zorder=4)
+# plt.plot(mean_x, mean_y, label=f'MEAN', lw=3, ls='--', c="black")
+# plt.scatter(line_x[0][[2200, 2700]], line_y[0][[2200, 2700]], c="black", marker='X', s=100, zorder=4)
 
-plt.plot([0, line_x[0][-1]], [0, line_x[0][-1] * e_av], color="black", lw=1)
+# plt.plot([0, line_x[0][-1]], [0, line_x[0][-1] * e_av], color="black", lw=1)
 x_range_start, x_range_end = plt.gca().get_xlim()  # rozsah x
 y_range_start, y_range_end = plt.gca().get_ylim()  # rozsah y
 plt.gca().set_aspect(((x_range_end - x_range_start) / (y_range_end - y_range_start)) / 2, adjustable='box')
