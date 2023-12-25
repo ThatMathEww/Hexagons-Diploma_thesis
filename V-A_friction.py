@@ -8,9 +8,13 @@ from pyzbar.pyzbar import decode
 scale_qr_ratio = 12 * 210 / 270
 
 show_images = False
-show_graph = False
 show_match = False
-use_averaging = True
+show_graph = False
+
+use_averaging = False
+window_size = 3  # Velikost klouzavého průměru
+
+tolerance = 0.25
 
 image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Friction_photos'
 
@@ -118,7 +122,7 @@ for i, folder in enumerate(folders):
         # Nalezení polohy s maximálním korelačním koeficientem
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
-        if max_val > 0.25:
+        if max_val > tolerance:
             # Získání rozměrů template
             w, h = template_gray.shape[::-1]
             top_left = max_loc
@@ -143,9 +147,14 @@ for i, folder in enumerate(folders):
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
+    if len(found_points) < 5:
+        print("\t\033[31;1mChyba: Není dostatek bodů.\033[0m")
+        continue
+
     found_points = np.array(found_points) * scale
     found_points = np.vstack([found_points[0], found_points])[:10]
     found_points -= found_points[0]
+    found_points = found_points[found_points[:, 1] < 45]
     found_points /= 1000  # metres
 
     time_stamps = np.arange(0, len(found_points) * time, time)
@@ -156,7 +165,6 @@ for i, folder in enumerate(folders):
     av_speed = np.mean(speed[speed > 0])
 
     if use_averaging:  # Použití klouzavého průměru
-        window_size = 3  # Velikost klouzavého průměru
         kernel = np.ones(window_size) / window_size
         speed_av = speed.copy()
         for _ in range(window_size - 1):
@@ -231,7 +239,7 @@ for i, folder in enumerate(folders):
 
         ax3.set_title("Acceleration")
         ax3.hlines(av_acc, time_stamps[0], time_stamps[-1], color='darkorange', linestyle='--',
-                   label=f"Average speed: {av_acc:.2f} mm/s")
+                   label=f"Average acceleration: {av_acc:.2f} mm/s")
         ax3.plot(time_stamps[:len(acceleration)], acceleration, 'o-', color='red')
         ax3.hlines(lin_acc, time_stamps[lin_ind[0]], time_stamps[lin_ind[-1]],
                    linestyle='--', color='darkred')
@@ -239,9 +247,9 @@ for i, folder in enumerate(folders):
         ax3.set_ylabel('a [$m/s^2$]')
 
         # plt.tight_layout()
-
         plt.subplots_adjust(right=0.92, left=0.12, top=0.92, bottom=0.12, wspace=0.6, hspace=0.6)
         plt.show()
 
 print(f"\nAverage acceleration: {np.mean(accelerations):.4f} m/s^2")
+print(f"\nSTD acceleration: {np.std(accelerations):.4f} m/s^2")
 print(f"\nMedian acceleration: {np.median(accelerations):.4f} m/s^2")
