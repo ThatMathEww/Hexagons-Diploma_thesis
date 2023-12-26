@@ -9,7 +9,7 @@ scale_qr_ratio = 12 * 210 / 270
 
 show_images = False
 show_match = False
-show_graph = False
+show_graph = True
 
 use_averaging = False
 window_size = 3  # Velikost klouzavého průměru
@@ -19,7 +19,7 @@ tolerance = 0.25
 image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Friction_photos'
 
 folders = [f for f in os.listdir(image_folder) if os.path.isdir(os.path.join(image_folder, f)) and
-           not f.startswith(("_", "."))]
+           not f.startswith(("_", "."))][8:]
 
 accelerations = []
 tot_len = len(folders)
@@ -199,7 +199,7 @@ for i, folder in enumerate(folders):
     print("Indexy lineárních bodů:", linear_points_indexes)
     """
 
-    lin_ind = np.arange(round(len(speed_av) * 0.2), round(len(speed_av) * 0.85), 1)
+    lin_ind = np.arange(round(len(speed_av) * 0.3), round(len(speed_av) * 0.85), 1)
 
     acceleration = np.diff(speed_av, axis=0) / np.diff(time_stamps[:len(speed_av)])
     acceleration = np.hstack([acceleration[0], acceleration])
@@ -222,7 +222,7 @@ for i, folder in enumerate(folders):
         ax2 = plt.subplot2grid((2, 3), (0, 1), colspan=2)
         ax3 = plt.subplot2grid((2, 3), (1, 1), colspan=2)
 
-        ax1.set_title("Positions")
+        ax1.set_title("Position")
         ax1.plot(found_points[:, 0], found_points[:, 1], 'o-')
         ax1.axis('equal')
         ax1.invert_yaxis()
@@ -247,7 +247,7 @@ for i, folder in enumerate(folders):
         ax3.set_ylabel('a [$m/s^2$]')
 
         # plt.tight_layout()
-        plt.subplots_adjust(right=0.92, left=0.12, top=0.92, bottom=0.12, wspace=0.6, hspace=0.6)
+        plt.subplots_adjust(right=0.97, left=0.15, top=0.92, bottom=0.12, wspace=0.6, hspace=0.8)
         plt.show()
 
 print(f"\nAverage acceleration: {np.mean(accelerations):.4f} m/s^2")
