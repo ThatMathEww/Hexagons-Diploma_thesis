@@ -1,6 +1,7 @@
 import os
 import cv2
 import json
+import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 from pyzbar.pyzbar import decode
@@ -14,12 +15,12 @@ show_graph = True
 use_averaging = False
 window_size = 3  # Velikost klouzavého průměru
 
-tolerance = 0.25
+tolerance = 0.24
 
 image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Friction_photos'
 
 folders = [f for f in os.listdir(image_folder) if os.path.isdir(os.path.join(image_folder, f)) and
-           not f.startswith(("_", "."))][8:]
+           not f.startswith(("_", "."))][26:]  # [:21]  # [8:9]
 
 accelerations = []
 tot_len = len(folders)
@@ -39,13 +40,33 @@ for i, folder in enumerate(folders):
             print("\t\033[31;1mChyba: Sklouznutí při pohybu.\033[0m")
             continue
 
+    with open(r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Hexagons-Diploma_thesis'
+              fr'\Lens_correction\calibration_{loaded_settings["width"]}x{loaded_settings["height"]}.yaml') as f:
+        loaded_dict = yaml.safe_load(f)
+
+    mtx_loaded = np.array(loaded_dict.get('camera_matrix'))
+    dist_loaded = np.array(loaded_dict.get('dist_coeff'))
+
     time = 1 / loaded_settings["fps"]
 
     images = [img for img in os.listdir(folder) if img.endswith((".jpg", ".jpeg", ".png", ".JPG")) and
               not img.startswith("_first_photo")]
-    images = sorted(images, key=lambda filename: int(os.path.splitext(filename)[0].split('_')[-1]))
+    images = sorted(images, key=lambda filename: int(os.path.splitext(filename)[0].split('_')[-1]))  # [579:]
 
-    img = cv2.imread(os.path.join(folder, images[0]), 1)
+    img_original = cv2.imread(os.path.join(folder, images[0]), 1)
+
+    img = np.zeros((loaded_settings["height"], loaded_settings["width"], 3), dtype=np.uint8)
+
+    h_small, w_small = img_original.shape[:2]
+
+    start_x = (loaded_settings["width"] - w_small) // 2
+    start_y = (loaded_settings["height"] - h_small) // 2
+
+    img[start_y:start_y + h_small, start_x:start_x + w_small] = img_original
+
+    img = cv2.undistort(img, mtx_loaded, dist_loaded, None, mtx_loaded)
+
+    img = img[:, start_x:start_x + w_small]
 
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -79,7 +100,8 @@ for i, folder in enumerate(folders):
             # scale = 50 / np.linalg.norm(np.mean((283, 9)) - np.mean((281, 533)))
 
             if show_images:
-                cv2.polylines(img_gray, [cv2.convexHull(points)], True, (0, 255, 0), 2)
+                cv2.polylines(img_gray, [cv2.convexHull(points)], True, (250, 50, 50), 5)
+                # cv2.imwrite('QR_code_gray_undist.jpg', img_gray)
                 cv2.namedWindow("QR Codes", cv2.WINDOW_NORMAL)
                 cv2.resizeWindow("QR Codes", img_gray.shape[1] // 2, img_gray.shape[0] // 2)
                 cv2.imshow("QR Codes", img_gray)
@@ -105,7 +127,15 @@ for i, folder in enumerate(folders):
 
     previous_position = (-10000, -10000)
     for image in images:
-        img = cv2.imread(os.path.join(folder, image))  # [100:, 50:-50]
+        img_original = cv2.imread(os.path.join(folder, image))  # [100:, 50:-50]
+
+        img = np.zeros((loaded_settings["height"], loaded_settings["width"], 3), dtype=np.uint8)
+
+        img[start_y:start_y + h_small, start_x:start_x + w_small] = img_original
+
+        img = cv2.undistort(img, mtx_loaded, dist_loaded, None, mtx_loaded)
+
+        img = img[:, start_x:start_x + w_small]
 
         """# Zobrazení výsledného obrázku
         cv2.imshow('template', template)
@@ -141,36 +171,42 @@ for i, folder in enumerate(folders):
         if show_match:
             h, w = img.shape[:2]
             # Zobrazení výsledného obrázku
-            cv2.namedWindow(f'Found template {max_val:.04f}', cv2.WINDOW_NORMAL)
-            cv2.resizeWindow(f'Found template {max_val:.04f}', int(w * 0.7), int(h * 0.7))
-            cv2.imshow(f'Found template {max_val:.04f}', img)
+            cv2.namedWindow(f'{image} Found template {max_val:.04f}', cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(f'{image} Found template {max_val:.04f}', int(w * 0.7), int(h * 0.7))
+            cv2.imshow(f'{image} Found template {max_val:.04f}', img)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-    if len(found_points) < 5:
+    found_points = np.array(found_points) * scale
+    # found_points = np.vstack([found_points[0], found_points])[:10]
+    found_points -= found_points[0]
+    found_points = found_points[found_points[:, 1] < 35]
+
+    if len(found_points) < 3:
         print("\t\033[31;1mChyba: Není dostatek bodů.\033[0m")
         continue
 
-    found_points = np.array(found_points) * scale
-    found_points = np.vstack([found_points[0], found_points])[:10]
-    found_points -= found_points[0]
-    found_points = found_points[found_points[:, 1] < 45]
     found_points /= 1000  # metres
 
-    time_stamps = np.arange(0, len(found_points) * time, time)
+    time_stamps = np.arange(0, len(found_points) * time, time)[:len(found_points)]
 
-    speed = np.diff(np.round(np.mean(found_points, axis=1), 6), axis=0) / np.diff(time_stamps)
-    speed = np.hstack([speed[0], speed])
-
-    av_speed = np.mean(speed[speed > 0])
+    speed = np.array(
+        [np.linalg.norm(found_points[i] - found_points[i + 1]) for i in range(len(found_points) - 1)]) / np.diff(
+        time_stamps)
+    # speed = np.diff(np.round(np.mean(found_points, axis=1), 6), axis=0) / np.diff(time_stamps)
+    speed = np.hstack([0, speed])
 
     if use_averaging:  # Použití klouzavého průměru
+        speed = np.hstack([speed[0], speed])
+        av_speed = np.mean(speed[speed > 0])
+
         kernel = np.ones(window_size) / window_size
         speed_av = speed.copy()
         for _ in range(window_size - 1):
             speed_av = np.hstack([speed_av, speed_av[-1]])
         speed_av = np.convolve(speed_av, kernel, mode='valid')
     else:
+        av_speed = np.mean(speed[speed > 0])
         speed_av = speed.copy()
 
     """# Lineární regrese
@@ -199,18 +235,19 @@ for i, folder in enumerate(folders):
     print("Indexy lineárních bodů:", linear_points_indexes)
     """
 
-    lin_ind = np.arange(round(len(speed_av) * 0.3), round(len(speed_av) * 0.85), 1)
+    lin_ind = np.arange(round(len(speed_av) * 0.2), round(len(speed_av) * 0.85), 1)
 
     acceleration = np.diff(speed_av, axis=0) / np.diff(time_stamps[:len(speed_av)])
-    acceleration = np.hstack([acceleration[0], acceleration])
+    acceleration = np.hstack([0, acceleration])
 
     av_acc = np.mean(acceleration[acceleration > 0])
-    # print(f"\tAverage acceleration: {av_acc:.4f} m/s^2")
+    print(f"\tAverage acceleration: {av_acc:.4f} m/s^2")
 
     mean_acc = (speed[-1] - speed[0]) / (time_stamps[-1] - time_stamps[0])
     # print(f"\tMean acceleration: {mean_acc:.4f} m/s^2")
 
     lin_acc = np.mean(acceleration[lin_ind])
+    # lin_acc = acceleration[acceleration > 0][0]
     if 'F01' in os.path.basename(folder):
         accelerations.append(lin_acc)
     print(f"\tLinear mean acceleration: {lin_acc:.4f} m/s^2")

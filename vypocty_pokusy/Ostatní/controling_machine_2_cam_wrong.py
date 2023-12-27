@@ -498,6 +498,9 @@ if __name__ == "__main__":
     from serial.tools import list_ports
     from serial import Serial, SerialException
 
+    print("\n\033[35;1mToto má pomalé zapisování a čtení dat\033[0m\n")
+    # Program nestíhá číst data ze stroje a zpomaluje (zasekává) stroj
+
     output = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos"
 
     camera_width = 4032  # cam_width = 3840
