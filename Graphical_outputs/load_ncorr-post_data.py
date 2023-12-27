@@ -50,8 +50,6 @@ plt.imshow(masked_data, cmap='jet', interpolation='nearest', aspect='equal',
 plt.colorbar(label='Hodnota')
 plt.title(f"{column_name}: {i} photo")
 
-
-
 # Předpokládejme, že máte vektor x, vektor y a matici hodnot Z
 x = np.arange(0, 10000, 100)
 y = np.arange(0, 5000, 50)
@@ -59,7 +57,7 @@ X, Y = np.meshgrid(x, y)
 Z = np.sin(X) * np.cos(Y)  # Předpokládaná matice hodnot
 
 # Předpokládaná maska (můžete ji nahradit vaší vlastní maskou)
-mask = (504 > (X**2 + np.sqrt(Y))) & ((X**2 + np.sqrt(Y)) < 1500)
+mask = (504 > (X ** 2 + np.sqrt(Y))) & ((X ** 2 + np.sqrt(Y)) < 1500)
 
 # Oříznutí hodnot podle masky
 Z_masked = np.ma.masked_where(mask, Z)
