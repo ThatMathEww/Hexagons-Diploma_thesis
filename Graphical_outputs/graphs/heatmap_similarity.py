@@ -87,9 +87,10 @@ plt.imshow(normalized_result, cmap='jet', vmin=0, vmax=1)
 
 # inset axes
 x1, x2, y1, y2 = top_left[0] - 100, top_left[0] + 100, top_left[1] - 100, top_left[1] + 100  # subregion of the image
-ax_ins = ax.inset_axes([0.5, 0.5, 0.6, 0.47], xlim=(x1, x2), ylim=(y1, y2),
-                       xticks=[], xticklabels=[], yticks=[], yticklabels=[])
-ax_ins.imshow(normalized_result, cmap='jet', vmin=0, vmax=1, alpha=1, origin="upper")
+ax_ins = ax.inset_axes([0.5, 0.5, 0.6, 0.47], xticks=[], xticklabels=[], yticks=[], yticklabels=[])
+
+ax_ins.imshow(normalized_result[y1: y2, x1: x2], extent=(x1, x2, y1, y2), cmap='jet', vmin=0, vmax=1, alpha=1,
+              origin="upper")
 # change all spines
 [ax_ins.spines[axis].set_linewidth(1.05) for axis in ['top', 'bottom', 'left', 'right']]
 
@@ -146,9 +147,11 @@ ax.set_ylabel('y position [pixels]', labelpad=10)
 ax.zaxis.set_rotate_label(False)  # disable automatic rotation
 ax.set_zlabel('Correlation coefficient', labelpad=10, rotation=90)
 
-ax.set_yticklabels(ax.get_yticklabels()[::-1])
+# ax.set_xticklabels(np.int32(ax.get_xticks() + (top_left[0] - 100)), rotation=-15)
+# ax.set_yticklabels(np.int32(ax.get_yticks() + (top_left[1] - 100)))
 
-# ax.invert_yaxis()
+# ax.set_yticklabels(ax.get_yticklabels()[::-1])
+ax.invert_yaxis()
 
 ax.auto_scale_xyz(x.flatten(), y.flatten(), z.flatten())
 # Vykreslení 3D grafu
@@ -178,7 +181,7 @@ ax_ins = ax.inset_axes([0.5, 0.5, 0.6, 0.47], xlim=(x1, x2), ylim=(y1, y2),
 ax_ins_3d = ax_ins.inset_axes([0, 0, 1, 1], projection='3d', xticklabels=[], yticklabels=[],
                               zticks=np.arange(0, 1.2, 0.2), zticklabels=[], zlim=(0, 1))
 ax_ins_3d.plot_surface(x, y, z, rstride=1, cstride=1, cmap='jet', vmin=0, vmax=1, antialiased=True)
-# ax_ins_3d.invert_yaxis()
+ax_ins_3d.invert_yaxis()
 
 ax_ins_3d.auto_scale_xyz(x.flatten(), y.flatten(), z.flatten())
 ax_ins_3d.view_init(elev=30, azim=-120, roll=0)
