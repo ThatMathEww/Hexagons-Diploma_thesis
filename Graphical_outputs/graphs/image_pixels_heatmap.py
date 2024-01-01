@@ -65,6 +65,7 @@ ax.tick_params(which="minor", bottom=False, left=False)
 ax.set_facecolor("none")
 fig.set_facecolor("none")
 
+# ax.set_yticklabels(ax.get_yticklabels()[::-1])
 ax.invert_yaxis()
 
 fig.tight_layout()

@@ -2172,7 +2172,7 @@ def results_adjustment(result, old_center, limit, mesh, upper_area_cor=None):
 
         print("Výsledky vhodnoceny.")
 
-    return next_data, new_center, tri_index, indices_wrong  # , tri_cor_new
+    return next_data, new_center, tri_index, np.array(indices_wrong, dtype=np.uint64)  # , tri_cor_new
 
 
 def correlation_calculation():
@@ -2230,6 +2230,7 @@ def rough_calculation(mesh, centers):
         return
 
     tot_im = len(image_files)
+    tot_roi = len(mesh)
     for i in range(0, tot_im):
         start__time = time.time()
         print("\n=================================================================",
@@ -2237,11 +2238,31 @@ def rough_calculation(mesh, centers):
 
         gray2 = load_photo(img_index=i, color_type=photo_type)
 
+        (temp_triangle_vertices, temp_triangle_centers, temp_triangle_indexes, temp_wrong_points_indexes,
+         temp_key_points, temp_end_marks) = (
+            np.empty((0, 2), dtype=np.float64), np.empty((0, 2), dtype=np.float64), np.empty((0, 3), dtype=np.uint64),
+            np.empty(0, dtype=np.uint64), np.empty((0, 4), dtype=np.float64), [0])
+
         for j, current_mesh in enumerate(mesh):
+            print("\n--------------------------------------------------------------",
+                  f"\nAktuální ROI:  [ {j + 1} / {tot_roi} ]")
+
+            try:
+                tri_index_add = int(np.max(temp_triangle_indexes)) + 1
+            except ValueError:
+                tri_index_add = 0
+            try:
+                end_index_add = int(np.max(temp_end_marks))
+            except ValueError:
+                end_index_add = 0
+            try:
+                wrong_index_add = int(np.max(temp_wrong_points_indexes)) + 1
+            except ValueError:
+                wrong_index_add = 0
+
             key_points, end_marks = point_locator(mesh=current_mesh, shift_start=points_max, state=i,
-                                                  current_shift=(
-                                                          correlation_area_points_all[i][0][0, 1] - points_cor[0][
-                                                      0, 1]),
+                                                  current_shift=(correlation_area_points_all[i][0][0, 1] -
+                                                                 points_cor[0][0, 1]),
                                                   n_features=set_n_features,
                                                   n_octave_layers=set_n_octave_layers,
                                                   contrast_threshold=set_contrast_threshold,
@@ -2251,12 +2272,23 @@ def rough_calculation(mesh, centers):
             triangle_vertices, triangle_centers, triangle_indexes, wrong_points_indexes = results_adjustment(
                 key_points, centers[j], end_marks, current_mesh, correlation_area_points_all[i])
 
-            triangle_vertices_all.append(triangle_vertices)  # n,2
-            triangle_centers_all.append(triangle_centers)  # n,2
-            triangle_indexes_all.append(triangle_indexes)  # n,3
-            wrong_points_indexes_all.append(wrong_points_indexes)  # n
-            key_points_all.append(key_points)  # n,4 => x_old, y_old, x_new, y_new
-            end_marks_all.append(end_marks)  # n
+            triangle_indexes = triangle_indexes + tri_index_add
+            if len(wrong_points_indexes) > 0:
+                wrong_points_indexes = wrong_points_indexes + wrong_index_add
+
+            temp_triangle_vertices = np.vstack((temp_triangle_vertices, triangle_vertices))
+            temp_triangle_centers = np.vstack((temp_triangle_centers, triangle_centers))
+            temp_triangle_indexes = np.vstack((temp_triangle_indexes, triangle_indexes))
+            temp_wrong_points_indexes = np.hstack((temp_wrong_points_indexes, wrong_points_indexes))
+            temp_key_points = np.vstack((temp_key_points, key_points))
+            temp_end_marks.extend([e + end_index_add for e in end_marks[1:]])
+
+        triangle_vertices_all.append(temp_triangle_vertices)  # n,2
+        triangle_centers_all.append(temp_triangle_centers)  # n,2
+        triangle_indexes_all.append(temp_triangle_indexes)  # n,3
+        wrong_points_indexes_all.append(temp_wrong_points_indexes)  # n
+        key_points_all.append(temp_key_points)  # n,4 => x_old, y_old, x_new, y_new
+        end_marks_all.append(temp_end_marks)  # n
 
         print(f"\tCelkový čas: {time.time() - start__time:.2f}")
 
@@ -3226,7 +3258,7 @@ def point_tracking_calculation(use_correlation=True, interpolate_new_points=Fals
 
     print("\nSpuštěno hledaní bodů.")
 
-    show_graphs = False  # TODO UKAZKA GRAFU PRO
+    show_graphs = False  # TODO UKAZKA GRAFU
 
     tracked_points_all, tracked_rotations_all = [], []
 
@@ -3707,7 +3739,8 @@ def perform_calculations():
             or recalculate['Re Point detection']):
         print("\n\033[32m-----------------------------------------------------------------\033[0m"
               "\n\033[32m-----------------------------------------------------------------\033[0m")
-        point_tracking_calculation(use_correlation=False, interpolate_new_points=True, interpolation_number=16)
+        point_tracking_calculation(use_correlation=False, interpolate_new_points="H" in data_type,
+                                   interpolation_number=16)
 
     print("\n\033[32;1m.................................................................\033[0m"
           "\n\033[32;1m:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\033[0m")
@@ -6054,7 +6087,7 @@ def main():
     images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(",")]
     # images_folders = images_folders[4:-2]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[0]]
+    images_folders = [images_folders[0], images_folders[-1]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6587,7 +6620,7 @@ def main():
                 image_files = image_files[start:end]  # načátání snímků (první je 0) př: "image_files[2:5] od 2 do 5"
                 """image_files = [image_files[0], image_files[7], image_files[14], image_files[21],
                                image_files[-1]]"""  # TODO ############ potom změnit počet fotek
-                image_files = [image_files[0], image_files[15], image_files[-1]]
+                # image_files = [image_files[0], image_files[-1]]
 
                 if preload_photos:
                     preloaded_images = [load_photo(i, photo_type) for i in range(len(image_files))]
@@ -6839,7 +6872,7 @@ def reset_parameters():
 
 
 if __name__ == '__main__':
-    global end, folder_measurement, image_files, current_path_to_photos, settings, variable_names, main_counter
+    global start, end, folder_measurement, image_files, current_path_to_photos, settings, variable_names, main_counter
     global gray1, gray2, width, height, auto_crop, saved_data_name, all_photos, preloaded_images
     global triangle_vertices_all, triangle_centers_all, triangle_indexes_all, triangle_points_all, \
         correlation_area_points_all, wrong_points_indexes_all, key_points_all, end_marks_all, tracked_points_all, \
@@ -6911,7 +6944,7 @@ if __name__ == '__main__':
 
     start_, end_ = 1, "all"
 
-    size = 250  # !=_ 135 _=!,   250, 100, 85 - min,   (40)
+    size = 200  # !=_ 135 _=!,   250 - pro hexagony , 100, 85 - min,   (40)
     fine_size = 20  # np.int32(size * 0.1)
 
     points_limit = 1200

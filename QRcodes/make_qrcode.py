@@ -6,7 +6,7 @@ from PIL import Image
 # import json
 # import yaml
 
-output_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\obr'
+output_folder = ""# r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\obr'
 
 use_logo = False
 make_frame = True
@@ -19,13 +19,13 @@ error_correction = qrcode.constants.ERROR_CORRECT_M  # Oprava chyb: L (Low), M (
 
 file_type = "YAML"
 
-for i in range(5, 7):
+for i in range(1,2):
     # Text nebo data, která chcete zakódovat do QR kódu
 
     # data = ".*CP*._N#1"  # "H02_01_12s"  # ".*CP*._N#3"
     # name = "calibration_point01_L"  # "Measurement_" + data  # "calibration_point05"
 
-    data = f"H02_{i:02d}-III-max_12s_k"  # f"F04_{i:03d}"  # f"T02_{i:02d}-I_1s"  # "H02_{i:02d}_10s"  # ".*CP*._N#3"
+    data = f"H02_{i:02d}-I-max_12s_k"  # f"F04_{i:03d}"  # f"T02_{i:02d}-I_1s"  # "H02_{i:02d}_10s"  # ".*CP*._N#3"
     name = "qr_Hex_test_" + data  # "Measurement_" + data  # "calibration_point05" # "qr_Friction_test_"
     short_name = data
 
