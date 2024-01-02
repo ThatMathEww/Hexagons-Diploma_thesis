@@ -9,7 +9,7 @@ folder_path_save = r'C:\Users\matej\PycharmProjects\pythonProject\Python_project
 
 # Získání seznamu souborů v dané složce
 files = [file for file in os.listdir(folder_path_load) if os.path.isfile(os.path.join(folder_path_load, file)) and
-         file.lower().endswith(".txt") and file.startswith("M01_")]
+         file.lower().endswith(".txt") and file.startswith("B01_")]
 
 operation = 0
 

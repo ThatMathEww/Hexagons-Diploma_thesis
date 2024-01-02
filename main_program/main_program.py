@@ -3405,6 +3405,12 @@ def point_tracking_calculation(use_correlation=True, interpolate_new_points=Fals
                 masked_img_2 = cv2.bitwise_and(gray_2, gray_2, mask=mask_2)"""
 
             # Odhad transformační matice
+            transform_matrix1 = cv2.estimateAffine2D(current_key_points[:, 2:].astype(np.float32),
+                                                     current_key_points[:, :2].astype(np.float32))[0]
+
+            # Matice obsahuje informace o translaci (posunu) a rotaci
+            rotation1 = np.arctan2(transform_matrix1[1, 0], transform_matrix1[0, 0])
+
             transform_matrix = cv2.estimateAffinePartial2D(current_key_points[:, 2:].astype(np.float32),
                                                            current_key_points[:, :2].astype(np.float32))[0]
 
@@ -3787,35 +3793,41 @@ def do_scale(img=None, auto_scale=True):
         except NameError:
             pass
 
-        scale_paths = os.path.join(folder_measurements, "scale")
-        template1 = cv2.imread(scale_paths + r"\12.png", photo_type)[30:-90, 215:-45]
-        template2 = cv2.imread(scale_paths + r"\23.png", photo_type)[30:-90, 215:-45]
-        top_left1, height1, width1, result1 = match(template1, img, tolerance=0.7)
-        top_left2, height2, width2, result2 = match(template2, img, tolerance=0.7)
+        scale_paths = os.path.join(folder_measurements, "scale", data_type)
+        if os.path.exists(scale_paths):
+            photos = os.listdir(scale_paths)
+            photos = sorted(photos, key=lambda filename: int(os.path.splitext(filename)[0]))
 
-        if top_left1 is not None and top_left2 is not None:
-            dist = np.linalg.norm(top_left1 - top_left2)
-            scale = (230 - 120) / dist
-            print(f"\n\tMěřítko: {scale:.4f}",
-                  f"\n\tCelková vzdálenost: {dist:.3f}\n\t\tRozdíly (x,y): {abs(top_left2 - top_left1)}",
-                  f"\n\t\t  Přesnosti: [{result1:.3f}], [{result2:.3f}]")
+            template1 = cv2.imread(os.path.join(scale_paths, photos[0]), photo_type)  # [30:-90, 215:-45]
+            template2 = cv2.imread(os.path.join(scale_paths, photos[1]), photo_type)  # [30:-90, 215:-45]
+            top_left1, height1, width1, result1 = match(template1, img, tolerance=0.55)
+            top_left2, height2, width2, result2 = match(template2, img, tolerance=0.55)
 
-            if False:
-                plt.figure()
-                plt.subplot(221)
-                plt.imshow(cv2.cvtColor(template1, cv2.COLOR_BGR2RGB))
-                plt.subplot(222)
-                plt.imshow(cv2.cvtColor(template2, cv2.COLOR_BGR2RGB))
-                plt.subplot(223)
-                plt.imshow(cv2.cvtColor(
-                    img[top_left1[1]:top_left1[1] + height1, top_left1[0]:top_left1[0] + width1], cv2.COLOR_BGR2RGB))
-                plt.subplot(224)
-                plt.imshow(cv2.cvtColor(
-                    img[top_left2[1]:top_left2[1] + height2, top_left2[0]:top_left2[0] + width2], cv2.COLOR_BGR2RGB))
-                plt.tight_layout()
-                plt.show(block=block_graphs)
+            if top_left1 is not None and top_left2 is not None:
+                dist = np.linalg.norm(top_left1 - top_left2)
+                scale = (int(photos[0].split(".")[0]) * 10 - int(photos[1].split(".")[0]) * 10) / dist
+                print(f"\n\tMěřítko: {scale:.4f}",
+                      f"\n\tCelková vzdálenost: {dist:.3f}\n\t\tRozdíly (x,y): {abs(top_left2 - top_left1)}",
+                      f"\n\t\t  Přesnosti: [{result1:.3f}], [{result2:.3f}]")
 
-            return
+                if False:
+                    plt.figure()
+                    plt.subplot(221)
+                    plt.imshow(cv2.cvtColor(template1, cv2.COLOR_BGR2RGB))
+                    plt.subplot(222)
+                    plt.imshow(cv2.cvtColor(template2, cv2.COLOR_BGR2RGB))
+                    plt.subplot(223)
+                    plt.imshow(
+                        cv2.cvtColor(img[top_left1[1]:top_left1[1] + height1, top_left1[0]:top_left1[0] + width1],
+                                     cv2.COLOR_BGR2RGB))
+                    plt.subplot(224)
+                    plt.imshow(
+                        cv2.cvtColor(img[top_left2[1]:top_left2[1] + height2, top_left2[0]:top_left2[0] + width2],
+                                     cv2.COLOR_BGR2RGB))
+                    plt.tight_layout()
+                    plt.show(block=block_graphs)
+
+                return
 
         else:
             print("\n\033[33;1;21mWARRNING\033[0m\n\tChyba načtení měřítka.\nZadejte ho ručně.")
@@ -5713,7 +5725,7 @@ def make_angle_correction(image_to_get_angle=None, image_to_warp=None, points_to
 
         if (point1 is None and point2 is None):
             print(f"\n\033[33;1;21mWARRNING\033[0m\n\tQR kódy nebyly nalezeny.")
-            scale_paths = os.path.join(folder_measurements, "scale")
+            scale_paths = os.path.join(folder_measurements, "templates\Angles", data_type)
             template1 = cv2.imread(scale_paths + r"\start_1.png", 0)
             template2 = cv2.imread(scale_paths + r"\end_1.png", 0)
             point1 = match(template1, img)[0]
@@ -6087,7 +6099,7 @@ def main():
     images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(",")]
     # images_folders = images_folders[4:-2]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[0], images_folders[-1]]
+    images_folders = [images_folders[-1]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6491,8 +6503,8 @@ def main():
                 continue
 
             if calculations_statuses['Point detection']:
-                plot_marked_points(0, show_menu=False, show_arrows=True, save_plot=True, plot_format='jpg',
-                                   save_dpi=700, text_size=3, show_marked_points=False)
+                plot_marked_points(0, show_menu=False, show_arrows=True, save_plot=False, plot_format='jpg',
+                                   save_dpi=700, text_size=10, show_marked_points=False)
 
                 # for i in range(len(image_files)):
                 plot_point_path(0, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True, text_size=7)
@@ -6916,29 +6928,29 @@ if __name__ == '__main__':
     send_final_message = False
 
     load_set_points = True
-    do_auto_mark = False
-    mark_points_by_hand = True
+    do_auto_mark = True
+    mark_points_by_hand = False
 
     do_calculations = {'Do Correlation': True,
-                       'Do Rough detection': True,
+                       'Do Rough detection': False,
                        'Do Fine detection': False,
-                       'Do Point detection': True}
+                       'Do Point detection': False}
 
     main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 
     folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
 
-    data_type = "M01"
+    data_type = "S01"
 
-    templates_path = folder_measurements + r'\templates\templates_H01'
+    templates_path = folder_measurements + r'\templates\templates_S01'
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'pokus'  # data_export_new
-    save_calculated_data = False
-    load_calculated_data = False
+    saved_data = 'data_export_new'  # data_export_new
+    save_calculated_data = True
+    load_calculated_data = True
     do_finishing_calculation = False
-    make_temporary_savings = False
+    make_temporary_savings = True
 
     make_video = False
 
