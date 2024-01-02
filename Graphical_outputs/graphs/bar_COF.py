@@ -1,26 +1,27 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
 import numpy as np
+import pandas as pd
 
-# Názvy položek
-names = ['N 1', 'N 2', 'N 3', 'N 4']
+data = pd.read_excel('COF_values.xlsx', sheet_name="COF", header=None, nrows=8).T
+data.columns = data.iloc[0]
+data = data.iloc[1:]
+
+
+names = ['B', 'C1', 'C2', 'CP']
+
+static_values = data.iloc[:, ::2]
+kinetic_values = data.iloc[:, 1::2]
 
 colors = ['tab:blue', 'tab:orange', 'limegreen', 'red', 'aqua', 'magenta']
 
 # Hodnoty pro první sadu dat
-bar_values1 = [10, 15, 12, 8]
-
-# Standardní odchylky pro první sadu dat
-std1 = [1, 2, 1.5, 1.2]
+static_bar_mean = static_values.mean(skipna=True)
+static_std = static_values.std(skipna=True)
 
 # Hodnoty pro druhou sadu dat
-bar_values2 = [8, 12, 10, 6]
-
-# Standardní odchylky pro druhou sadu dat
-std2 = [0.8, 1.5, 1, 0.9]
-
-# Indexy pro sloupce
-
+kinetic_bar_mean = kinetic_values.mean(skipna=True)
+kinetic_std = kinetic_values.std(skipna=True)
 
 # Šířka sloupců
 bar_width = 0.3  # Upravte šířku sloupců podle potřeby
@@ -30,10 +31,10 @@ bar_spacing = 0.025  # Upravte mezeru mezi sloupci podle potřeby
 # Vytvoření sloupcového grafu s mezerou
 indexes = np.arange(0, len(names) * column_spacing, column_spacing)
 
-plt.bar(indexes - (bar_width + bar_spacing) / 2, bar_values1, bar_width, label='Sada 1', yerr=std1, capsize=5,
-        color=colors[0], zorder=4)
-plt.bar(indexes + (bar_width + bar_spacing) / 2, bar_values2, bar_width, label='Sada 2', yerr=std2, capsize=5,
-        color=colors[1], zorder=4)
+plt.bar(indexes - (bar_width + bar_spacing) / 2, static_bar_mean, bar_width, label='Static', yerr=static_std,
+        capsize=5, color=colors[0], zorder=4)
+plt.bar(indexes + (bar_width + bar_spacing) / 2, kinetic_bar_mean, bar_width, label='Kinetic', yerr=kinetic_std,
+        capsize=5, color=colors[1], zorder=4)
 
 plt.gca().yaxis.set_minor_locator(AutoMinorLocator())
 
@@ -59,7 +60,6 @@ if plt.gca().get_ylim()[1] % plt.gca().get_yticks()[-1] != 0:
     step_ticks_y = np.mean(np.diff(plt.gca().get_yticks()))
     y_max = np.ceil(plt.gca().get_ylim()[1] / step_ticks_y) * step_ticks_y
     plt.gca().set_ylim(plt.gca().get_ylim()[0], y_max)
-
 
 # Nastavení popisků os a titulku
 plt.ylabel('Friction coefficient')
