@@ -67,4 +67,6 @@ for folder in images_folders:
             img_undistorted = img_undistorted[:, :1200]
 
         cv2.imwrite(os.path.join(output_path, 'mod-' + frame), cv2.cvtColor(img_undistorted, cv2.COLOR_BGR2GRAY))
+        os.utime(os.path.join(output_path, 'mod-' + frame),
+                 (os.path.getctime(os.path.join(input_path, frame)), os.path.getmtime(os.path.join(input_path, frame))))
     print(f"Folder {folder} is done.")

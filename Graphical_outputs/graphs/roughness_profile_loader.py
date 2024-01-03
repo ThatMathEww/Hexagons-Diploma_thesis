@@ -2,6 +2,7 @@ import numpy as np
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 from matplotlib.ticker import AutoMinorLocator
+from scipy.fft import fft, ifft
 import pandas as pd
 import os
 
@@ -43,6 +44,8 @@ if plot_min_max:
     # Použití konvoluce pro vyhlazení
     z = np.convolve(y, kernel, mode='valid')
 
+    # plt.plot(x[:len(z)], z, color='lightgray', zorder=3)
+
     # Nalezení lokálních maxim
     lok_maxima, _ = find_peaks(z, width=100)
 
@@ -80,7 +83,6 @@ if plt.gca().get_xlim()[1] % plt.gca().get_xticks()[-1] == 0:
 if plt.gca().get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
     plt.gca().spines['top'].set_visible(False)
 
-
 # Nastavte značky čísel, aby šly dovnitř osy
 plt.gca().tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
 plt.gca().tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
@@ -91,6 +93,30 @@ plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncols=4)
 plt.gca().set_aspect('equal', adjustable='box')
 
 plt.tight_layout()
+
+"""
+def approximate_waveform(x, y, num_components):
+    # Proveďte Fourierovu transformaci
+    fft_values = fft(y)
+
+    # Nulování frekvencí nad num_components
+    fft_values[num_components + 1:] = 0
+    fft_values[-num_components:] = 0
+
+    # Proveďte zpětnou Fourierovu transformaci
+    y_approx = ifft(fft_values).real
+
+    return y_approx
+
+
+# Počet komponent pro aproximaci
+num_components = 3  # Můžete změnit podle potřeby
+
+# Aproximace vlnové křivky
+y_waviness = approximate_waveform(x, y, num_components)
+
+plt.plot(x, y_waviness, label=f"Aproximovaná vlnová křivka ({num_components} komponenty)", linestyle="--", color="red")
+"""
 
 # Zobrazení grafu
 plt.show()

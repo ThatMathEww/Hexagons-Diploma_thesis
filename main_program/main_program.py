@@ -1043,8 +1043,9 @@ def set_roi(finish_marking=False, just_load=False):
                             break
                         elif ans_to_mark == "N":
                             print("\n\tZvolena možnost 'N'")
-                            return divide_image(points_pos, points_neg, size)
-                            # break
+                            if points_pos is not None:
+                                return divide_image(points_pos, points_neg, size)
+                            return None, None
                         else:
                             print("\n Zadejte platnou odpověď.")
             except Exception as e:
@@ -3811,7 +3812,7 @@ def do_scale(img=None, auto_scale=True):
 
             if top_left1 is not None and top_left2 is not None:
                 dist = np.linalg.norm(top_left1 - top_left2)
-                scale = (int(photos[0].split(".")[0]) * 10 - int(photos[1].split(".")[0]) * 10) / dist
+                scale = abs(int(photos[1].split(".")[0]) * 10 - int(photos[0].split(".")[0]) * 10) / dist
                 print(f"\n\tMěřítko: {scale:.4f}",
                       f"\n\tCelková vzdálenost: {dist:.3f}\n\t\tRozdíly (x,y): {abs(top_left2 - top_left1)}",
                       f"\n\t\t  Přesnosti: [{result1:.3f}], [{result2:.3f}]")
@@ -4123,6 +4124,9 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
                     text_size: float | int = 9):
     index = get_index(image_number)
 
+    if not calculations_statuses['Point detection']:
+        plot_tracked_paths = False
+
     print("\n  -  Vykreslení průběhu bodů: Fotografie - {}: {}".format(index + 1, image_files[index]))
 
     image = load_photo(img_index=index, color_type=img_color)
@@ -4153,9 +4157,13 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
         # rough_points = triangle_centers_all  # rough element
         # fine_points = fine_mesh_centers_all  # fine element
 
-        index_ = []
-        for ind_1, ind_2, coordinates in zip((index_cor, index_pt), (indexes_cor, indexes_pt),
-                                             (correlation_area_points_all, tracked_points_all)):
+        index_ = [None] * 4
+
+        i = 0
+        for ind_1, ind_2, coordinates in (zip([index_cor, index_pt], [indexes_cor, indexes_pt],
+                                              [correlation_area_points_all, tracked_points_all])
+        if plot_tracked_paths else zip([index_cor], [indexes_cor], [correlation_area_points_all])):
+
             length_1, length_2 = len(coordinates), len(coordinates[0])
             for ind, length in zip((ind_1, ind_2), (length_1, length_2)):
                 if isinstance(ind, str) and ind == 'all':
@@ -4163,15 +4171,18 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
                 elif isinstance(ind, (list, tuple, np.ndarray)):
                     if np.max(ind) > length - 1 or np.min(ind) < -length:
                         return
-                index_.append(ind)
+                index_[i] = ind
+                i += 1
+
         [index_cor, indexes_cor, index_pt, indexes_pt] = index_
 
         areas = [np.array([correlation_area_points_all[i][j] for i in index_cor]) for j in indexes_cor]
-        points = [np.array([tracked_points_all[i][j] for i in index_pt]) for j in indexes_pt]
-        # points = [np.array([point[j] for point in tracked_points_all]) for j in range(len(tracked_points_all[0]))]
+        if plot_tracked_paths:
+            points = [np.array([tracked_points_all[i][j] for i in index_pt]) for j in indexes_pt]
+            # points = [np.array([point[j] for point in tracked_points_all]) for j in range(len(tracked_points_all[0]))]
 
+            points = [make_angle_correction(points_to_warp=p) for p in points]
         areas = [make_angle_correction(points_to_warp=a).reshape(-1, 2, 2) for a in areas]
-        points = [make_angle_correction(points_to_warp=p) for p in points]
         image = make_angle_correction(image_to_warp=image)
 
         fig, ax = plt.subplots(figsize=(np.int8(0.002 * w), np.int8(0.0017 * h)), num="Points paths graph")
@@ -5746,12 +5757,18 @@ def make_angle_correction(image_to_get_angle=None, image_to_warp=None, points_to
             point1, point2, point3, point4 = point3, point4, None, None
 
         if (point1 is None and point2 is None):
-            print(f"\n\033[33;1;21mWARRNING\033[0m\n\tQR kódy nebyly nalezeny.")
+            print(f"\n\033[33;1;21mWARRNING\033[0m\n\tQR kódy pro určení natočení nebyly nalezeny.")
             scale_paths = os.path.join(folder_measurements, "templates\Angles", data_type)
             template1 = cv2.imread(scale_paths + r"\start_1.png", 0)
             template2 = cv2.imread(scale_paths + r"\end_1.png", 0)
-            point1 = match(template1, img)[0]
-            point2 = match(template2, img)[0]
+            point1 = match(template1, img, tolerance=0.6)[0]
+            point2, _, w, _ = match(template2, img, tolerance=0.6)
+            point2 = (point2[0] + w, point2[1])
+
+        if point1 is None or point2 is None:
+            print(f"\n\033[33;1;21mWARRNING\033[0m\n\tBody pro výpočet úhlu nebyly nalezeny."
+                  f"\n\tVýpočet úhlu nebude proveden.")
+            return
 
         angle_degrees1 = np.rad2deg(np.arctan2(point2[1] - point1[1], point2[0] - point1[0]))
         # 0.2798794602553504 // 0.3498172464499053
@@ -6007,15 +6024,12 @@ def try_save_data(zip_name="data_autosave", temporary_file=False, overwrite=Fals
         else:
             print(f"\n- Pokus o uložení dat do souboru: '{zip_name}.zip'")
 
-        if do_just_correlation:
-            set_data = {name: value for name, value in zip((variable_names[0:3]), (dataset1[0:3]))}
-        else:
-            # Seskupení proměnných aktuálního nastavení do slovníku pro soubor JSON
-            """settings = [item.tolist() if isinstance(item, np.ndarray) else
-                       item for item in (data[0:2] + data[3:7])]"""
-            set_data = {name: value for name, value in
-                        zip(variable_names, (dataset1[0:3] + dataset1[4:]))}
-            # {f'var{i}': variable for i, variable in enumerate(dataset)}
+        # Seskupení proměnných aktuálního nastavení do slovníku pro soubor JSON
+        """settings = [item.tolist() if isinstance(item, np.ndarray) else
+                   item for item in (data[0:2] + data[3:7])]"""
+        set_data = {name: value for name, value in
+                    zip(variable_names, (dataset1[0:3] + dataset1[4:]))}
+        # {f'var{i}': variable for i, variable in enumerate(dataset)}
 
         if calculations_statuses['Correlation']:
             dataset2_correlation = correlation_area_points_all
@@ -6121,7 +6135,7 @@ def main():
     images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(",")]
     # images_folders = images_folders[4:-2]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[0]]
+    # images_folders = [images_folders[0]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6295,12 +6309,7 @@ def main():
                         else:
                             print("\n Zadejte platnou odpověď.")
 
-                if do_just_correlation:
-                    settings_set = settings_set[:2]
-                    variable_names = variable_names[:2]
-                    settings = {name: value for name, value in zip(variable_names, settings_set)}
-                else:
-                    settings = {name: value for name, value in zip(variable_names[:-2], settings_set[:-2])}
+                settings = {name: value for name, value in zip(variable_names[:-2], settings_set[:-2])}
 
                 """[start, end, main_image_folder, size, fine_size, points_limit, precision, scale,
                  calculations_statuses], dataset_2 = load_data()"""
@@ -6528,9 +6537,10 @@ def main():
                 plot_marked_points(0, show_menu=False, show_arrows=True, save_plot=False, plot_format='jpg',
                                    save_dpi=700, text_size=10, show_marked_points=False)
 
-                # for i in range(len(image_files)):
-                plot_point_path(-1, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True, text_size=7,
-                                ) # indexes_pt=[16]
+            # for i in range(len(image_files)):
+            plot_point_path(0, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True,
+                            text_size=7,
+                            )  # indexes_pt=[16]
 
             for j in [0]:  # TODO KONTROLA
                 # import matplotlib.image as mpimg
@@ -6538,8 +6548,9 @@ def main():
                 # Vytvoření prázdných mask pro obě oblasti
                 mask = np.zeros(img.shape[:2], dtype=np.uint8)
 
-                # Vykreslení mnohoúhelníků na maskách
-                [cv2.fillPoly(mask, [np.int32(np.round(polygon))], 255) for polygon in triangle_points_all[j]]
+                if calculations_statuses['Rough detection']:
+                    # Vykreslení mnohoúhelníků na maskách
+                    [cv2.fillPoly(mask, [np.int32(np.round(polygon))], 255) for polygon in triangle_points_all[j]]
 
                 [cv2.rectangle(mask, np.int32(np.round(rectangle[0])), np.int32(np.round(rectangle[1])), 255, -1)
                  for rectangle in correlation_area_points_all[j]]
@@ -6955,15 +6966,15 @@ if __name__ == '__main__':
     mark_points_by_hand = True
 
     do_calculations = {'Do Correlation': True,
-                       'Do Rough detection': True,
+                       'Do Rough detection': False,
                        'Do Fine detection': False,
-                       'Do Point detection': True}
+                       'Do Point detection': False}
 
     main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 
     folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
 
-    data_type = "H01"
+    data_type = "S01"
 
     templates_path = folder_measurements + r'\templates\templates_S01'
 
@@ -6973,7 +6984,7 @@ if __name__ == '__main__':
     save_calculated_data = True
     load_calculated_data = True
     do_finishing_calculation = False
-    make_temporary_savings = True
+    make_temporary_savings = False
 
     make_video = False
 
