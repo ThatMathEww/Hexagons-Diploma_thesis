@@ -555,7 +555,7 @@ def edit_object_on_canvas(center_cor: list | tuple | np.ndarray, polygons_cor: l
 
     entries_ = []
     i = 0
-    for t, i, f in zip(("Bod", "X", "Y", "Rotace", "Měřítko", "Měřítko x", "Měřítko y"), range(7),
+    for t, i, f in zip(("Point num", "X", "Y", "Rotation", "Scale", "Scale x", "Scale y"), range(7),
                        (submit_point, submit_x, submit_y, submit_r, submit_s, submit_sx, submit_sy)):
         label = ttk.Label(input_frame, text=f"{t}:")
         label.grid(row=i, column=0, padx=5, pady=5)
@@ -566,7 +566,7 @@ def edit_object_on_canvas(center_cor: list | tuple | np.ndarray, polygons_cor: l
         entries_.append(entry)
 
     # Vytvoření tlačítka pro aktualizaci grafu
-    update_button = ttk.Button(input_frame, text="Aktualizovat Graf", command=update_graph)
+    update_button = ttk.Button(input_frame, text="Update Graph", command=update_graph)
     update_button.grid(row=i + 1, column=0, columnspan=2, padx=5, pady=10)
 
     # Vytvoření grafu vpravo
@@ -1272,6 +1272,7 @@ def set_roi(finish_marking=False, just_load=False):
 
         points_track = []
         masked_img2 = masked_img.copy()
+
         print(" ")
         while True:
             p_num = askinteger("Počet hledaných bodů", "Počet hledaných bod.\nZadejte číslo: ")
@@ -1401,8 +1402,6 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
     """if 'pygmsh' not in sys.modules:
         import pygmsh"""
 
-    n = len(area1)
-
     if area2 is None:
         area2 = []
 
@@ -1410,6 +1409,11 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
     triangle_points = []
     triangle_indexes = []
     mesh = []
+
+    if isinstance(area1, list) and len(area1) > 0 and isinstance(area1[0], np.ndarray):
+        area1 = [area1]
+
+    n = len(area1)
 
     for p in area1:
         with pygmsh.occ.Geometry() as geom:
@@ -1473,7 +1477,7 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
         ax3 = plt.subplot2grid((2, 4), (1, 3))
 
         ax1.imshow(img, cmap='gray')
-        color_cycle = cycle(['tab:red', 'tab:green', 'tab:blue', 'tab:purple', 'tab:orange', 'tab:pink'])
+        color_cycle = cycle(['tab:blue', 'tab:red', 'tab:green', 'tab:purple', 'tab:orange', 'tab:pink'])
 
         for i in range(n):
             ax1.triplot(triangle_points[i][:, 0], triangle_points[i][:, 1], triangle_indexes[i],
@@ -1529,6 +1533,8 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
 
         plt.subplots_adjust(right=0.99, left=0.1, top=0.9, bottom=0.1, wspace=0.2, hspace=0.5)
         # plt.tight_layout()
+
+        plt.show()
 
         plt.pause(0.5)
         plt.show(block=block_graphs)
@@ -4110,13 +4116,26 @@ def show_results_graph(image_number, img_color=0):
 
 def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plot_tracked_paths=False,
                     plot_rough_paths=False, plot_fine_paths=False, show_menu=True, show_cor=False, show_areas=False,
-                    indexes_pt='all', indexes_cor='all', index_pt='all', index_cor='all', text_size: float | int = 9):
+                    indexes_pt: np.ndarray | list | tuple | int = 'all',
+                    indexes_cor: np.ndarray | list | tuple | int = 'all',
+                    index_pt: np.ndarray | list | tuple | int = 'all',
+                    index_cor: np.ndarray | list | tuple | int = 'all',
+                    text_size: float | int = 9):
     index = get_index(image_number)
 
     print("\n  -  Vykreslení průběhu bodů: Fotografie - {}: {}".format(index + 1, image_files[index]))
 
     image = load_photo(img_index=index, color_type=img_color)
     h, w = image.shape[:2]
+
+    if isinstance(indexes_pt, (int, np.integer)):
+        indexes_pt = [indexes_pt]
+    if isinstance(indexes_cor, (int, np.integer)):
+        indexes_cor = [indexes_cor]
+    if isinstance(index_pt, (int, np.integer)):
+        index_pt = [index_pt]
+    if isinstance(index_cor, (int, np.integer)):
+        index_cor = [index_cor]
 
     def update(name):
         [obj.set_visible(not obj.get_visible()) for obj in objets[name]]
@@ -4262,15 +4281,18 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
     plt.pause(2)
 
 
-def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes='all', save_plot=False,
-                       plot_name="marked_points", plot_format="pdf", save_dpi=300, show_menu=True, show_cor=False,
-                       show_arrows=False, text_size: float | int = 9, show_marked_points=True):
+def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes: np.ndarray | list | tuple | int = 'all',
+                       save_plot=False, plot_name="marked_points", plot_format="pdf", save_dpi=300, show_menu=True,
+                       show_cor=False, show_arrows=False, text_size: float | int = 9, show_marked_points=True):
     index = get_index(image_number)
 
     print("\n  -  Vykreslení označených bodů: Fotografie - {}: {}".format(index + 1, image_files[index]))
 
     image = load_photo(img_index=index, color_type=img_color)
     h, w = image.shape[:2]
+
+    if isinstance(indexes, (int, np.integer)):
+        indexes = [indexes]
 
     def update(name):
         [obj.set_visible(not obj.get_visible()) for obj in objets[name]]
@@ -6099,7 +6121,7 @@ def main():
     images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(",")]
     # images_folders = images_folders[4:-2]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[-1]]
+    images_folders = [images_folders[0]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6507,7 +6529,8 @@ def main():
                                    save_dpi=700, text_size=10, show_marked_points=False)
 
                 # for i in range(len(image_files)):
-                plot_point_path(0, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True, text_size=7)
+                plot_point_path(-1, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True, text_size=7,
+                                ) # indexes_pt=[16]
 
             for j in [0]:  # TODO KONTROLA
                 # import matplotlib.image as mpimg
@@ -6929,18 +6952,18 @@ if __name__ == '__main__':
 
     load_set_points = True
     do_auto_mark = True
-    mark_points_by_hand = False
+    mark_points_by_hand = True
 
     do_calculations = {'Do Correlation': True,
-                       'Do Rough detection': False,
+                       'Do Rough detection': True,
                        'Do Fine detection': False,
-                       'Do Point detection': False}
+                       'Do Point detection': True}
 
     main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 
     folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
 
-    data_type = "S01"
+    data_type = "H01"
 
     templates_path = folder_measurements + r'\templates\templates_S01'
 

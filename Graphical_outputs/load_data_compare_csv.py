@@ -8,7 +8,7 @@ import os
 path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_csv'
 
 file_names = np.array([p for p in os.listdir(path) if os.path.isfile(os.path.join(path, p))
-                       and p.lower().endswith(".csv") and p.lower().startswith("b01")])
+                       and p.lower().endswith(".csv") and p.lower().startswith("m01")])
 
 if str(file_names[0]).lower().startswith("h01"):
     measurements1 = [4, 9, 14, 19, 24, 29]  # konzola, normal
@@ -53,7 +53,7 @@ elif str(file_names[0]).lower().startswith("b01"):
     measurements1 = np.array(([0, 1, 2, 3]  # Glued / Test / Whole
                                             )).T
 
-measurement = measurements1[:]  # measurements3[2, :]
+measurement = measurements1[[0,2]]  # measurements3[2, :]
 # measurements3[:-1, 4] , measurements3[:, :]
 
 file_names = file_names[measurement.flatten() if isinstance(measurement, np.ndarray) else measurement]  # [-1:]
@@ -91,6 +91,7 @@ for file in file_names:
 
     if str(file_names[0]).lower().startswith("b01"):
         x_data = -x_data
+        y_data = -y_data
 
         y_data = y_data[x_data <= 15]
         x_data = x_data[x_data <= 15]

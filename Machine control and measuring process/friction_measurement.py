@@ -25,11 +25,12 @@ def execute_command(port, command):
 def execute_command_and_measure(port, command, camera, x_lim, y_lim):
     if not port.is_open:
         print(f"{port} nelze otevřít.")
-        return None
+        return None, None
     else:
         images = []
         cap_stamps = []
-        frame, _, received_data = None, None, None
+        received_data = port.readline().decode().strip()
+        _, frame = camera.read()
         cap_time: float = time.time()
 
         start_time = time.time()
@@ -49,7 +50,7 @@ def execute_command_and_measure(port, command, camera, x_lim, y_lim):
             elif start_time + command_time_limit < cap_time:
                 print("\nChyba: nepřijetí odpovědi posunu s měřením,"
                       f" s časovým limitem {command_time_limit // 60} minut.")
-                return None
+                return None, None
     return images, cap_stamps
 
 
@@ -236,6 +237,7 @@ def make_measurement(camera_index, port, output_folder, x_limit=1, y_limit=1, di
 
     counter, moment = 0, None
     total_time = time.time()
+    start_time = time.time()
     cur_time: float = time.time()
     while True:
         photos = []
@@ -295,8 +297,9 @@ def make_measurement(camera_index, port, output_folder, x_limit=1, y_limit=1, di
     information = dict(moment=str(moment),
                        width=int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
                        height=int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-                       fps=int(cap.get(cv2.CAP_PROP_FPS)), total_time=int(time.time() - total_time),
-                       seconds=float(time_span), photo_herizontal_crop=int(x_limit), photo_vertical_crop=int(y_limit),
+                       fps=int(cap.get(cv2.CAP_PROP_FPS)), time=int(cur_time - start_time),
+                       total_time=int(time.time() - total_time), seconds=float(time_span),
+                       photo_herizontal_crop=int(x_limit), photo_vertical_crop=int(y_limit),
                        movemnt_distance=float(distance), movemnt_speed=float(speed))
     with open(os.path.join(output_folder, 'settings.json'), 'w') as file:
         try:
@@ -481,6 +484,8 @@ def end_program(text=None):
 
 
 def main():
+    global first_movement
+
     # Zabránění spánku a vypnutí obrazovky
     windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)
     cv2.setLogLevel(0)
@@ -662,6 +667,26 @@ def main():
                     else:
                         print("\n Zadejte platnou odpověď.")
 
+                print(f"\n\033[34;1mChcete změnit první posun {first_movement}?\033[0m")
+                while True:
+                    ans = input("\t\tZadejte Y / N: ")
+                    if ans == "Y":
+                        print("\n\tZvolena možnost 'Y'\n")
+
+                        try:
+                            ans = input("\n\tZadejte číslo:  ").replace(",", ".")
+                            first_movement = float(ans)
+
+                        except (ValueError, Exception):
+                            print("Špatně zadané číslo, znovu:.")
+                        break
+                    elif ans == "N":
+                        print("\n\tZvolena možnost 'N'\n")
+                        break
+                    else:
+                        print("\n Zadejte platnou odpověď.")
+
+                print('\nPříprava nového testu:')
                 break
             elif ans_end == "N":
                 print("\n\tZvolena možnost 'N'\n")
@@ -697,7 +722,7 @@ if __name__ == "__main__":
     measure_speed = 0.1  # 0.005
     waiting_time = 10  # 10
 
-    first_movement = 75  # 65 (75)
+    first_movement = 70  # 65 (75)
 
     speed_mode = True
 
