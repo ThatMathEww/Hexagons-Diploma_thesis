@@ -103,11 +103,11 @@ def play_video(video_path):
 
 
 if __name__ == "__main__":
-    image_path = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Friction_photos\F01_001_II_o"
+    image_path = r"C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Friction_photos\F01_001_K_o"
     output_path = "output_video.mp4"
 
-    create_video_from_images(image_path, output_path, fps=60, codec='mp4v',
-                             frame_width=1920, frame_height=1080)
+    create_video_from_images(image_path, output_path, fps=100, codec='mp4v',
+                             frame_width=1280, frame_height=960)
 
     if os.path.exists(output_path):
         play_video(output_path)

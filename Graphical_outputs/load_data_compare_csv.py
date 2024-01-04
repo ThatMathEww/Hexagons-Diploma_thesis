@@ -50,7 +50,7 @@ elif str(file_names[0]).lower().startswith("m01"):
     measurements1 = np.array(([0, 1, 2]  # Glued / Test / Whole
                                          )).T
 elif str(file_names[0]).lower().startswith("b01"):
-    measurements1 = np.array(([0, 1, 2, 3, 4]  # Glued / Test / Whole
+    measurements1 = np.array(([0, 1, 2, 3, 4, 5]  # Glued / Test / Whole
                                                )).T
 
 measurement = measurements1[:]  # measurements3[2, :]

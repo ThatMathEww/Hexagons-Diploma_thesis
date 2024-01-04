@@ -5740,6 +5740,14 @@ def make_angle_correction(image_to_get_angle=None, image_to_warp=None, points_to
                     max(loc[0] - 100, 0):min(loc[0] + w + 100, width)] = 255
 
         masked_img = cv2.convertScaleAbs(cv2.bitwise_and(img, img, mask=mask), alpha=1.1, beta=-50)
+
+        show_graph = False
+
+        if show_graph:
+            plt.figure()
+            plt.imshow(masked_img, cmap='gray')
+            plt.show()
+
         decoded_objects = qr_detect(masked_img)
 
         point1, point2, point3, point4 = None, None, None, None
@@ -5747,11 +5755,20 @@ def make_angle_correction(image_to_get_angle=None, image_to_warp=None, points_to
         if decoded_objects and len(decoded_objects) >= 2:
             points = [None, None, None, None]
             for obj in decoded_objects:
+                if show_graph:
+                    masked_img = cv2.cvtColor(masked_img, cv2.COLOR_BGR2RGB)
+                    cv2.polylines(masked_img, [cv2.convexHull(np.array([point for point in obj.polygon],
+                                                                       dtype=np.int32))], True, (0, 255, 0), 2)
+
                 name = obj.data.decode('utf-8')
                 if not name.startswith(".*CP*.") or ".*CP*." not in name:
                     continue
                 points[int(name.replace(".*CP*._N#", "")) - 1] = np.mean(obj.polygon, axis=0)
             point3, point4, point1, point2 = points
+            if show_graph:
+                plt.figure()
+                plt.imshow(masked_img)
+                plt.show()
 
         if (point1 is None and point2 is None) and not (point3 is None and point4 is None):
             point1, point2, point3, point4 = point3, point4, None, None
@@ -5979,7 +5996,12 @@ def predict_time(folders):
     for folder in folders:
         # Vytvoření cesty k cílovým fotografiím
         current_photo_folder = os.path.join(main_image_folder, folder, source_image_type[1])
-        # Kontrola zda aktuální složka existuje a není prázdná a případně změna stránky
+        if not os.path.isdir(current_photo_folder):
+            current_photo_folder = os.path.join(main_image_folder, folder, source_image_type[0])
+            if not os.path.isdir(current_photo_folder):
+                continue
+
+                # Kontrola zda aktuální složka existuje a není prázdná a případně změna stránky
         if not any(f.endswith(photos_types) for f in os.listdir(current_photo_folder)):
             # Složka je prázná
             current_photo_folder = os.path.join(main_image_folder, folder, source_image_type[0])
@@ -6133,7 +6155,7 @@ def main():
         images_folders = check_folder(main_image_folder, "Složka s fotkami", "neexistuje", "je prázdná")
 
     images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(",")]
-    # images_folders = images_folders[4:-2]  # TODO ############ potom změnit počet složek
+    images_folders = images_folders[16:]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
     # images_folders = [images_folders[0]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
@@ -6141,7 +6163,7 @@ def main():
 
     print(f"\nDatum:  {time.strftime('%H:%M, %d.%m. %Y', time.strptime(date, '%H-%M-%S_%d-%m-%Y'))}\n"
           f"\n\033[36mSpuštění programu pro detekci fotek.\n  Verze: {program_version}\n\033[0m"
-          f"\nVýpočet proběhne pro složky: \033[34m{images_folders}\033[0m")
+          f"\nVýpočet proběhne pro {len(images_folders)} složek: \033[34m{images_folders}\033[0m")
 
     predict_time(folders=images_folders)  # ODHAD CELKOVÉHO ČASU
 
@@ -6365,6 +6387,8 @@ def main():
                 elif (calculations_statuses['Correlation']) != (dataset_2['data_correlation'] is not None):
                     print("\n\033[33;1;21mWARRNING\033[0m"
                           "\n\tNesoulad uložených dat pro data typu: [ 'Correlation' ].")
+                    if dataset_2['data_correlation'] is not None:
+                        calculations_statuses['Correlation'] = True
 
                 if (calculations_statuses['Rough detection']) and (dataset_2['data_rough_detect'] is not None):
                     if dataset_2['data_rough_detect'] is not None:
@@ -6376,6 +6400,8 @@ def main():
                 elif (calculations_statuses['Rough detection']) != (dataset_2['data_rough_detect'] is not None):
                     print("\n\033[33;1;21mWARRNING\033[0m"
                           "\n\tNesoulad uložených dat pro data typu: [ 'Rough detection' ].")
+                    if dataset_2['data_rough_detect'] is not None:
+                        calculations_statuses['Rough detection'] = True
 
                 if (calculations_statuses['Fine detection']) and (dataset_2['data_fine_detect'] is not None):
                     if dataset_2['data_fine_detect'] is not None:
@@ -6383,6 +6409,8 @@ def main():
                 elif (calculations_statuses['Fine detection']) != (dataset_2['data_fine_detect'] is not None):
                     print("\n\033[33;1;21mWARRNING\033[0m"
                           "\n\tNesoulad uložených dat pro data typu: [ 'Fine detection' ].")
+                    if dataset_2['data_fine_detect'] is not None:
+                        calculations_statuses['Fine detection'] = True
 
                 if (calculations_statuses['Point detection']) and (dataset_2['data_point_detect'] is not None):
                     if dataset_2['data_point_detect'] is not None:
@@ -6390,6 +6418,8 @@ def main():
                 elif (calculations_statuses['Point detection']) != (dataset_2['data_point_detect'] is not None):
                     print("\n\033[33;1;21mWARRNING\033[0m"
                           "\n\tNesoulad uložených dat pro data typu: [ 'Point detection' ].")
+                    if dataset_2['data_point_detect'] is not None:
+                        calculations_statuses['Point detection'] = True
 
                 if isinstance(dataset_3, dict):
                     for name in dataset_3.keys():
@@ -6532,6 +6562,8 @@ def main():
                      any(val is True for val in recalculate.values()))):
                 reset_parameters()
                 continue
+
+            # dmake_angle_correction() # TODO opravit výpočet úhlu
 
             if calculations_statuses['Point detection']:
                 plot_marked_points(0, show_menu=False, show_arrows=True, save_plot=False, plot_format='jpg',
@@ -6710,6 +6742,14 @@ def main():
 
             # Vytvoření cesty k cílovým fotografiím
             current_path_to_photos = os.path.join(current_folder_path, source_image_type[1])
+            if not os.path.isdir(current_path_to_photos):
+                current_path_to_photos = os.path.join(current_folder_path, source_image_type[0])
+                if not os.path.isdir(current_path_to_photos):
+                    print(f"\n\033[31;1;21mERROR\033[0m\n\t"
+                          f"Aktuální složka {current_image_folder} neobsahuje fotografie v samostatných složkách.\n")
+                    reset_parameters()
+                    continue
+
             if not any(f.endswith(photos_types) for f in os.listdir(current_path_to_photos)):
                 print(f"\nAktuální složka: ' \033[35m{current_path_to_photos}\033[0m ' \033[91mje prázdná.\033[0m"
                       f"\n\t\tKontrola další složky.")
@@ -6974,9 +7014,11 @@ if __name__ == '__main__':
 
     folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
 
-    data_type = "S01"
+    start_, end_ = 0, "all"
 
-    templates_path = folder_measurements + r'\templates\templates_S01'
+    data_type = "H02"
+
+    templates_path = folder_measurements + fr'\templates\templates_{data_type}'
 
     source_image_type = ['original', 'modified']
 
@@ -6988,8 +7030,6 @@ if __name__ == '__main__':
 
     make_video = False
 
-    start_, end_ = 1, "all"
-
     size = 200  # !=_ 135 _=!,   250 - pro hexagony , 100, 85 - min,   (40)
     fine_size = 20  # np.int32(size * 0.1)
 
@@ -6998,7 +7038,7 @@ if __name__ == '__main__':
 
     show_final_image = -1  # Kterou fotografii vykreslit
 
-    program_version = 'v0.8.50'
+    program_version = 'v0.9.01'
 
     preload_photos = False
 

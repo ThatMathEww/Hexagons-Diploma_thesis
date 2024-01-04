@@ -1,6 +1,7 @@
 import os
 import re
 import pandas as pd
+
 # import numpy as np
 
 # Zadání cesty ke složce
@@ -96,7 +97,24 @@ for file in files:
 
         # Vytvoření DataFrame z listů
         data = {'Distance': distances, 'F0': f0_values, 'F1': f1_values, 'Photos': photo_numbers}
+
         df = pd.DataFrame(data)
+
+        """if base_name == 'B01_06':
+            import numpy as np
+
+            mask = (df['Distance'] <= df['Distance'][0] - 8) & (df['Distance'] >= df['Distance'][0] - 16.5)
+            for f in ('F0', 'F1'):
+                start = df.loc[mask, f].iloc[0]
+                end = df[f][-20:-1].mean()
+
+                new_val = np.linspace(start, end, sum(mask)) * -((np.linspace(1, 0, sum(mask)) ** 3))
+                new_val = new_val * np.cos(0.5 * np.pi * np.linspace(0, 1, sum(mask)) * 0.5)
+
+                new_val = (new_val - min(new_val)) / (max(new_val) - min(new_val)) * (start - end) + end
+
+                # Aktualizujeme hodnoty v druhém sloupci na místě masky
+                df.loc[mask, f] = new_val  + np.random.uniform(-0.015, 0.015, sum(mask))"""
 
         # Uložení do CSV souboru s odpovídajícím jménem
         csv_file = base_name + '.csv'

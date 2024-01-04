@@ -11,18 +11,30 @@ scale_qr_ratio = 12 * 210 / 270
 show_images = False
 show_match = False
 show_graph = True
+plot_real_data = False
 
 use_averaging = False
 window_size = 3  # Velikost klouzavého průměru
 
 tolerance = 0.24
 
+kinetic_type = True
+
+distance_limit = {'static': 35, 'kinetic': 10000}  # mm
+
 image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Friction_photos'
 
 folders = [f for f in os.listdir(image_folder) if os.path.isdir(os.path.join(image_folder, f)) and
-           not f.startswith(("_", "."))][26:]  # [:21]  # [8:9]
+           not f.startswith(("_", "."))]
 
-accelerations = []
+if kinetic_type:
+    folders = [f for f in folders if "_K" in f]
+else:
+    folders = [f for f in folders if "_K" not in f]
+
+folders = folders[8:]  # [26:]  # [:21]  # [8:9]
+
+accelerations_print = []
 tot_len = len(folders)
 for i, folder in enumerate(folders):
     print(os.path.basename(folder), f'( {i + 1} / {tot_len} )')
@@ -77,7 +89,9 @@ for i, folder in enumerate(folders):
     # images = images[215:240]
 
     scale = 1
-    found_points = []
+    found_points = [(0, 0)]
+    image_time = [0]
+
     decoded_object = decode(img_gray)
     if not decoded_object:
         print("\t\033[31;1mChyba: Nebyl nalezen QR kód.\033[0m")
@@ -125,8 +139,23 @@ for i, folder in enumerate(folders):
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
-    previous_position = (-10000, -10000)
+    img_original = cv2.imread(os.path.join(folder, images[0]))
+    img = np.zeros((loaded_settings["height"], loaded_settings["width"], 3), dtype=np.uint8)
+    img[start_y:start_y + h_small, start_x:start_x + w_small] = img_original
+    img = cv2.undistort(img, mtx_loaded, dist_loaded, None, mtx_loaded)
+    img_gray = cv2.cvtColor(img[:, start_x:start_x + w_small], cv2.COLOR_BGR2GRAY)
+    _, max_val, _, max_loc = cv2.minMaxLoc(cv2.matchTemplate(img_gray, template_gray, cv2.TM_CCOEFF_NORMED))
+    if max_val > tolerance:
+        previous_position = (max_loc[0] + template_gray.shape[1] / 2, max_loc[1])
+    else:
+        previous_position = (-1, -1)
+
+    ending_counter = 0
+
     for image in images:
+        if ending_counter > 10:
+            break
+
         img_original = cv2.imread(os.path.join(folder, image))  # [100:, 50:-50]
 
         img = np.zeros((loaded_settings["height"], loaded_settings["width"], 3), dtype=np.uint8)
@@ -150,25 +179,30 @@ for i, folder in enumerate(folders):
         res = cv2.matchTemplate(img_gray, template_gray, cv2.TM_CCOEFF_NORMED)
 
         # Nalezení polohy s maximálním korelačním koeficientem
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        _, max_val, _, max_loc = cv2.minMaxLoc(res)
 
         if max_val > tolerance:
+            ending_counter = 0
             # Získání rozměrů template
             w, h = template_gray.shape[::-1]
             top_left = max_loc
             bottom_right = (top_left[0] + w, top_left[1] + h)
 
-            cv2.rectangle(img, top_left, bottom_right, (0, 255, 0), 2)
-
             position = (top_left[0] + w / 2, top_left[1])
 
             if np.linalg.norm(np.array(position) - np.array(previous_position)) != 0:
                 found_points.append(position)
+                image_time.append(os.path.getmtime(os.path.join(folder, image)))
                 previous_position = position
+            else:
+                found_points[-1] = position
+                image_time[-1] = os.path.getmtime(os.path.join(folder, image))
         else:
+            ending_counter += 1
             continue
 
         if show_match:
+            cv2.rectangle(img, top_left, bottom_right, (0, 255, 0), 2)
             h, w = img.shape[:2]
             # Zobrazení výsledného obrázku
             cv2.namedWindow(f'{image} Found template {max_val:.04f}', cv2.WINDOW_NORMAL)
@@ -180,7 +214,7 @@ for i, folder in enumerate(folders):
     found_points = np.array(found_points) * scale
     # found_points = np.vstack([found_points[0], found_points])[:10]
     found_points -= found_points[0]
-    found_points = found_points[found_points[:, 1] < 35]
+    found_points = found_points[found_points[:, 1] < distance_limit['kinetic' if kinetic_type else 'static']]
 
     if len(found_points) < 3:
         print("\t\033[31;1mChyba: Není dostatek bodů.\033[0m")
@@ -188,26 +222,48 @@ for i, folder in enumerate(folders):
 
     found_points /= 1000  # metres
 
-    time_stamps = np.arange(0, len(found_points) * time, time)[:len(found_points)]
+    if kinetic_type:
+        time_stamps = [image_time[i] - image_time[0] for i in range(len(image_time))][:len(found_points)]
 
-    speed = np.array(
-        [np.linalg.norm(found_points[i] - found_points[i + 1]) for i in range(len(found_points) - 1)]) / np.diff(
-        time_stamps)
-    # speed = np.diff(np.round(np.mean(found_points, axis=1), 6), axis=0) / np.diff(time_stamps)
-    speed = np.hstack([0, speed])
-
-    if use_averaging:  # Použití klouzavého průměru
-        speed = np.hstack([speed[0], speed])
-        av_speed = np.mean(speed[speed > 0])
-
-        kernel = np.ones(window_size) / window_size
-        speed_av = speed.copy()
-        for _ in range(window_size - 1):
-            speed_av = np.hstack([speed_av, speed_av[-1]])
-        speed_av = np.convolve(speed_av, kernel, mode='valid')
     else:
-        av_speed = np.mean(speed[speed > 0])
-        speed_av = speed.copy()
+        time_stamps = np.arange(0, len(found_points) * time, time)[:len(found_points)]
+
+    positions = [np.array([np.linalg.norm(found_points[i] - found_points[0]) for i in range(len(found_points))])]
+
+    # Aproximace křivky polynomem
+    coefficients = np.polyfit(time_stamps, positions[0], 3)
+    polynomial = np.poly1d(coefficients)
+
+    # Výpočet hodnot aproximovaného polynomu
+    positions.append(polynomial(time_stamps))
+
+    """plt.figure()
+    plt.plot(time_stamps, positions[0], 'o-')
+    plt.plot(time_stamps, positions[1], linestyle="--", color="red")"""
+
+    speeds = []
+    average_speeds = []
+    for p in positions:
+        s = np.diff(p) / np.diff(time_stamps)
+        # speed = np.diff(np.round(np.mean(found_points, axis=1), 6), axis=0) / np.diff(time_stamps)
+        s = np.hstack([0, s])
+
+        if use_averaging:  # Použití klouzavého průměru
+            s = np.hstack([s[0], s])
+            average_speeds.append(np.mean(s[s > 0]))
+
+            kernel = np.ones(window_size) / window_size
+            speed_av = s.copy()
+            for _ in range(window_size - 1):
+                speed_av = np.hstack([speed_av, speed_av[-1]])
+            speed_av = np.convolve(speed_av, kernel, mode='valid')
+            speeds.append(speed_av.copy())
+        else:
+            average_speeds.append(np.mean(s[s > 0]))
+            speeds.append(s.copy())
+
+        # mean_acc = (s[-1] - s[0]) / (time_stamps[-1] - time_stamps[0])
+        # print(f"\tMean acceleration: {mean_acc:.4f} m/s^2")
 
     """# Lineární regrese
     y = time_stamps[:len(speed_av)]
@@ -235,29 +291,37 @@ for i, folder in enumerate(folders):
     print("Indexy lineárních bodů:", linear_points_indexes)
     """
 
-    lin_ind = np.arange(round(len(speed_av) * 0.2), round(len(speed_av) * 0.85), 1)
+    accelerations = []
+    average_accelerations = []
+    mean_acceleration = []
+    linear_accelerations_indexes = []
+    mean_linear_accelerations = []
+    for n in range(2):
+        linear_accelerations_indexes.append(np.arange(round(len(speeds[n]) * 0.2),
+                                                      round(len(speeds[n]) * 0.85), 1))
 
-    acceleration = np.diff(speed_av, axis=0) / np.diff(time_stamps[:len(speed_av)])
-    acceleration = np.hstack([0, acceleration])
+        acc = np.diff(speeds[n], axis=0) / np.diff(time_stamps)[:len(speeds[n])]
+        acc = np.hstack([0, acc])
+        accelerations.append(acc.copy())
 
-    av_acc = np.mean(acceleration[acceleration > 0])
-    print(f"\tAverage acceleration: {av_acc:.4f} m/s^2")
+        average_accelerations.append(np.mean(acc[acc > 0]))
 
-    mean_acc = (speed[-1] - speed[0]) / (time_stamps[-1] - time_stamps[0])
-    # print(f"\tMean acceleration: {mean_acc:.4f} m/s^2")
+        mean_linear_accelerations.append(np.mean(accelerations[n][linear_accelerations_indexes[n]]))
+        # lin_acc = acceleration[acceleration > 0][0]
+        if 'F01' in os.path.basename(folder):
+            accelerations_print.append(mean_linear_accelerations[n])
 
-    lin_acc = np.mean(acceleration[lin_ind])
-    # lin_acc = acceleration[acceleration > 0][0]
-    if 'F01' in os.path.basename(folder):
-        accelerations.append(lin_acc)
-    print(f"\tLinear mean acceleration: {lin_acc:.4f} m/s^2")
+    print(f"\tAverage acceleration: {average_accelerations[1]:.4f} m/s^2")
+    print(f"\tLinear mean acceleration: {mean_linear_accelerations[1]:.4f} m/s^2")
+    print(f"\tLinear median acceleration: {np.median(accelerations[1][linear_accelerations_indexes[1]]):.4f} m/s^2")
 
     if show_graph:
         plt.figure()
 
-        ax1 = plt.subplot2grid((2, 3), (0, 0), rowspan=2)
-        ax2 = plt.subplot2grid((2, 3), (0, 1), colspan=2)
-        ax3 = plt.subplot2grid((2, 3), (1, 1), colspan=2)
+        ax1 = plt.subplot2grid((3, 3), (0, 0), rowspan=3)
+        ax2 = plt.subplot2grid((3, 3), (0, 1), colspan=2)
+        ax3 = plt.subplot2grid((3, 3), (1, 1), colspan=2)
+        ax4 = plt.subplot2grid((3, 3), (2, 1), colspan=2)
 
         ax1.set_title("Position")
         ax1.plot(found_points[:, 0], found_points[:, 1], 'o-')
@@ -266,27 +330,37 @@ for i, folder in enumerate(folders):
         ax1.set_xlabel('x [$m$]')
         ax1.set_ylabel('y [$m$]')
 
-        ax2.set_title("Velocity")
-        ax2.hlines(av_speed, time_stamps[0], time_stamps[-1], color='tomato', linestyle='--',
-                   label=f"Average speed: {av_speed:.2f} mm/s")
-        ax2.plot(time_stamps[:len(speed_av)], speed_av, 'o-', c='orange')
-        # ax2.plot(regression, speed_av[linear_points_indexes], '-', color='darkred')
-        ax2.set_xlabel('time [$s$]')
-        ax2.set_ylabel('v [$m/s$]')
+        ax2.set_title("Total displacement")
+        ax2.plot(time_stamps, positions[0], '-', lw=3)
+        ax2.plot(time_stamps, positions[1], linestyle="--", color="yellow")
+        ax2.set_xlabel('t [$s$]')
+        ax2.set_ylabel('d [$m$]')
 
-        ax3.set_title("Acceleration")
-        ax3.hlines(av_acc, time_stamps[0], time_stamps[-1], color='darkorange', linestyle='--',
-                   label=f"Average acceleration: {av_acc:.2f} mm/s")
-        ax3.plot(time_stamps[:len(acceleration)], acceleration, 'o-', color='red')
-        ax3.hlines(lin_acc, time_stamps[lin_ind[0]], time_stamps[lin_ind[-1]],
-                   linestyle='--', color='darkred')
-        ax3.set_xlabel('time [$s$]')
-        ax3.set_ylabel('a [$m/s^2$]')
+        ax3.set_title("Velocity")
+        if plot_real_data:
+            ax3.plot(time_stamps[:len(speeds[0])], speeds[0], '-.', c='#D9A465', alpha=0.5)
+        ax3.hlines(average_speeds[1], time_stamps[0], time_stamps[-1], color='tomato', linestyle='--',
+                   label=f"Average speed: {average_speeds[1]:.2f} mm/s")
+        ax3.plot(time_stamps[:len(speeds[1])], speeds[1], '-', c='orange')
+        # ax2.plot(regression, speed_av[linear_points_indexes], '-', color='darkred')
+        ax3.set_xlabel('t [$s$]')
+        ax3.set_ylabel('v [$m/s$]')
+
+        ax4.set_title("Acceleration")
+        if plot_real_data:
+            ax4.plot(time_stamps[:len(accelerations[0])], accelerations[0], '-.', c='#FF7476', alpha=0.5)
+        ax4.hlines(average_accelerations[1], time_stamps[0], time_stamps[-1], color='darkorange', linestyle='--',
+                   label=f"Average acceleration: {average_accelerations[1]:.2f} mm/s")
+        ax4.plot(time_stamps[:len(accelerations[1])], accelerations[1], '-', color='red')
+        ax4.hlines(mean_linear_accelerations[1], time_stamps[linear_accelerations_indexes[1][0]],
+                   time_stamps[linear_accelerations_indexes[1][-1]], linestyle='--', color='darkred')
+        ax4.set_xlabel('t [$s$]')
+        ax4.set_ylabel('a [$m/s^2$]')
 
         # plt.tight_layout()
         plt.subplots_adjust(right=0.97, left=0.15, top=0.92, bottom=0.12, wspace=0.6, hspace=0.8)
         plt.show()
 
-print(f"\nAverage acceleration: {np.mean(accelerations):.4f} m/s^2")
-print(f"\nSTD acceleration: {np.std(accelerations):.4f} m/s^2")
-print(f"\nMedian acceleration: {np.median(accelerations):.4f} m/s^2")
+print(f"\nAverage acceleration: {np.mean(accelerations_print):.4f} m/s^2")
+print(f"\nSTD acceleration: {np.std(accelerations_print):.4f} m/s^2")
+print(f"\nMedian acceleration: {np.median(accelerations_print):.4f} m/s^2")

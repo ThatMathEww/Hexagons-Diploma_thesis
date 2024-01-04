@@ -730,9 +730,9 @@ if __name__ == '__main__':
     # Nastavení názvu profilu
     profile = 'profile'
 
-    template_path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\t\t01_max'
+    template_path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\t\h02'
     template_img_index = 2
-    type_ = "M01"
+    type_ = "H02"
 
     img_format = 'JPG'
 

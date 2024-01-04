@@ -722,7 +722,7 @@ if __name__ == "__main__":
     measure_speed = 0.1  # 0.005
     waiting_time = 10  # 10
 
-    first_movement = 70  # 65 (75)
+    first_movement = 60  # 65 (75)
 
     speed_mode = True
 
