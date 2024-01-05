@@ -1,3 +1,4 @@
+from matplotlib.ticker import AutoMinorLocator
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -7,23 +8,47 @@ import time
 import cv2
 import os
 
+"""
+ratio:
+mean = 24.392700425124065
+std = 0.24670669587238472
+median = 24.292378586161387
+"""
+
+data_type = "H02"
+
+# Definice velikosti okna pro klouzavý průměr
+window_size = 10
+
 saved_data_name = "data_export_new.zip"
 out_put_folder = ""
 
 main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
 
-data_indexes_I = np.arange(0, 4 * 7, 5) + 3
-data_indexes_II = np.arange(0, 4 * 7, 5) + 2
-data_indexes_III = np.arange(0, 4 * 7, 5) + 1
-data_indexes_max = np.arange(0, 4 * 7, 5)
-data_indexes_can_norm = np.arange(0, 4 * 7, 5) + 4
-data_indexes_can_snapped = np.arange(30, 36)
-
 ########################################################################################################################
 
 images_folders = [name for name in [os.path.splitext(file)[0] for file in os.listdir(main_image_folder)]
-                  if name.startswith("H01")]
+                  if name.startswith(data_type)]
+
+if data_type == "H01":
+    data_indexes_I = np.arange(0, 4 * 7, 5) + 3
+    data_indexes_II = np.arange(0, 4 * 7, 5) + 2
+    data_indexes_III = np.arange(0, 4 * 7, 5) + 1
+    data_indexes_max = np.arange(0, 4 * 7, 5)
+    data_indexes_can_norm = np.arange(0, 4 * 7, 5) + 4
+    data_indexes_can_snapped = np.arange(30, 36)
+
+elif data_type == "H02":
+    a = np.array(images_folders)
+    data_indexes_I_K = np.arange(0, 8 * 6, 8) + 7
+    data_indexes_II_K = np.arange(0, 8 * 6, 8) + 4
+    data_indexes_III_K = np.arange(0, 8 * 6, 8) + 2
+    data_indexes_I_N = np.arange(0, 8 * 6, 8) + 6
+    data_indexes_II_N = np.arange(0, 8 * 6, 8) + 5
+    data_indexes_III_N = np.arange(0, 8 * 6, 8) + 3
+    data_indexes_max_N = np.arange(0, 8 * 6, 8) + 1
+    data_indexes_max_K = np.arange(0, 8 * 6, 8) + 0
 
 all_datas = []
 ########################################################################################################################
@@ -44,6 +69,7 @@ for exp, current_image_folder in enumerate(images_folders):
 
     zip_file_name = os.path.join(current_folder_path, saved_data_name)
     if saved_data_name not in zip_files:
+        all_datas.append(None)
         print(f'\033[31;1;21mERROR\033[0m\n\tVe složce [{current_image_folder}] se nenachází daný soubor ZIP')
         continue
 
@@ -151,13 +177,15 @@ for exp, current_image_folder in enumerate(images_folders):
                         globals()[name] = dataset_3.get(name, None)
                     datasets['Others'] = True
 
-                correlation_points = [
-                    cv2.transform(np.float64(point[0]).reshape(1, 2, 2), angle_correction_matrix).reshape(2, 2) for
-                    point in correlation_points]
+                if datasets['Correlation']:
+                    correlation_points = [
+                        cv2.transform(np.float64(point[0]).reshape(1, 2, 2), angle_correction_matrix).reshape(2, 2) for
+                        point in correlation_points]
 
-                tracked_points = [
-                    cv2.transform(np.float64(point).reshape(1, -1, 2), angle_correction_matrix).reshape(-1, 2)
-                    for point in tracked_points]
+                if datasets['Tracked_points']:
+                    tracked_points = [
+                        cv2.transform(np.float64(point).reshape(1, -1, 2), angle_correction_matrix).reshape(-1, 2)
+                        for point in tracked_points]
 
                 """scaled_vector2 = np.interp(
                     np.linspace(0, 1, len(distances)),
@@ -168,8 +196,9 @@ for exp, current_image_folder in enumerate(images_folders):
                 sd_ = np.array([scaled_vector2[i + 1] - scaled_vector2[i] for i in range(len(scaled_vector2) - 1)])"""
 
                 if all(v is not None for v in (distances, forces, photo_indexes)):
-                    distances = (distances * (np.linalg.norm(correlation_points[0][0, 1] - correlation_points[-1][0, 1])
-                                              / np.linalg.norm(distances[0] - distances[-1])))
+                    ratio = (np.linalg.norm(correlation_points[0][0, 1] - correlation_points[-1][0, 1])
+                             / np.linalg.norm(distances[0] - distances[-1]))
+                    distances *= ratio
                     distances = (distances - distances[0]) * scale
                     start_value = distances[start_index]
                     distances = distances - start_value  # Stanovení 0 pozice zatěžovnání
@@ -412,29 +441,54 @@ plt.show()"""
     [plt.plot(d[:, j], d[:, j + 1], ) for j in range(0, d.shape[1], 2)]
     plt.show()"""
 
-# indexes = [data_indexes_I, data_indexes_II, data_indexes_III, data_indexes_max]
-indexes = [data_indexes_can_snapped]
+if data_type == "H01":
+    # indexes = [data_indexes_I, data_indexes_II, data_indexes_III, data_indexes_max]
+    indexes = [data_indexes_can_snapped]
+elif data_type == "H02":
+    indexes = []
+    indexes = [data_indexes_I_K, data_indexes_II_K, data_indexes_III_K]
 
 # Vytvoření subplots
-fig, axs = plt.subplots(2, 2, figsize=(12, 8)) if len(indexes) == 4 else plt.subplots(2, 1, figsize=(12, 4)) \
+fig, axs = plt.subplots(2, 2, figsize=(12, 8)) if 5 > len(indexes) >= 3 else plt.subplots(2, 1, figsize=(12, 4)) \
     if len(indexes) == 2 else plt.subplots(1, 1, figsize=(6, 4))
 try:
     axs = axs.flatten()
 except AttributeError:
     axs = [axs]
 
+if len(indexes) == 3:
+    axs[-1].remove()
+
 for i in range(len(indexes)):
     try:
         [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values,
-                     c='gray', lw=1, alpha=0.5, zorder=4) for j in np.hstack(indexes[:i] + indexes[i + 1:])]
+                     c='gray', lw=1, alpha=0.5, zorder=4) for j in np.hstack(indexes[:i] + indexes[i + 1:]) if
+         all_datas[j] is not None]
     except ValueError:
         pass
 
     [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values,
-                 lw=2, label=all_datas[j][0], zorder=5) for j in indexes[i]]
+                 lw=2, label=all_datas[j][0], zorder=5) for j in indexes[i] if
+     all_datas[j] is not None]
 
-    axs[i].grid()
-    axs[i].legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    axs[i].grid(color="lightgray", linewidth=0.5, zorder=0)
+    for axis in ['top', 'right']:
+        axs[i].spines[axis].set_linewidth(0.5)
+        axs[i].spines[axis].set_color('lightgray')
+
+    if axs[i].get_xlim()[1] % axs[i].get_xticks()[-1] == 0:
+        axs[i].spines['right'].set_visible(False)
+    if axs[i].get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
+        axs[i].spines['top'].set_visible(False)
+
+    axs[i].yaxis.set_minor_locator(AutoMinorLocator())
+    axs[i].xaxis.set_minor_locator(AutoMinorLocator())
+
+    axs[i].tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
+    axs[i].tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
+
+    # axs[i].legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    axs[i].legend(fontsize=8, bbox_to_anchor=(0.5, -0.1), loc="center", borderaxespad=0, ncol=4)
 
     axs[i].set_xlabel('Distance [mm]')
     axs[i].set_ylabel('Force [N]')
@@ -445,18 +499,28 @@ plt.tight_layout()
 
 fig, ax = plt.subplots(figsize=(6, 6))
 
-for name, curve_index, color in zip(("I", "II", "III"),
-                                    # ("I", "II", "III") // ("MAX", "NORM", "SNAPPED")
-                                    (data_indexes_I, data_indexes_II, data_indexes_III),
-                                    # (data_indexes_max, data_indexes_can_norm, data_indexes_can_snapped) //
-                                    # (data_indexes_I, data_indexes_II, data_indexes_III)
-                                    ("dodgerblue", "red", "limegreen")):
-    datas = [all_datas[j] for j in curve_index]
+if data_type == "H01":
+    datas_pack = zip(("I", "II", "III"),
+                     # ("I", "II", "III") // ("MAX", "NORM", "SNAPPED")
+                     (data_indexes_I, data_indexes_II, data_indexes_III),
+                     # (data_indexes_max, data_indexes_can_norm, data_indexes_can_snapped) //
+                     # (data_indexes_I, data_indexes_II, data_indexes_III)
+                     ("dodgerblue", "red", "limegreen"))
+
+
+elif data_type == "H02":
+    datas_pack = zip(("MAX-K", "MAX-N"),
+                     # ("I-K", "II-K", "III-K", "I-N", "II-N", "III-N") // ("MAX-K", "MAX-N")
+                     (data_indexes_max_K, data_indexes_max_N),
+                     # (ata_indexes_I_K, data_indexes_II_K, data_indexes_III_K) //
+                     # (data_indexes_max_K, data_indexes_max_N)
+                     ("dodgerblue", "red", "limegreen"))
+
+for name, curve_index, color in datas_pack:
+    datas = [all_datas[j] for j in curve_index if all_datas[j] is not None]
     data_plot_x = np.array([[x[-2].iloc[i, 2] for x in datas] for i in range(np.min([x[-2].shape[0] for x in datas]))])
     data_plot_y = np.array([[y[-2].iloc[i, 3] for y in datas] for i in range(np.min([y[-2].shape[0] for y in datas]))])
 
-    # Definice velikosti okna pro klouzavý průměr
-    window_size = 5
     # Vytvoření průměrového filtru
     window = np.ones(window_size) / window_size
 
@@ -476,19 +540,36 @@ for name, curve_index, color in zip(("I", "II", "III"),
     data_std = np.std(data_plot_y, axis=1)
 
     # Aplikace klouzavého průměru
-    data_mean_x = data_mean_x[:-2]
-    data_mean_y = np.convolve(data_mean_y, window, mode='same')[:-2]
-    data_max = np.convolve(data_max, window, mode='same')[:-2]
-    data_min = np.convolve(data_min, window, mode='same')[:-2]
-    data_std = np.convolve(data_std, window, mode='same')[:-2]
+    data_mean_x = data_mean_x[:-window_size//2]
+    data_mean_y = np.convolve(data_mean_y, window, mode='same')[:-window_size//2]
+    data_max = np.convolve(data_max, window, mode='same')[:-window_size//2]
+    data_min = np.convolve(data_min, window, mode='same')[:-window_size//2]
+    data_std = np.convolve(data_std, window, mode='same')[:-window_size//2]
 
     ax.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=6)
     ax.fill_between(data_mean_x, data_mean_y + data_std, data_mean_y - data_std, alpha=0.35, color=color, zorder=4)
-    ax.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=5)
-    ax.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=5)
+    ax.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=5, alpha=0.7)
+    ax.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=5, alpha=0.7)
 
-ax.grid()
-ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+ax.grid(color="lightgray", linewidth=0.5, zorder=0)
+for axis in ['top', 'right']:
+    ax.spines[axis].set_linewidth(0.5)
+    ax.spines[axis].set_color('lightgray')
+
+if ax.get_xlim()[1] % ax.get_xticks()[-1] == 0:
+    ax.spines['right'].set_visible(False)
+if ax.get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
+    ax.spines['top'].set_visible(False)
+
+ax.yaxis.set_minor_locator(AutoMinorLocator())
+ax.xaxis.set_minor_locator(AutoMinorLocator())
+
+ax.tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
+ax.tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
+
+# ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+ax.legend(fontsize=8, bbox_to_anchor=(0.5, -0.1), loc="center", borderaxespad=0, ncol=4)
 ax.set_xlabel('Distance [mm]')
 ax.set_ylabel('Force [N]')
 
