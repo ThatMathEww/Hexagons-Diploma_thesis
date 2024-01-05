@@ -406,8 +406,8 @@ for exp, current_image_folder in enumerate(images_folders):
 
             # Přidání tří sloupců ve smyčce
             for i in range(len_points):  # Přidáme tři skupiny sloupců
-                df_tr[[f'Point_{i + 1} - {v}' for v in ('X [mm]', 'Y [mm]')]] = np.vstack(
-                    (data[i][0][:, 0], data[i][0][:, 1])).T[beginning:]
+                df_tr[[f'Point_{i + 1} - {v}' for v in ('X [mm]', 'Y [mm]', 'Rotation [rad]')]] = np.vstack(
+                    (data[i][0][:, 0], data[i][0][:, 1], data[i][1])).T[beginning:]
             data_frames.append(df_tr)
         else:
             data_frames.append([])
@@ -492,8 +492,6 @@ plt.tight_layout()
 
 ########################################################################################################################
 
-plt.figure()
-
 if data_type == "M01":
     first_index = 7
     second_index = 14
@@ -504,15 +502,17 @@ elif data_type == "H01":
 point_1 = [f'Point_{int(first_index)} - X [mm]', f'Point_{int(first_index)} - Y [mm]']
 point_2 = [f'Point_{int(second_index)} - X [mm]', f'Point_{int(second_index)} - Y [mm]']
 
+plt.figure()
 for dat in all_datas:
     if dat is not None:
         displacement = [np.linalg.norm(np.array([dat[-1][p][i] for p in point_1]) -
                                        np.array([dat[-1][p][i] for p in point_2])) for i in range(len(dat[-1]))]
         plt.plot(displacement, dat[3].iloc[:, 1].values, label=dat[0])
 
-plt.title(f"Extensometer: {first_index} and {second_index}")
+plt.title(f"Extensometer TOT: {first_index} and {second_index}")
 plt.xlabel('Total relative displacement [mm]')
 plt.ylabel('Force [N]')
+plt.tight_layout()
 
 plt.figure()
 for dat in all_datas:
@@ -521,11 +521,44 @@ for dat in all_datas:
                                        np.array([dat[-1][p][i] for p in point_2])) for i in range(len(dat[-1]))]
         plt.plot(dat[3].iloc[:, 0].values, displacement, label=dat[0])
 
-plt.title(f"Extensometer: {first_index} and {second_index}")
+plt.title(f"Extensometer TOT: {first_index} and {second_index}")
 plt.xlabel('Distance [mm]')
 plt.ylabel('Total relative displacement [mm]')
+plt.tight_layout()
 
-plt.show()
+plt.figure()
+for dat in all_datas:
+    if dat is not None:
+        displacement = [np.linalg.norm(np.array(dat[-1][point_1[0]][i]) - np.array(dat[-1][point_2[0]][i])) for i in
+                        range(len(dat[-1]))]
+        plt.plot(displacement, dat[3].iloc[:, 1].values, label=dat[0])
+
+plt.title(f"Extensometer X: {first_index} and {second_index}")
+plt.xlabel('Total relative X displacement [mm]')
+plt.ylabel('Force [N]')
+plt.tight_layout()
+
+plt.figure()
+for dat in all_datas:
+    if dat is not None:
+        displacement = [np.linalg.norm(np.array(dat[-1][point_1[1]][i]) - np.array(dat[-1][point_2[1]][i])) for i in
+                        range(len(dat[-1]))]
+        plt.plot(displacement, dat[3].iloc[:, 1].values, label=dat[0])
+
+plt.title(f"Extensometer Y: {first_index} and {second_index}")
+plt.xlabel('Total relative Y displacement [mm]')
+plt.ylabel('Force [N]')
+plt.tight_layout()
+
+plt.figure()
+for dat in all_datas:
+    if dat is not None:
+        plt.plot(dat[-1][f'Point_{int(first_index)} - Rotation [rad]'].values, dat[3].iloc[:, 1].values, label=dat[0])
+
+plt.title(f"Extensometer Y: {first_index}")
+plt.xlabel('Rotation [rad]')
+plt.ylabel('Force [N]')
+plt.tight_layout()
 
 ########################################################################################################################
 
