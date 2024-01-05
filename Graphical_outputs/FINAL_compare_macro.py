@@ -15,7 +15,7 @@ std = 0.24670669587238472
 median = 24.292378586161387
 """
 
-data_type = "M01"
+data_type = "S01"
 
 # Definice velikosti okna pro klouzavý průměr
 window_size = 10
@@ -50,6 +50,7 @@ elif data_type == "H02":
     data_indexes_max_K = np.arange(0, 8 * 6, 8) + 0
 
 elif data_type == "S01":
+    b = np.array(images_folders)
     data_indexes__I = np.array(
         [i for i in range(len(images_folders)) if "-I-" in images_folders[i] and "MAX" not in images_folders[i]])
     data_indexes__II = np.array(
@@ -88,9 +89,6 @@ elif data_type == "S01":
                                           "MAX" in images_folders[i] and "O" not in images_folders[i]])
     data_indexes__III_max_ELSE = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
                                            "MAX" in images_folders[i] and "O" not in images_folders[i]])
-elif data_type == "M01":
-    data_indexes_glued = [0]
-    data_indexes_whole = [2]
 
 all_datas = []
 ########################################################################################################################
@@ -491,8 +489,6 @@ elif data_type == "H02":
     indexes = [data_indexes_I_K, data_indexes_II_K, data_indexes_III_K, data_indexes_max_K]
 elif data_type == "S01":
     indexes = [data_indexes__I, data_indexes__II, data_indexes__III]
-elif data_type == "M01":
-    indexes = [data_indexes_glued, data_indexes_whole]
 
 # Vytvoření subplots
 fig, axs = plt.subplots(2, 2, figsize=(12, 8)) if 5 > len(indexes) >= 3 else plt.subplots(2, 1, figsize=(12, 4)) \
@@ -507,6 +503,8 @@ if len(indexes) == 3:
 
 for i in range(len(indexes)):
     try:
+        aa = all_datas[i][-2].iloc[:, 3].values
+        bb = 0
         [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values,
                      c='gray', lw=1, alpha=0.5, zorder=4) for j in np.hstack(indexes[:i] + indexes[i + 1:]) if
          all_datas[j] is not None]
@@ -566,10 +564,6 @@ elif data_type == "S01":
                      # (data_indexes__I, data_indexes__II, data_indexes__III) //
                      # (data_indexes__I_max, data_indexes__II_max, data_indexes__III_max)
                      ("dodgerblue", "red", "limegreen"))
-elif data_type == "M01":
-    datas_pack = zip(("Glued", "Whole"),
-                     (data_indexes_glued, data_indexes_whole),
-                     ("dodgerblue", "orange"))
 
 for name, curve_index, color in datas_pack:
     datas = [all_datas[j] for j in curve_index if all_datas[j] is not None]

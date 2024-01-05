@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import os
 
 # Načtení dat ze souboru CSV
-file_path = r'/Python_projects/HEXAGONS/data/data_csv/T01_08-I_1s.csv'
+file_path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_csv\T01_08-I_1s.csv'
 
-photo_path = r'/Python_projects/HEXAGONS/photos'
+photo_path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 df = pd.read_csv(file_path)  # DATAFRAME
 
 # Vytvoření grafu

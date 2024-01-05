@@ -49,7 +49,7 @@ measurement3 = np.array(([2, 5, 8, 11, 14, 17, 20],  # I
                          [30, 33, 36, 39, 42, 45, 48]  # MAX III
                          )).T
 
-measurement = measurement2
+measurement = measurement3
 
 file_names = file_names[measurement.flatten()]  # [-1:]
 
@@ -86,8 +86,11 @@ for file in file_names:
 
     numeric_values = pd.to_numeric(df.iloc[:, 0], errors='coerce').values
 
-    line_x.append(x_data)
-    line_y.append(y_data)
+    # Najděte index, kde platí, že rozdíl je roven 100
+    end_index = min(np.where(y_data - np.roll(y_data, -10) >= 5)[0][0] + 100, len(y_data))
+
+    line_x.append(x_data[:end_index])
+    line_y.append(y_data[:end_index])
 
 [plt.plot(x, y, label=f'{n}', color=c) for x, y, n, c in zip(line_x, line_y, file_names, colors)]
 y = line_y[0]
