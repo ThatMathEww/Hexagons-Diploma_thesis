@@ -10,7 +10,7 @@ folder_path_save = r'C:\Users\matej\PycharmProjects\pythonProject\Python_project
 
 # Získání seznamu souborů v dané složce
 files = [file for file in os.listdir(folder_path_load) if os.path.isfile(os.path.join(folder_path_load, file)) and
-         file.lower().endswith(".txt") and file.startswith("B01_")]
+         file.lower().endswith(".txt") and file.startswith("B01_")][-1:]
 
 operation = 0
 
@@ -124,3 +124,5 @@ for file in files:
         operation += 1
 
         print(f"Operace číslo:\t{operation}\t\tSoubor:\t{base_name}")
+    else:
+        print("Neplatný formát souboru.")

@@ -50,8 +50,8 @@ elif str(file_names[0]).lower().startswith("m01"):
     measurements1 = np.array(([0, 1, 2]  # Glued / Test / Whole
                                          )).T
 elif str(file_names[0]).lower().startswith("b01"):
-    measurements1 = np.array(([0, 1, 2, 3, 4, 5]  # Glued / Test / Whole
-                                               )).T
+    measurements1 = np.array(([0, 1, 2, 3, 4, 5, 6]
+                             )).T
 
 measurement = measurements1[:]  # measurements3[2, :]
 # measurements3[:-1, 4] , measurements3[:, :]
@@ -126,7 +126,7 @@ for file in file_names:
         y_data1 = y_data.copy()
         x_data1 = x_data.copy()"""
 
-[plt.plot(x, y, label=f'{n}', color=c) for x, y, n, c in zip(line_x, line_y, file_names, colors)]
+[plt.plot(x, y, label=f'{os.path.splitext(n)[0]}', color=c) for x, y, n, c in zip(line_x, line_y, file_names, colors)]
 
 e = [(y[2700] - y[2200]) / (x[2700] - x[2200]) for x, y in zip(line_x, line_y)]
 [print(f"{(n + ':').ljust(31)} {val: .5f}") for val, n in zip(e, file_names)]
@@ -169,7 +169,7 @@ plt.gca().tick_params(axis='both', which='major', direction='in', width=0.8, len
 x_range_start, x_range_end = plt.gca().get_xlim()  # rozsah x
 y_range_start, y_range_end = plt.gca().get_ylim()  # rozsah y
 
-plt.legend(fontsize=8, bbox_to_anchor=(1.04, 0.5), loc="center left", borderaxespad=0)
+plt.legend(fontsize=8, bbox_to_anchor=(0.5, -0.4), loc="lower center", borderaxespad=0, ncol=4)
 
 plt.gca().set_aspect(((x_range_end - x_range_start) / (y_range_end - y_range_start)) / 2, adjustable='box')
 plt.gca().autoscale(True)

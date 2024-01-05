@@ -20,7 +20,7 @@ tolerance = 0.24
 
 kinetic_type = True
 
-distance_limit = {'static': 35, 'kinetic': 10000}  # mm
+distance_limit = {'static': 35, 'kinetic': 100}  # mm
 
 image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Friction_photos'
 
@@ -32,7 +32,7 @@ if kinetic_type:
 else:
     folders = [f for f in folders if "_K" not in f]
 
-folders = folders[8:]  # [26:]  # [:21]  # [8:9]
+folders = folders # [8:]  # [26:]  # [:21]  # [8:9]
 
 accelerations_print = []
 tot_len = len(folders)
@@ -297,8 +297,8 @@ for i, folder in enumerate(folders):
     linear_accelerations_indexes = []
     mean_linear_accelerations = []
     for n in range(2):
-        linear_accelerations_indexes.append(np.arange(round(len(speeds[n]) * 0.2),
-                                                      round(len(speeds[n]) * 0.85), 1))
+        linear_accelerations_indexes.append(np.arange(round(len(speeds[n]) * 0.3),
+                                                      round(len(speeds[n]) * 0.65), 1))
 
         acc = np.diff(speeds[n], axis=0) / np.diff(time_stamps)[:len(speeds[n])]
         acc = np.hstack([0, acc])
