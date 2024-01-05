@@ -14,8 +14,11 @@ mean = 24.392700425124065
 std = 0.24670669587238472
 median = 24.292378586161387
 """
+load_keypoints = False
 
-data_type = "M01"
+data_type = "H02"
+
+mark_linear_part = True
 
 # Definice velikosti okna pro klouzavý průměr
 window_size = 10
@@ -38,6 +41,8 @@ if data_type == "H01":
     data_indexes_max = np.arange(0, 4 * 7, 5)
     data_indexes_can_norm = np.arange(0, 4 * 7, 5) + 4
     data_indexes_can_snapped = np.arange(30, 36)
+    linear_part = [3, 6]
+
 
 elif data_type == "H02":
     data_indexes_I_K = np.arange(0, 8 * 6, 8) + 6
@@ -48,6 +53,7 @@ elif data_type == "H02":
     data_indexes_III_N = np.arange(0, 8 * 6, 8) + 3
     data_indexes_max_N = np.arange(0, 8 * 6, 8) + 1
     data_indexes_max_K = np.arange(0, 8 * 6, 8) + 0
+    linear_part = [3, 6]
 
 elif data_type == "S01":
     data_indexes__I = np.array(
@@ -88,9 +94,12 @@ elif data_type == "S01":
                                           "MAX" in images_folders[i] and "O" not in images_folders[i]])
     data_indexes__III_max_ELSE = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
                                            "MAX" in images_folders[i] and "O" not in images_folders[i]])
+    linear_part = [1.2, 2.2]
+
 elif data_type == "M01":
     data_indexes_glued = [0]
     data_indexes_whole = [2]
+    linear_part = [1, 2]
 
 all_datas = []
 ########################################################################################################################
@@ -439,7 +448,7 @@ for exp, current_image_folder in enumerate(images_folders):
         if datasets['Others']:
             pass
 
-        if datasets['Tracked_points'] and False:
+        if datasets['Tracked_points'] and load_keypoints:
 
             len_points = len(tracked_points[0])
             len_photos = len(tracked_points)
@@ -495,7 +504,7 @@ elif data_type == "M01":
     indexes = [data_indexes_glued, data_indexes_whole]
 
 # Vytvoření subplots
-fig, axs = plt.subplots(2, 2, figsize=(12, 8)) if 5 > len(indexes) >= 3 else plt.subplots(2, 1, figsize=(12, 4)) \
+fig, axs = plt.subplots(2, 2, figsize=(12, 8)) if 5 > len(indexes) >= 3 else plt.subplots(1, 2, figsize=(12, 4)) \
     if len(indexes) == 2 else plt.subplots(1, 1, figsize=(6, 4))
 try:
     axs = axs.flatten()
@@ -543,6 +552,99 @@ for i in range(len(indexes)):
 
 plt.tight_layout()
 
+########################################################################################################################
+
+# Vytvoření subplots
+if mark_linear_part:
+    fig, axs = plt.subplots(2, 2, figsize=(12, 8)) if 5 > len(indexes) >= 3 else plt.subplots(1, 2, figsize=(12, 4)) \
+        if len(indexes) == 2 else plt.subplots(1, 1, figsize=(6, 4))
+    try:
+        axs = axs.flatten()
+    except AttributeError:
+        axs = [axs]
+
+    if len(indexes) == 3:
+        axs[-1].remove()
+
+    for i in range(len(indexes)):
+        try:
+            [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, c='dodgerblue', lw=1,
+                         alpha=0.5, zorder=4) for j in indexes[i] if all_datas[j] is not None]
+        except ValueError:
+            pass
+
+        [axs[i].plot(
+            all_datas[j][-2].iloc[:, 2].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
+                    all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
+            all_datas[j][-2].iloc[:, 3].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
+                    all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
+            c='red', lw=1.2, alpha=1, zorder=5) for j in indexes[i] if all_datas[j] is not None]
+
+        axs[i].grid(color="lightgray", linewidth=0.5, zorder=0)
+        for axis in ['top', 'right']:
+            axs[i].spines[axis].set_linewidth(0.5)
+            axs[i].spines[axis].set_color('lightgray')
+
+        if axs[i].get_xlim()[1] % axs[i].get_xticks()[-1] == 0:
+            axs[i].spines['right'].set_visible(False)
+        if axs[i].get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
+            axs[i].spines['top'].set_visible(False)
+
+        axs[i].yaxis.set_minor_locator(AutoMinorLocator())
+        axs[i].xaxis.set_minor_locator(AutoMinorLocator())
+
+        axs[i].tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
+        axs[i].tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
+
+        # axs[i].legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        # axs[i].legend(fontsize=8, bbox_to_anchor=(0.5, -0.25), loc="center", borderaxespad=0, ncol=4)
+
+        axs[i].set_xlabel('Distance [mm]')
+        axs[i].set_ylabel('Force [N]')
+
+        axs[i].set_aspect('auto', adjustable='box')
+
+    plt.tight_layout()
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    for i in range(len(indexes)):
+        [ax.plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, c='dodgerblue', lw=1,
+                 alpha=0.5, zorder=4) for j in indexes[i] if all_datas[j] is not None]
+
+        [ax.plot(all_datas[j][-2].iloc[:, 2].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
+                all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
+                 all_datas[j][-2].iloc[:, 3].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
+                         all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
+                 c='red', lw=1.2, alpha=1, zorder=5) for j in indexes[i] if all_datas[j] is not None]
+
+    ax.grid(color="lightgray", linewidth=0.5, zorder=0)
+    for axis in ['top', 'right']:
+        ax.spines[axis].set_linewidth(0.5)
+        ax.spines[axis].set_color('lightgray')
+
+    if ax.get_xlim()[1] % ax.get_xticks()[-1] == 0:
+        ax.spines['right'].set_visible(False)
+    if ax.get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
+        ax.spines['top'].set_visible(False)
+
+    ax.yaxis.set_minor_locator(AutoMinorLocator())
+    ax.xaxis.set_minor_locator(AutoMinorLocator())
+
+    ax.tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
+    ax.tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
+
+    # ax.legend(fontsize=8, bbox_to_anchor=(0.5, -0.25), loc="center", borderaxespad=0, ncol=4)
+
+    ax.set_xlabel('Distance [mm]')
+    ax.set_ylabel('Force [N]')
+
+    ax.set_aspect('auto', adjustable='box')
+
+    plt.tight_layout()
+
+########################################################################################################################
+
 fig, ax = plt.subplots(figsize=(6, 6))
 
 if data_type == "H01":
@@ -571,7 +673,7 @@ elif data_type == "M01":
                      (data_indexes_glued, data_indexes_whole),
                      ("dodgerblue", "orange"))
 
-for name, curve_index, color in datas_pack:
+for n, (name, curve_index, color) in enumerate(datas_pack):
     datas = [all_datas[j] for j in curve_index if all_datas[j] is not None]
     data_plot_x = np.array([[x[-2].iloc[i, 2] for x in datas] for i in range(np.min([x[-2].shape[0] for x in datas]))])
     data_plot_y = np.array([[y[-2].iloc[i, 3] for y in datas] for i in range(np.min([y[-2].shape[0] for y in datas]))])
@@ -601,10 +703,10 @@ for name, curve_index, color in datas_pack:
     data_min = np.convolve(data_min, window, mode='same')[:-window_size // 2]
     data_std = np.convolve(data_std, window, mode='same')[:-window_size // 2]
 
-    ax.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=6)
-    ax.fill_between(data_mean_x, data_mean_y + data_std, data_mean_y - data_std, alpha=0.35, color=color, zorder=4)
-    ax.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=5, alpha=0.7)
-    ax.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=5, alpha=0.7)
+    ax.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
+    ax.fill_between(data_mean_x, data_mean_y + data_std, data_mean_y - data_std, alpha=0.35, color=color, zorder=10 + n)
+    ax.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
+    ax.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
 
 ax.grid(color="lightgray", linewidth=0.5, zorder=0)
 for axis in ['top', 'right']:

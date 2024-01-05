@@ -15,7 +15,7 @@ std = 0.24670669587238472
 median = 24.292378586161387
 """
 
-data_type = "S01"
+data_type = "M01"
 
 # Definice velikosti okna pro klouzavý průměr
 window_size = 10
@@ -38,57 +38,11 @@ if data_type == "H01":
     data_indexes_max = np.arange(0, 4 * 7, 5)
     data_indexes_can_norm = np.arange(0, 4 * 7, 5) + 4
     data_indexes_can_snapped = np.arange(30, 36)
-
-elif data_type == "H02":
-    data_indexes_I_K = np.arange(0, 8 * 6, 8) + 6
-    data_indexes_II_K = np.arange(0, 8 * 6, 8) + 4
-    data_indexes_III_K = np.arange(0, 8 * 6, 8) + 2
-    data_indexes_I_N = np.arange(0, 8 * 6, 8) + 7
-    data_indexes_II_N = np.arange(0, 8 * 6, 8) + 5
-    data_indexes_III_N = np.arange(0, 8 * 6, 8) + 3
-    data_indexes_max_N = np.arange(0, 8 * 6, 8) + 1
-    data_indexes_max_K = np.arange(0, 8 * 6, 8) + 0
-
-elif data_type == "S01":
-    b = np.array(images_folders)
-    data_indexes__I = np.array(
-        [i for i in range(len(images_folders)) if "-I-" in images_folders[i] and "MAX" not in images_folders[i]])
-    data_indexes__II = np.array(
-        [i for i in range(len(images_folders)) if "-II-" in images_folders[i] and "MAX" not in images_folders[i]])
-    data_indexes__III = np.array(
-        [i for i in range(len(images_folders)) if "-III-" in images_folders[i] and "MAX" not in images_folders[i]])
-    data_indexes__I_max = np.array(
-        [i for i in range(len(images_folders)) if "-I-" in images_folders[i] and "MAX" in images_folders[i]])
-    data_indexes__II_max = np.array(
-        [i for i in range(len(images_folders)) if "-II-" in images_folders[i] and "MAX" in images_folders[i]])
-    data_indexes__III_max = np.array(
-        [i for i in range(len(images_folders)) if "-III-" in images_folders[i] and "MAX" in images_folders[i]])
-
-    data_indexes__I_O = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                  "MAX" not in images_folders[i] and "O" not in images_folders[i]])
-    data_indexes__II_O = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                   "MAX" not in images_folders[i] and "O" in images_folders[i]])
-    data_indexes__III_O = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                    "MAX" not in images_folders[i] and "O" in images_folders[i]])
-    data_indexes__I_max_O = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                      "MAX" in images_folders[i] and "O" in images_folders[i]])
-    data_indexes__II_max_O = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                       "MAX" in images_folders[i] and "O" in images_folders[i]])
-    data_indexes__III_max_O = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                        "MAX" in images_folders[i] and "O" in images_folders[i]])
-
-    data_indexes__I_ELSE = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                     "MAX" not in images_folders[i] and "O" not in images_folders[i]])
-    data_indexes__II_ELSE = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                      "MAX" not in images_folders[i] and "O" not in images_folders[i]])
-    data_indexes__III_ELSE = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                       "MAX" not in images_folders[i] and "O" not in images_folders[i]])
-    data_indexes__I_max_ELSE = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                         "MAX" in images_folders[i] and "O" not in images_folders[i]])
-    data_indexes__II_max_ELSE = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                          "MAX" in images_folders[i] and "O" not in images_folders[i]])
-    data_indexes__III_max_ELSE = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                           "MAX" in images_folders[i] and "O" not in images_folders[i]])
+    linear_part = [3, 6]
+elif data_type == "M01":
+    data_indexes_glued = [0]
+    data_indexes_whole = [2]
+    linear_part = [1, 2]
 
 all_datas = []
 ########################################################################################################################
@@ -437,7 +391,7 @@ for exp, current_image_folder in enumerate(images_folders):
         if datasets['Others']:
             pass
 
-        if datasets['Tracked_points'] and False:
+        if datasets['Tracked_points']:
 
             len_points = len(tracked_points[0])
             len_photos = len(tracked_points)
@@ -484,14 +438,11 @@ plt.show()"""
 if data_type == "H01":
     # indexes = [data_indexes_I, data_indexes_II, data_indexes_III, data_indexes_max]
     indexes = [data_indexes_can_snapped]
-elif data_type == "H02":
-    # indexes = []
-    indexes = [data_indexes_I_K, data_indexes_II_K, data_indexes_III_K, data_indexes_max_K]
-elif data_type == "S01":
-    indexes = [data_indexes__I, data_indexes__II, data_indexes__III]
+elif data_type == "M01":
+    indexes = [data_indexes_glued, data_indexes_whole]
 
 # Vytvoření subplots
-fig, axs = plt.subplots(2, 2, figsize=(12, 8)) if 5 > len(indexes) >= 3 else plt.subplots(2, 1, figsize=(12, 4)) \
+fig, axs = plt.subplots(2, 2, figsize=(12, 8)) if 5 > len(indexes) >= 3 else plt.subplots(1, 2, figsize=(12, 4)) \
     if len(indexes) == 2 else plt.subplots(1, 1, figsize=(6, 4))
 try:
     axs = axs.flatten()
@@ -503,8 +454,6 @@ if len(indexes) == 3:
 
 for i in range(len(indexes)):
     try:
-        aa = all_datas[i][-2].iloc[:, 3].values
-        bb = 0
         [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values,
                      c='gray', lw=1, alpha=0.5, zorder=4) for j in np.hstack(indexes[:i] + indexes[i + 1:]) if
          all_datas[j] is not None]
@@ -541,6 +490,45 @@ for i in range(len(indexes)):
 
 plt.tight_layout()
 
+########################################################################################################################
+
+plt.figure()
+
+if data_type == "M01":
+    first_index = 7
+    second_index = 14
+elif data_type == "H01":
+    first_index = 17
+    second_index = 65
+
+point_1 = [f'Point_{int(first_index)} - X [mm]', f'Point_{int(first_index)} - Y [mm]']
+point_2 = [f'Point_{int(second_index)} - X [mm]', f'Point_{int(second_index)} - Y [mm]']
+
+for dat in all_datas:
+    if dat is not None:
+        displacement = [np.linalg.norm(np.array([dat[-1][p][i] for p in point_1]) -
+                                       np.array([dat[-1][p][i] for p in point_2])) for i in range(len(dat[-1]))]
+        plt.plot(displacement, dat[3].iloc[:, 1].values, label=dat[0])
+
+plt.title(f"Extensometer: {first_index} and {second_index}")
+plt.xlabel('Total relative displacement [mm]')
+plt.ylabel('Force [N]')
+
+plt.figure()
+for dat in all_datas:
+    if dat is not None:
+        displacement = [np.linalg.norm(np.array([dat[-1][p][i] for p in point_1]) -
+                                       np.array([dat[-1][p][i] for p in point_2])) for i in range(len(dat[-1]))]
+        plt.plot(dat[3].iloc[:, 0].values, displacement, label=dat[0])
+
+plt.title(f"Extensometer: {first_index} and {second_index}")
+plt.xlabel('Distance [mm]')
+plt.ylabel('Total relative displacement [mm]')
+
+plt.show()
+
+########################################################################################################################
+
 fig, ax = plt.subplots(figsize=(6, 6))
 
 if data_type == "H01":
@@ -550,22 +538,12 @@ if data_type == "H01":
                      # (data_indexes_max, data_indexes_can_norm, data_indexes_can_snapped) //
                      # (data_indexes_I, data_indexes_II, data_indexes_III)
                      ("dodgerblue", "red", "limegreen"))
-elif data_type == "H02":
-    datas_pack = zip(("I-K", "MAX-N"),
-                     # ("I-K", "II-K", "III-K", "I-N", "II-N", "III-N") // ("MAX-K", "MAX-N")
-                     (data_indexes_I_K,),
-                     # (data_indexes_I_K, data_indexes_II_K, data_indexes_III_K) //
-                     # (data_indexes_max_K, data_indexes_max_N)
-                     ("dodgerblue", "red", "limegreen"))
-elif data_type == "S01":
-    datas_pack = zip(("I", "II", "III"),
-                     # ("I-K", "II-K", "III-K", "I-N", "II-N", "III-N") // ("MAX-K", "MAX-N")
-                     (data_indexes__I, data_indexes__II, data_indexes__III),
-                     # (data_indexes__I, data_indexes__II, data_indexes__III) //
-                     # (data_indexes__I_max, data_indexes__II_max, data_indexes__III_max)
-                     ("dodgerblue", "red", "limegreen"))
+elif data_type == "M01":
+    datas_pack = zip(("Glued", "Whole"),
+                     (data_indexes_glued, data_indexes_whole),
+                     ("dodgerblue", "orange"))
 
-for name, curve_index, color in datas_pack:
+for n, (name, curve_index, color) in enumerate(datas_pack):
     datas = [all_datas[j] for j in curve_index if all_datas[j] is not None]
     data_plot_x = np.array([[x[-2].iloc[i, 2] for x in datas] for i in range(np.min([x[-2].shape[0] for x in datas]))])
     data_plot_y = np.array([[y[-2].iloc[i, 3] for y in datas] for i in range(np.min([y[-2].shape[0] for y in datas]))])
@@ -576,7 +554,7 @@ for name, curve_index, color in datas_pack:
     """
     # Převod dat na pandas DataFrame
     df = pd.DataFrame({'y': y})
-    
+
     # Vytvoření klouzavého průměru
     window_size = 10
     y_smooth = df['y'].rolling(window=window_size).mean()
@@ -595,10 +573,10 @@ for name, curve_index, color in datas_pack:
     data_min = np.convolve(data_min, window, mode='same')[:-window_size // 2]
     data_std = np.convolve(data_std, window, mode='same')[:-window_size // 2]
 
-    ax.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=6)
-    ax.fill_between(data_mean_x, data_mean_y + data_std, data_mean_y - data_std, alpha=0.35, color=color, zorder=4)
-    ax.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=5, alpha=0.7)
-    ax.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=5, alpha=0.7)
+    ax.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
+    ax.fill_between(data_mean_x, data_mean_y + data_std, data_mean_y - data_std, alpha=0.35, color=color, zorder=10 + n)
+    ax.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
+    ax.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
 
 ax.grid(color="lightgray", linewidth=0.5, zorder=0)
 for axis in ['top', 'right']:
