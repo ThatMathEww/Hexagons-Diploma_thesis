@@ -16,12 +16,13 @@ median = 24.292378586161387
 """
 load_keypoints = False
 
-data_type = "H02"
+data_type = "H01"
 
 mark_linear_part = True
 
 # Definice velikosti okna pro klouzavý průměr
-window_size = 10
+window_size_data = 5
+window_size_plot = 5
 
 saved_data_name = "data_export_new.zip"
 out_put_folder = ""
@@ -41,7 +42,7 @@ if data_type == "H01":
     data_indexes_max = np.arange(0, 4 * 7, 5)
     data_indexes_can_norm = np.arange(0, 4 * 7, 5) + 4
     data_indexes_can_snapped = np.arange(30, 36)
-    linear_part = [3, 6]
+    linear_part = [2, 3]
 
 
 elif data_type == "H02":
@@ -56,6 +57,8 @@ elif data_type == "H02":
     linear_part = [3, 6]
 
 elif data_type == "S01":
+    names = []
+
     data_indexes__I = np.array(
         [i for i in range(len(images_folders)) if "-I-" in images_folders[i] and "MAX" not in images_folders[i]])
     data_indexes__II = np.array(
@@ -82,18 +85,31 @@ elif data_type == "S01":
     data_indexes__III_max_O = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
                                         "MAX" in images_folders[i] and "O" in images_folders[i]])
 
-    data_indexes__I_ELSE = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                     "MAX" not in images_folders[i] and "O" not in images_folders[i]])
-    data_indexes__II_ELSE = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                      "MAX" not in images_folders[i] and "O" not in images_folders[i]])
-    data_indexes__III_ELSE = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                       "MAX" not in images_folders[i] and "O" not in images_folders[i]])
-    data_indexes__I_max_ELSE = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                         "MAX" in images_folders[i] and "O" not in images_folders[i]])
-    data_indexes__II_max_ELSE = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                          "MAX" in images_folders[i] and "O" not in images_folders[i]])
-    data_indexes__III_max_ELSE = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                           "MAX" in images_folders[i] and "O" not in images_folders[i]])
+    data_indexes__I_B = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
+                                  "MAX" not in images_folders[i] and "B" in images_folders[i]])
+    data_indexes__II_B = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
+                                   "MAX" not in images_folders[i] and "B" in images_folders[i]])
+    data_indexes__III_B = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
+                                    "MAX" not in images_folders[i] and "B" in images_folders[i]])
+    data_indexes__I_max_B = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
+                                      "MAX" in images_folders[i] and "B" in images_folders[i]])
+    data_indexes__II_max_B = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
+                                       "MAX" in images_folders[i] and "B" in images_folders[i]])
+    data_indexes__III_max_B = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
+                                        "MAX" in images_folders[i] and "B" in images_folders[i]])
+
+    data_indexes__I_S = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
+                                  "MAX" not in images_folders[i] and "S" in images_folders[i]])
+    data_indexes__II_S = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
+                                   "MAX" not in images_folders[i] and "S" in images_folders[i]])
+    data_indexes__III_S = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
+                                    "MAX" not in images_folders[i] and "S" in images_folders[i]])
+    data_indexes__I_max_S = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
+                                      "MAX" in images_folders[i] and "S" in images_folders[i]])
+    data_indexes__II_max_S = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
+                                       "MAX" in images_folders[i] and "S" in images_folders[i]])
+    data_indexes__III_max_S = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
+                                        "MAX" in images_folders[i] and "S" in images_folders[i]])
     linear_part = [1.2, 2.2]
 
 elif data_type == "M01":
@@ -153,11 +169,12 @@ for exp, current_image_folder in enumerate(images_folders):
             zr = max(min(zr, d_len // 3), 3)
             z2 = max(zr // 2, 1)
 
-            # Načtení dat
             distances = df.iloc[:, 0].values  # - posun
-            forces = -((df.iloc[:, 1].values - df.iloc[:zr, 1].mean()) +
-                       (df.iloc[:, 2].values - df.iloc[:zr, 2].mean()))  # - celková síla
+            forces = -(df.iloc[:, 1].values + df.iloc[:, 2].values)  # - celková síla
+            forces -= forces[:zr].mean()
             photo_indexes = df[df['Photos'].notna()].index
+
+            # photo_indexes = photo_indexes[np.where(photo_indexes <= len(distances))[0]]
 
             # Najdi indexy, kde je okno rovno `pocet_podminka`
             start_index = np.max(np.where(forces[:max(min(int(np.where(np.convolve(np.where(np.abs(np.array(
@@ -166,6 +183,18 @@ for exp, current_image_folder in enumerate(images_folders):
                 np.array([np.std(forces[s - z2:s + z2]) for s in range(z2, d_len // 300)])[zr:]
                 * 1.5), 1, 0), np.ones(int(np.ceil(d_len * 0.1))), mode='valid') == np.ceil(d_len * 0.1))[0][0]) - zr,
                                                           d_len), 0) + 1] <= 0)[0])
+
+            # Průměrování dat
+            if isinstance(window_size_data, int) and window_size_data >= 1:
+                # Vytvoření průměrového filtru
+                window = np.ones(window_size_data) / window_size_data
+
+                # Aplikace klouzavého průměru
+                distances = distances[:-window_size_data // 2]
+                forces = np.convolve(forces, window, mode='same')[:-window_size_data // 2]
+                p = df['Photos'].notna()[:-window_size_data // 2]
+                photo_indexes = df['Photos'][:-window_size_data // 2]
+                photo_indexes = photo_indexes[p].index
 
             # Najdi indexy, kde je rozdíl menší než -5
             snap_index = np.where(np.diff(forces) <= -5)[0]
@@ -307,6 +336,10 @@ for exp, current_image_folder in enumerate(images_folders):
                 time_stamps = time_stamps[start_index:] - time_stamps[start_index]
                 # time_stamps = [t - time_stamps[0] for t in time_stamps]
 
+                if isinstance(window_size_data, int) and window_size_data >= 1:
+                    time_stamps = time_stamps[:-window_size_data // 2]
+
+
             except Exception as e:
                 print("\033[33;1;21mWARRNING\033[0m\n\t - "
                       f"Chyba načtení časového nastavení měření ze složky: [{current_image_folder}]\n\tPOPIS: {e}")
@@ -422,7 +455,7 @@ for exp, current_image_folder in enumerate(images_folders):
                                          'Time [s]': time_values}))
 
         if datasets['Correlation']:
-            data = np.float64([np.mean(c, axis=0) for c in correlation_points])
+            data = np.float64([np.mean(c, axis=0) for c in correlation_points])[:len(photo_indexes)]
             data_x = (data[beginning:, 0] - data[0, 0]) * scale
             data_y = (data[beginning:, 1] - start_value - data[0, 1]) * scale
             """dat = distances[photo_indexes][beginning:]
@@ -440,7 +473,7 @@ for exp, current_image_folder in enumerate(images_folders):
 
         if datasets['Forces']:
             # Vytvoření datových rámce pro listy
-            data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_index:],
+            data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_index:len(distances)],
                                              'Time [s]': time_stamps,
                                              'Distance [mm]': distances[start_index:],
                                              'Force [N]': forces[start_index:]}))
@@ -463,8 +496,9 @@ for exp, current_image_folder in enumerate(images_folders):
 
             # Přidání tří sloupců ve smyčce
             for i in range(len_points):  # Přidáme tři skupiny sloupců
-                df_tr[[f'Point_{i + 1} - {v}' for v in ('X [mm]', 'Y [mm]')]] = np.vstack(
-                    (data[i][0][:, 0], data[i][0][:, 1])).T[beginning:]
+                df_temp = pd.DataFrame(np.vstack((data[i][0][:, 0], data[i][0][:, 1], data[i][1])).T[beginning:],
+                                       columns=[f'Point_{i + 1} - {v}' for v in ('X [mm]', 'Y [mm]', 'Rotation [rad]')])
+                df_tr = pd.concat([df_tr, df_temp], axis=1)
             data_frames.append(df_tr)
         else:
             data_frames.append([])
@@ -472,7 +506,7 @@ for exp, current_image_folder in enumerate(images_folders):
         all_datas.append(data_frames)
 
     except (ValueError, Exception) as e:
-        print(f'\033[31;1;21mERROR\033[0m\n\tSoubor [{current_image_folder}] se nepovedlo uložit.\n\tPOPIS: {e}')
+        print(f'\033[31;1;21mERROR\033[0m\n\tSoubor [{current_image_folder}] se nepovedlo načíst.\n\tPOPIS: {e}')
         continue
 
 print("\n\033[33;1mHotovo.\033[0m")
@@ -493,18 +527,25 @@ plt.show()"""
     plt.show()"""
 
 if data_type == "H01":
-    # indexes = [data_indexes_I, data_indexes_II, data_indexes_III, data_indexes_max]
-    indexes = [data_indexes_can_snapped]
+    indexes = [data_indexes_I, data_indexes_II, data_indexes_III, data_indexes_max]
+    # indexes = [data_indexes_can_norm]
+    # indexes = [data_indexes_can_snapped]
 elif data_type == "H02":
     # indexes = []
     indexes = [data_indexes_I_K, data_indexes_II_K, data_indexes_III_K, data_indexes_max_K]
 elif data_type == "S01":
-    indexes = [data_indexes__I, data_indexes__II, data_indexes__III]
+    """indexes = [np.hstack((data_indexes__I_O, data_indexes__II_O, data_indexes__III_O)),
+               np.hstack((data_indexes__I_B, data_indexes__II_B, data_indexes__III_O)),
+               np.hstack((data_indexes__I_S, data_indexes__II_S, data_indexes__III_S))
+               ]"""
+    indexes = [data_indexes__I_max, data_indexes__II_max, data_indexes__III_max]
 elif data_type == "M01":
     indexes = [data_indexes_glued, data_indexes_whole]
 
 # Vytvoření subplots
-fig, axs = plt.subplots(2, 2, figsize=(12, 8)) if 5 > len(indexes) >= 3 else plt.subplots(1, 2, figsize=(12, 4)) \
+colors = ("dodgerblue", "red", "limegreen", "orange", "purple", "cyan", "pink", "black", "yellow", "magenta")
+
+fig, axs = plt.subplots(2, 2, figsize=(12, 6)) if 5 > len(indexes) >= 3 else plt.subplots(1, 2, figsize=(12, 4)) \
     if len(indexes) == 2 else plt.subplots(1, 1, figsize=(6, 4))
 try:
     axs = axs.flatten()
@@ -517,23 +558,24 @@ if len(indexes) == 3:
 for i in range(len(indexes)):
     try:
         [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values,
-                     c='gray', lw=1, alpha=0.5, zorder=4) for j in np.hstack(indexes[:i] + indexes[i + 1:]) if
+                     c='gray', lw=1, alpha=0.5, zorder=30) for j in np.hstack(indexes[:i] + indexes[i + 1:]) if
          all_datas[j] is not None]
     except ValueError:
         pass
 
-    [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values,
-                 lw=2, label=all_datas[j][0], zorder=5) for j in indexes[i] if
+    [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, color=colors[c], lw=1.5,
+                 label=all_datas[j][0], zorder=40 - len(indexes[i]) - c) for c, j in enumerate(indexes[i]) if
      all_datas[j] is not None]
 
     axs[i].grid(color="lightgray", linewidth=0.5, zorder=0)
     for axis in ['top', 'right']:
         axs[i].spines[axis].set_linewidth(0.5)
         axs[i].spines[axis].set_color('lightgray')
+        axs[i].spines[axis].set_zorder(0)
 
     if axs[i].get_xlim()[1] % axs[i].get_xticks()[-1] == 0:
         axs[i].spines['right'].set_visible(False)
-    if axs[i].get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
+    if axs[i].get_ylim()[1] % axs[i].get_yticks()[-1] == 0:
         axs[i].spines['top'].set_visible(False)
 
     axs[i].yaxis.set_minor_locator(AutoMinorLocator())
@@ -543,20 +585,24 @@ for i in range(len(indexes)):
     axs[i].tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
 
     # axs[i].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    axs[i].legend(fontsize=8, bbox_to_anchor=(0.5, -0.25), loc="center", borderaxespad=0, ncol=4)
 
     axs[i].set_xlabel('Distance [mm]')
     axs[i].set_ylabel('Force [N]')
 
     axs[i].set_aspect('auto', adjustable='box')
 
-plt.tight_layout()
+handles, labels = axs[0].get_legend_handles_labels()
+fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=4)
+
+fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
+
+# plt.tight_layout()
 
 ########################################################################################################################
 
 # Vytvoření subplots
 if mark_linear_part:
-    fig, axs = plt.subplots(2, 2, figsize=(12, 8)) if 5 > len(indexes) >= 3 else plt.subplots(1, 2, figsize=(12, 4)) \
+    fig, axs = plt.subplots(2, 2, figsize=(12, 6)) if 5 > len(indexes) >= 3 else plt.subplots(1, 2, figsize=(12, 4)) \
         if len(indexes) == 2 else plt.subplots(1, 1, figsize=(6, 4))
     try:
         axs = axs.flatten()
@@ -587,7 +633,7 @@ if mark_linear_part:
 
         if axs[i].get_xlim()[1] % axs[i].get_xticks()[-1] == 0:
             axs[i].spines['right'].set_visible(False)
-        if axs[i].get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
+        if axs[i].get_ylim()[1] % axs[i].get_yticks()[-1] == 0:
             axs[i].spines['top'].set_visible(False)
 
         axs[i].yaxis.set_minor_locator(AutoMinorLocator())
@@ -604,9 +650,12 @@ if mark_linear_part:
 
         axs[i].set_aspect('auto', adjustable='box')
 
-    plt.tight_layout()
+    # plt.tight_layout()
+    fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=(5.2, 3))
+
+    linear_lines = []
 
     for i in range(len(indexes)):
         [ax.plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, c='dodgerblue', lw=1,
@@ -618,6 +667,26 @@ if mark_linear_part:
                          all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
                  c='red', lw=1.2, alpha=1, zorder=5) for j in indexes[i] if all_datas[j] is not None]
 
+        """linear_lines.append(np.array(
+            [all_datas[j][-2].iloc[:, 3].values[all_datas[j][-2].iloc[:, 2].values <= linear_part[1]][-1] for j in
+             indexes[i] if all_datas[j] is not None]) * (50 ** 3) / np.array(
+            [all_datas[j][-2].iloc[:, 2].values[all_datas[j][-2].iloc[:, 2].values <= linear_part[1]][-1] for j in
+             indexes[i] if all_datas[j] is not None]) * 48 * (1 / 12 * 15.13 * 2.64 ** 3))"""
+
+        if data_type == 'S01':
+            f = np.array([all_datas[j][-2].iloc[:, 3].values[all_datas[j][-2].iloc[:, 2].values <= linear_part[1]][
+                              -1] for j in
+                          indexes[i] if all_datas[j] is not None]) * (50 ** 3)
+            w = np.array([all_datas[j][-2].iloc[:, 2].values[
+                              all_datas[j][-2].iloc[:, 2].values <= linear_part[1]][-1] for j in
+                          indexes[i] if all_datas[j] is not None]) * 48 * (1 / 12 * 15.13 * 2.64 ** 3)
+            e = f / w
+
+            linear_lines.append(e)
+
+            print(f"\n\t {np.mean(e):.3f}")
+            print(f"\t {np.std(e):.3f}")
+
     ax.grid(color="lightgray", linewidth=0.5, zorder=0)
     for axis in ['top', 'right']:
         ax.spines[axis].set_linewidth(0.5)
@@ -625,7 +694,7 @@ if mark_linear_part:
 
     if ax.get_xlim()[1] % ax.get_xticks()[-1] == 0:
         ax.spines['right'].set_visible(False)
-    if ax.get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
+    if ax.get_ylim()[1] % ax.get_yticks()[-1] == 0:
         ax.spines['top'].set_visible(False)
 
     ax.yaxis.set_minor_locator(AutoMinorLocator())
@@ -641,11 +710,11 @@ if mark_linear_part:
 
     ax.set_aspect('auto', adjustable='box')
 
-    plt.tight_layout()
+    # plt.tight_layout()
+    fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 
 ########################################################################################################################
 
-fig, ax = plt.subplots(figsize=(6, 6))
 
 if data_type == "H01":
     datas_pack = zip(("I", "II", "III"),
@@ -662,16 +731,21 @@ elif data_type == "H02":
                      # (data_indexes_max_K, data_indexes_max_N)
                      ("dodgerblue", "red", "limegreen"))
 elif data_type == "S01":
-    datas_pack = zip(("I", "II", "III"),
+    datas_pack = zip(("Orange", "White", "Gray"),
                      # ("I-K", "II-K", "III-K", "I-N", "II-N", "III-N") // ("MAX-K", "MAX-N")
-                     (data_indexes__I, data_indexes__II, data_indexes__III),
+                     (np.hstack((data_indexes__I_O, data_indexes__II_O, data_indexes__III_O)),
+                      np.hstack((data_indexes__I_B, data_indexes__II_B, data_indexes__III_O)),
+                      np.hstack((data_indexes__I_S, data_indexes__II_S, data_indexes__III_S))),
                      # (data_indexes__I, data_indexes__II, data_indexes__III) //
                      # (data_indexes__I_max, data_indexes__II_max, data_indexes__III_max)
-                     ("dodgerblue", "red", "limegreen"))
+                     ("Orange", "red", "dodgerblue"))
 elif data_type == "M01":
     datas_pack = zip(("Glued", "Whole"),
                      (data_indexes_glued, data_indexes_whole),
                      ("dodgerblue", "orange"))
+
+fig, ax = plt.subplots(figsize=(5.2, 3))
+fig2, ax2 = plt.subplots(figsize=(5.2, 3))
 
 for n, (name, curve_index, color) in enumerate(datas_pack):
     datas = [all_datas[j] for j in curve_index if all_datas[j] is not None]
@@ -679,7 +753,7 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     data_plot_y = np.array([[y[-2].iloc[i, 3] for y in datas] for i in range(np.min([y[-2].shape[0] for y in datas]))])
 
     # Vytvoření průměrového filtru
-    window = np.ones(window_size) / window_size
+    window = np.ones(window_size_plot) / window_size_plot
 
     """
     # Převod dat na pandas DataFrame
@@ -697,39 +771,48 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     data_std = np.std(data_plot_y, axis=1)
 
     # Aplikace klouzavého průměru
-    data_mean_x = data_mean_x[:-window_size // 2]
-    data_mean_y = np.convolve(data_mean_y, window, mode='same')[:-window_size // 2]
-    data_max = np.convolve(data_max, window, mode='same')[:-window_size // 2]
-    data_min = np.convolve(data_min, window, mode='same')[:-window_size // 2]
-    data_std = np.convolve(data_std, window, mode='same')[:-window_size // 2]
+    data_mean_x = data_mean_x[:-window_size_plot // 2]
+    data_mean_y = np.convolve(data_mean_y, window, mode='same')[:-window_size_plot // 2]
+    data_max = np.convolve(data_max, window, mode='same')[:-window_size_plot // 2]
+    data_min = np.convolve(data_min, window, mode='same')[:-window_size_plot // 2]
+    data_std = np.convolve(data_std, window, mode='same')[:-window_size_plot // 2]
+
+    ax2.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
 
     ax.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
     ax.fill_between(data_mean_x, data_mean_y + data_std, data_mean_y - data_std, alpha=0.35, color=color, zorder=10 + n)
     ax.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
     ax.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
 
-ax.grid(color="lightgray", linewidth=0.5, zorder=0)
-for axis in ['top', 'right']:
-    ax.spines[axis].set_linewidth(0.5)
-    ax.spines[axis].set_color('lightgray')
+for axes in [ax, ax2]:
+    axes.grid(color="lightgray", linewidth=0.5, zorder=0)
+    for axis in ['top', 'right']:
+        axes.spines[axis].set_linewidth(0.5)
+        axes.spines[axis].set_color('lightgray')
 
-if ax.get_xlim()[1] % ax.get_xticks()[-1] == 0:
-    ax.spines['right'].set_visible(False)
-if ax.get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
-    ax.spines['top'].set_visible(False)
+    if axes.get_xlim()[1] % axes.get_xticks()[-1] == 0:
+        axes.spines['right'].set_visible(False)
+    if axes.get_ylim()[1] % axes.get_yticks()[-1] == 0:
+        axes.spines['top'].set_visible(False)
 
-ax.yaxis.set_minor_locator(AutoMinorLocator())
-ax.xaxis.set_minor_locator(AutoMinorLocator())
+    axes.yaxis.set_minor_locator(AutoMinorLocator())
+    axes.xaxis.set_minor_locator(AutoMinorLocator())
 
-ax.tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
-ax.tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
+    axes.tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
+    axes.tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
 
-# ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-ax.legend(fontsize=8, bbox_to_anchor=(0.5, -0.15), loc="center", borderaxespad=0, ncol=4)
-ax.set_xlabel('Distance [mm]')
-ax.set_ylabel('Force [N]')
+    # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    axes.legend(fontsize=8, bbox_to_anchor=(0.5, -0.3), loc="center", borderaxespad=0, ncol=4)
+    axes.set_xlabel('Distance [mm]')
+    axes.set_ylabel('Force [N]')
 
-ax.set_aspect('auto', adjustable='box')
-plt.tight_layout()
+    axes.set_aspect('auto', adjustable='box')
+
+ax2.set_ylim(ax.get_ylim())
+ax2.set_xlim(ax.get_xlim())
+fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
+fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
+# fig.tight_layout()
+# fig2.tight_layout()
 
 plt.show()

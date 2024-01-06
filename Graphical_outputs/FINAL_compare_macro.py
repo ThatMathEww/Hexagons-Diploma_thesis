@@ -15,7 +15,7 @@ std = 0.24670669587238472
 median = 24.292378586161387
 """
 
-data_type = "M01"
+data_type = "H01"
 
 # Definice velikosti okna pro klouzavý průměr
 window_size = 10
@@ -98,8 +98,8 @@ for exp, current_image_folder in enumerate(images_folders):
 
             # Načtení dat
             distances = df.iloc[:, 0].values  # - posun
-            forces = -((df.iloc[:, 1].values - df.iloc[:zr, 1].mean()) +
-                       (df.iloc[:, 2].values - df.iloc[:zr, 2].mean()))  # - celková síla
+            forces = -(df.iloc[:, 1].values + df.iloc[:, 2].values)  # - celková síla
+            forces -= forces[:zr].mean()
             photo_indexes = df[df['Photos'].notna()].index
 
             # Najdi indexy, kde je okno rovno `pocet_podminka`
@@ -406,8 +406,9 @@ for exp, current_image_folder in enumerate(images_folders):
 
             # Přidání tří sloupců ve smyčce
             for i in range(len_points):  # Přidáme tři skupiny sloupců
-                df_tr[[f'Point_{i + 1} - {v}' for v in ('X [mm]', 'Y [mm]', 'Rotation [rad]')]] = np.vstack(
-                    (data[i][0][:, 0], data[i][0][:, 1], data[i][1])).T[beginning:]
+                df_temp = pd.DataFrame(np.vstack((data[i][0][:, 0], data[i][0][:, 1], data[i][1])).T[beginning:],
+                                       columns=[f'Point_{i + 1} - {v}' for v in ('X [mm]', 'Y [mm]', 'Rotation [rad]')])
+                df_tr = pd.concat([df_tr, df_temp], axis=1)
             data_frames.append(df_tr)
         else:
             data_frames.append([])
@@ -496,8 +497,10 @@ if data_type == "M01":
     first_index = 7
     second_index = 14
 elif data_type == "H01":
-    first_index = 17
-    second_index = 65
+    # first_index = 17
+    # second_index = 65
+    first_index = 1
+    second_index = 89
 
 point_1 = [f'Point_{int(first_index)} - X [mm]', f'Point_{int(first_index)} - Y [mm]']
 point_2 = [f'Point_{int(second_index)} - X [mm]', f'Point_{int(second_index)} - Y [mm]']
@@ -524,6 +527,35 @@ for dat in all_datas:
 plt.title(f"Extensometer TOT: {first_index} and {second_index}")
 plt.xlabel('Distance [mm]')
 plt.ylabel('Total relative displacement [mm]')
+plt.tight_layout()
+
+plt.figure(figsize=(6, 3.5))
+ax = plt.gca()
+for dat in all_datas:
+    if dat is not None:
+        displacement = [np.linalg.norm(np.array(dat[-1][point_1[1]][i]) - np.array(dat[-1][point_2[1]][i])) for i in
+                        range(len(dat[-1]))]
+        plt.plot(dat[3].iloc[:, 0].values, displacement, label=dat[0])
+
+ax.grid(color="lightgray", linewidth=0.5, zorder=0)
+for axis in ['top', 'right']:
+    ax.spines[axis].set_linewidth(0.5)
+    ax.spines[axis].set_color('lightgray')
+
+if ax.get_xlim()[1] % ax.get_xticks()[-1] == 0:
+    ax.spines['right'].set_visible(False)
+if ax.get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
+    ax.spines['top'].set_visible(False)
+
+ax.yaxis.set_minor_locator(AutoMinorLocator())
+ax.xaxis.set_minor_locator(AutoMinorLocator())
+
+ax.tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
+ax.tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
+
+plt.title(f"Extensometer Y: {first_index} and {second_index}")
+plt.xlabel('Distance [$mm$]')
+plt.ylabel('Vertical relative displacement [$mm$]')
 plt.tight_layout()
 
 plt.figure()
@@ -562,7 +594,7 @@ plt.tight_layout()
 
 ########################################################################################################################
 
-fig, ax = plt.subplots(figsize=(6, 6))
+fig, ax = plt.subplots(figsize=(6, 3.5))
 
 if data_type == "H01":
     datas_pack = zip(("I", "II", "III"),
