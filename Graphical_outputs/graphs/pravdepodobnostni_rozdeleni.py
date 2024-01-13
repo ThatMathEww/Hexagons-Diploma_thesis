@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.ticker import AutoMinorLocator
 
 
 def gradient_bars(bars, x_data, y_data, up_alpha=0.9, down_alpha=0.15, bin_alpha=0.9, line_color='tab:blue',
@@ -33,6 +34,8 @@ def gradient_bars(bars, x_data, y_data, up_alpha=0.9, down_alpha=0.15, bin_alpha
         color = np.tile(plt.cm.colors.to_rgba('dodgerblue'), (grad.shape[0], 1, 1))
         color[:, :, -1] = grad
 
+
+
     bar_ax = bars[0].axes
     lim = bar_ax.get_xlim() + bar_ax.get_ylim()
     ax.axis(lim)
@@ -61,12 +64,13 @@ def gradient_bars(bars, x_data, y_data, up_alpha=0.9, down_alpha=0.15, bin_alpha
 # Nastavení parametrů gausovského rozdělení
 mean_dev = 9  # Střední hodnota
 std_dev = 1  # Směrodatná odchylka
-
+plt.rcParams['font.family'] = 'Times New Roman'
 # Generování dat z gausovského rozdělení
 # data = np.random.normal(mean_dev, std_dev, 1000)  # Generuje 1000 vzorků
 # data = [15, 15.5, 14.9, 10.3, 18.9, 15.1, 12, 23]
 data = np.array([27.12, 21.44, 27.09, 23.85, 27.03, 21.74, 24.88, 21.28, 18.28, 23.64, 23.43, 23.14, 20.3, 22.88, 22.79,
-                 28.3, 27.08, 20.67, 24.46, 37.74, 21.87])
+                 28.3, 27.08, 20.67, 24.46, 37.74, 21.87, 20.84, 21.02, 23.92, 18.99, 18.76, 24.64, 16.99, 21.48, 20.9,
+                 20.34                 ])
 std = np.std(data)
 mean = np.mean(data)
 
@@ -81,7 +85,6 @@ x = np.linspace(np.min(data), np.max(data), 1000)
 pdf = (1 / (std * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mean) / std) ** 2)
 # pdf = (((pdf - np.min(pdf)) / (np.max(pdf) - np.min(pdf)))) * np.max(bar[0])
 pdf *= (np.max(bar[0]) / np.max(pdf))
-
 
 gradient_bars(bar[2], x, pdf)
 
@@ -117,7 +120,7 @@ h, n = ax.get_legend_handles_labels()
 # h[0] = plt.Rectangle((0, 0), 1, 1, fc="tab:blue", alpha=0.7)  # Vytvoření obdélníku pro značku
 # plt.Line2D((0, 0), (1, 1), color="tab:blue", alpha=0.75)
 # Put a legend below current axis
-ax.legend(h, n, loc='upper center', bbox_to_anchor=(0.5, -0.15), fancybox=True, shadow=True, ncol=5)
+# ax.legend(h, n, loc='upper center', bbox_to_anchor=(0.5, -0.15), fancybox=True, shadow=True, ncol=5)
 
 ax.set_aspect('auto', adjustable='box')
 ax.relim()
@@ -133,8 +136,32 @@ ax.set_xlim(min_x - addition_x, max_x + addition_x)
 ax.set_ylim(0 if min_y == 0 else min_y - addition_y, max_y + addition_y)
 plt.yticks(np.arange(min_ax_y, max_ax_y + 1, 1.0))
 
+for axis in ['bottom', 'left', 'right']:
+    plt.gca().spines[axis].set_linewidth(0.5)
+    plt.gca().spines[axis].set_color('gray')
+
+plt.gca().spines['top'].set_linewidth(1.5)
+plt.gca().spines['top'].set_color('gray')
+plt.gca().spines['top'].set_alpha(0.5)
+
+plt.gca().tick_params(axis='x', which='major', direction='out', width=1, length=5, zorder=5, color="gray")
+plt.gca().tick_params(axis='y', which='both', length=0)
+
+for axis in ['left', 'right']:
+    plt.gca().spines[axis].set_visible(False)
+
+# Nastavení gridu pro major a minor ticks
+plt.grid(axis='y', which='major', linestyle='-', linewidth='1.5', color='gray', alpha=0.5)
+plt.grid(axis='y', which='minor', linestyle='-', linewidth='0.75', color='lightgray', alpha=0.8)
+
+if plt.gca().get_ylim()[1] % plt.gca().get_yticks()[-1] != 0:
+    step_ticks_y = np.mean(np.diff(plt.gca().get_yticks()))
+    y_max = np.ceil(plt.gca().get_ylim()[1] / step_ticks_y) * step_ticks_y
+    plt.gca().set_ylim(plt.gca().get_ylim()[0], y_max)
+
 # ax.set(axisbelow=True)
 ax.grid(axis='y', zorder=0, alpha=0.5)
 
+plt.savefig("hist.pdf", format="pdf", bbox_inches='tight')
 # Zobrazení grafu
 plt.show()

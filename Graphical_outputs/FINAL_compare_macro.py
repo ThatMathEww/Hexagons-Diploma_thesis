@@ -15,7 +15,7 @@ std = 0.24670669587238472
 median = 24.292378586161387
 """
 
-data_type = "H01"
+data_type = "M01"
 
 # Definice velikosti okna pro klouzavý průměr
 window_size = 10

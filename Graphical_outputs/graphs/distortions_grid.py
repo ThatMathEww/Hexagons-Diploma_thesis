@@ -58,6 +58,7 @@ x, y, x_deformed, y_deformed = barrel_deformation(grid_size, radius_factor, defo
 # Vykreslení pravidelného a deformovaného gridu
 s = 4
 plt.figure(figsize=(3 * s, s))
+plt.rcParams['font.family'] = 'Times New Roman'
 
 ax1 = plt.subplot(1, 3, 1)
 plot_deformed_grid_lines(x, y, grid_size, ax=ax1, title='Original grid', color='blue')
@@ -83,4 +84,6 @@ ax3.axis('off')
 
 
 plt.tight_layout(pad=2)
+
+plt.savefig("grid.pdf", format="pdf", bbox_inches='tight')
 plt.show()

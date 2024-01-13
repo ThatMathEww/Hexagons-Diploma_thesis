@@ -13,7 +13,9 @@ files = (r'M1\7-up-20 (type A)\7-up-20x-1.csv', r'M1\3-up-20 (type B)\3-up-20x-1
          r'M1\7-up-20 (type A)\7-up-20x-4.csv', r'M1\3-up-20 (type B)\3-up-20x-5.csv',
          r'M2\11-up-20 (type C)\11-up-20x-4.csv',)
 
-plot_min_max = True
+plot_min_max = False
+
+plt.rcParams['font.family'] = 'Times New Roman'
 
 path = os.path.join(folder, files[0])
 
@@ -87,8 +89,10 @@ if plt.gca().get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
 plt.gca().tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
 plt.gca().tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
 
-# Přesunutí legendy pod osu
-plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncols=4)
+if not plot_min_max:
+    # Přesunutí legendy pod osu
+    # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncols=4)
+    pass
 
 plt.gca().set_aspect('equal', adjustable='box')
 
@@ -117,6 +121,6 @@ y_waviness = approximate_waveform(x, y, num_components)
 
 plt.plot(x, y_waviness, label=f"Aproximovaná vlnová křivka ({num_components} komponenty)", linestyle="--", color="red")
 """
-
+plt.savefig("S1.pdf", format="pdf", bbox_inches='tight')
 # Zobrazení grafu
 plt.show()

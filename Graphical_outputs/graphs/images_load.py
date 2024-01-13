@@ -12,7 +12,26 @@ def place_image(path=None, image=None, scale=1.1):
         return None
 
     max_size = int(np.max(img_d.shape[:2]) * scale)
-    img_m = np.zeros((max_size, max_size, 4), dtype=np.uint8)
+    img_m = np.ones((max_size, max_size, 4), dtype=np.uint8)
+
+    # Výpočet pozice pro vložení fotografie do středu prázdné matice
+    start_x = (max_size - img_d.shape[1]) // 2
+    start_y = (max_size - img_d.shape[0]) // 2
+
+    # Vložení fotografie do prázdné matice
+    img_m[start_y:start_y + img_d.shape[0], start_x:start_x + img_d.shape[1], :] = img_d * 255
+    return img_m
+
+def place_image2(path=None, image=None, scale=1.1):
+    if image is None and path is not None:
+        img_d = mpimg.imread(path)
+    elif image is not None:
+        img_d = image.copy()
+    else:
+        return None
+
+    max_size = int(np.max(img_d.shape[:2]) * scale)
+    img_m = np.ones((max_size, max_size, 4), dtype=np.uint8)*255
 
     # Výpočet pozice pro vložení fotografie do středu prázdné matice
     start_x = (max_size - img_d.shape[1]) // 2
@@ -24,7 +43,7 @@ def place_image(path=None, image=None, scale=1.1):
 
 
 # Načtení PNG obrázku s transparentním pozadím
-image_path = 'hexagon cantilever_n.png'  # Nahraďte skutečnou cestou k vašemu obrázku
+image_path = 'hexagon cantilever_k.png'  # Nahraďte skutečnou cestou k vašemu obrázku
 img = mpimg.imread(image_path)
 
 # Vytvoření osy výřezu
@@ -57,7 +76,7 @@ for p, (sx, sy), pos in zip(paths, centers, positions):
     ax.indicate_inset_zoom(ax_ins, edgecolor="black", linewidth=1.05, alpha=1)
     [ax_ins.spines[axis].set_linewidth(1.05) for axis in ['top', 'bottom', 'left', 'right']]
 
-    img_map = place_image(path=p)
+    img_map = place_image2(path=p)
 
     if img_map is not None:
         ax_ins.spines['right'].set_visible(False)
@@ -69,5 +88,6 @@ for p, (sx, sy), pos in zip(paths, centers, positions):
 
 ax.axis('off')
 
+fig.savefig("hex2.pdf", format="pdf", bbox_inches='tight')
 plt.tight_layout()
 plt.show()

@@ -8,6 +8,8 @@ from pyzbar.pyzbar import decode
 
 scale_qr_ratio = 12 * 210 / 270
 
+plt.rcParams['font.family'] = 'Times New Roman'
+
 show_images = False
 show_match = False
 show_graph = True
@@ -339,8 +341,8 @@ for i, folder in enumerate(folders):
         ax3.set_title("Velocity")
         if plot_real_data:
             ax3.plot(time_stamps[:len(speeds[0])], speeds[0], '-.', c='#D9A465', alpha=0.5)
-        ax3.hlines(average_speeds[1], time_stamps[0], time_stamps[-1], color='tomato', linestyle='--',
-                   label=f"Average speed: {average_speeds[1]:.2f} mm/s")
+        """ax3.hlines(average_speeds[1], time_stamps[0], time_stamps[-1], color='tomato', linestyle='--',
+                   label=f"Average speed: {average_speeds[1]:.2f} mm/s")"""
         ax3.plot(time_stamps[:len(speeds[1])], speeds[1], '-', c='orange')
         # ax2.plot(regression, speed_av[linear_points_indexes], '-', color='darkred')
         ax3.set_xlabel('t [$s$]')
@@ -352,13 +354,14 @@ for i, folder in enumerate(folders):
         ax4.hlines(average_accelerations[1], time_stamps[0], time_stamps[-1], color='darkorange', linestyle='--',
                    label=f"Average acceleration: {average_accelerations[1]:.2f} mm/s")
         ax4.plot(time_stamps[:len(accelerations[1])], accelerations[1], '-', color='red')
-        ax4.hlines(mean_linear_accelerations[1], time_stamps[linear_accelerations_indexes[1][0]],
-                   time_stamps[linear_accelerations_indexes[1][-1]], linestyle='--', color='darkred')
+        """ax4.hlines(mean_linear_accelerations[1], time_stamps[linear_accelerations_indexes[1][0]],
+                   time_stamps[linear_accelerations_indexes[1][-1]], linestyle='--', color='darkred')"""
         ax4.set_xlabel('t [$s$]')
         ax4.set_ylabel('a [$m/s^2$]')
 
         # plt.tight_layout()
-        plt.subplots_adjust(right=0.97, left=0.15, top=0.92, bottom=0.12, wspace=0.6, hspace=0.8)
+        plt.subplots_adjust(right=0.97, left=0.15, top=0.92, bottom=0.12, wspace=1, hspace=0.8)
+        plt.savefig("kcof.pdf", format="pdf", bbox_inches='tight')
         plt.show()
 
 print(f"\nAverage acceleration: {np.mean(accelerations_print):.4f} m/s^2")

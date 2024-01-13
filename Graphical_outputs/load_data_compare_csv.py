@@ -7,8 +7,11 @@ import os
 # Načtení dat ze souboru CSV
 path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_csv'
 
+t = "s01"
+
+
 file_names = np.array([p for p in os.listdir(path) if os.path.isfile(os.path.join(path, p))
-                       and p.lower().endswith(".csv") and p.lower().startswith("h02")])
+                       and p.lower().endswith(".csv") and p.lower().startswith(t)])
 
 if str(file_names[0]).lower().startswith("h01"):
     measurements1 = [4, 9, 14, 19, 24, 29]  # konzola, normal
@@ -47,13 +50,14 @@ elif str(file_names[0]).lower().startswith("h02"):
                               [1, 9, 17, 25, 33, 41]  # MAX - n
                               )).T
 elif str(file_names[0]).lower().startswith("m01"):
-    measurements1 = np.array(([0, 1, 2]  # Glued / Test / Whole
+    measurements1 = np.array(([0, 2]  # Glued / Test / Whole
                                          )).T
 elif str(file_names[0]).lower().startswith("b01"):
     measurements1 = np.array(([0, 1, 2, 3, 4, 5, 6]
                              )).T
 
-measurement = measurements1[:, 4:]  # measurements3[2, :]
+plt.rcParams['font.family'] = 'Times New Roman'
+measurement = measurements1[:]  # measurements3[2, :]
 # measurements3[:-1, 4] , measurements3[:, :]
 
 file_names = file_names[measurement.flatten() if isinstance(measurement, np.ndarray) else measurement]  # [-1:]
@@ -71,8 +75,9 @@ else:
     while len(colors) < len(file_names):
         colors.extend(colors)
 
+
 plt.figure(figsize=(10, 5))
-plt.xlabel('Distance [mm]')
+plt.xlabel('Displacement [mm]')
 plt.ylabel('Force [N]')
 
 line_x, line_y = [], []
@@ -88,6 +93,8 @@ for file in file_names:
     # y_data = -((df.iloc[:, 1].values - df.iloc[:zr, 1].mean()) + (df.iloc[:, 2].values - df.iloc[:zr, 2].mean()))
     y_data = -(df.iloc[:, 1].values + df.iloc[:, 2].values)
     photo_indexes = df[df['Photos'].notna()].index
+
+
 
     if str(file_names[0]).lower().startswith("b01"):
         x_data = -x_data
@@ -125,6 +132,9 @@ for file in file_names:
     """if file_names[0] == file:
         y_data1 = y_data.copy()
         x_data1 = x_data.copy()"""
+if t == "b01":
+    file_names = [f"B-{n+1:02d}" for n in range(len(file_names))]
+
 
 [plt.plot(x, y, label=f'{os.path.splitext(n)[0]}', color=c) for x, y, n, c in zip(line_x, line_y, file_names, colors)]
 
@@ -169,10 +179,11 @@ plt.gca().tick_params(axis='both', which='major', direction='in', width=0.8, len
 x_range_start, x_range_end = plt.gca().get_xlim()  # rozsah x
 y_range_start, y_range_end = plt.gca().get_ylim()  # rozsah y
 
-plt.legend(fontsize=8, bbox_to_anchor=(0.5, -0.4), loc="lower center", borderaxespad=0, ncol=4)
+plt.legend(fontsize=8, bbox_to_anchor=(0.5, -0.2), loc="lower center", borderaxespad=0, ncol=8)
 
 plt.gca().set_aspect(((x_range_end - x_range_start) / (y_range_end - y_range_start)) / 2, adjustable='box')
 plt.gca().autoscale(True)
 plt.tight_layout(pad=3)
 
+plt.savefig("macro.pdf", format="pdf", bbox_inches='tight')
 plt.show()

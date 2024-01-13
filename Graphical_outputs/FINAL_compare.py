@@ -8,6 +8,8 @@ import time
 import cv2
 import os
 
+plt.rcParams['font.family'] = 'Times New Roman'
+
 """
 ratio:
 mean = 24.392700425124065
@@ -528,7 +530,7 @@ plt.show()"""
 
 if data_type == "H01":
     indexes = [data_indexes_I, data_indexes_II, data_indexes_III, data_indexes_max]
-    # indexes = [data_indexes_can_norm]
+    indexes = [data_indexes_can_norm]
     # indexes = [data_indexes_can_snapped]
 elif data_type == "H02":
     # indexes = []
@@ -539,6 +541,8 @@ elif data_type == "S01":
                np.hstack((data_indexes__I_S, data_indexes__II_S, data_indexes__III_S))
                ]"""
     indexes = [data_indexes__I_max, data_indexes__II_max, data_indexes__III_max]
+    # indexes = [data_indexes__I, data_indexes__II, data_indexes__III]
+
 elif data_type == "M01":
     indexes = [data_indexes_glued, data_indexes_whole]
 
@@ -586,15 +590,17 @@ for i in range(len(indexes)):
 
     # axs[i].legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
-    axs[i].set_xlabel('Distance [mm]')
+    axs[i].set_xlabel('Displacement [mm]')
     axs[i].set_ylabel('Force [N]')
 
     axs[i].set_aspect('auto', adjustable='box')
 
 handles, labels = axs[0].get_legend_handles_labels()
-fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=4)
+labels = [f"H1_{l+1:02d}_B2"  for l in  range(len(labels))]
+fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=10)
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
+plt.savefig("flex.pdf", format="pdf", bbox_inches='tight')
 
 # plt.tight_layout()
 
@@ -645,7 +651,7 @@ if mark_linear_part:
         # axs[i].legend(loc='center left', bbox_to_anchor=(1, 0.5))
         # axs[i].legend(fontsize=8, bbox_to_anchor=(0.5, -0.25), loc="center", borderaxespad=0, ncol=4)
 
-        axs[i].set_xlabel('Distance [mm]')
+        axs[i].set_xlabel('Displacement [mm]')
         axs[i].set_ylabel('Force [N]')
 
         axs[i].set_aspect('auto', adjustable='box')
@@ -660,6 +666,13 @@ if mark_linear_part:
     for i in range(len(indexes)):
         [ax.plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, c='dodgerblue', lw=1,
                  alpha=0.5, zorder=4) for j in indexes[i] if all_datas[j] is not None]
+
+        """l1 = np.array([all_datas[j][-2].iloc[:, 2].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
+                all_datas[j][-2].iloc[:, 2].values <= linear_part[1])] for j in indexes[i] if all_datas[j] is not None])
+        l2 = np.array([all_datas[j][-2].iloc[:, 3].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
+                all_datas[j][-2].iloc[:, 2].values <= linear_part[1])] for j in indexes[i] if all_datas[j] is not None])
+
+        [ax.plot(a, b, c='red', lw=1.2, alpha=1, zorder=5) for a, b in zip(l1, l2)]"""
 
         [ax.plot(all_datas[j][-2].iloc[:, 2].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
                 all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
@@ -680,12 +693,22 @@ if mark_linear_part:
             w = np.array([all_datas[j][-2].iloc[:, 2].values[
                               all_datas[j][-2].iloc[:, 2].values <= linear_part[1]][-1] for j in
                           indexes[i] if all_datas[j] is not None]) * 48 * (1 / 12 * 15.13 * 2.64 ** 3)
+
+
+        else:
+            """f = np.mean([l[-1] - l[0] for l in l1])
+            w = np.mean([l[-1] - l[0] for l in l2])"""
+            pass
+
+        try:
             e = f / w
 
             linear_lines.append(e)
 
             print(f"\n\t {np.mean(e):.3f}")
             print(f"\t {np.std(e):.3f}")
+        except Exception as e:
+            pass
 
     ax.grid(color="lightgray", linewidth=0.5, zorder=0)
     for axis in ['top', 'right']:
@@ -705,7 +728,7 @@ if mark_linear_part:
 
     # ax.legend(fontsize=8, bbox_to_anchor=(0.5, -0.25), loc="center", borderaxespad=0, ncol=4)
 
-    ax.set_xlabel('Distance [mm]')
+    ax.set_xlabel('Displacement [mm]')
     ax.set_ylabel('Force [N]')
 
     ax.set_aspect('auto', adjustable='box')
@@ -713,14 +736,17 @@ if mark_linear_part:
     # plt.tight_layout()
     fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 
+plt.savefig("flex2.pdf", format="pdf", bbox_inches='tight')
+
+
 ########################################################################################################################
 
 
 if data_type == "H01":
-    datas_pack = zip(("I", "II", "III"),
+    datas_pack = zip(("A", "B1", "B2"),
                      # ("I", "II", "III") // ("MAX", "NORM", "SNAPPED")
-                     (data_indexes_I,),
-                     # (data_indexes_max, data_indexes_can_norm, data_indexes_can_snapped) //
+                     # (data_indexes_I,data_indexes_II,data_indexes_III),
+                     (data_indexes_max, data_indexes_can_norm, data_indexes_can_snapped),
                      # (data_indexes_I, data_indexes_II, data_indexes_III)
                      ("dodgerblue", "red", "limegreen"))
 elif data_type == "H02":
@@ -740,7 +766,7 @@ elif data_type == "S01":
                      # (data_indexes__I_max, data_indexes__II_max, data_indexes__III_max)
                      ("Orange", "red", "dodgerblue"))
 elif data_type == "M01":
-    datas_pack = zip(("Glued", "Whole"),
+    datas_pack = zip(("M-01", "M02"),
                      (data_indexes_glued, data_indexes_whole),
                      ("dodgerblue", "orange"))
 
@@ -815,4 +841,7 @@ fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspac
 # fig.tight_layout()
 # fig2.tight_layout()
 
+
+fig.savefig("flex11.pdf", format="pdf", bbox_inches='tight')
+fig2.savefig("flex12.pdf", format="pdf", bbox_inches='tight')
 plt.show()

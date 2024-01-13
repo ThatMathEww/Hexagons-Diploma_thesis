@@ -15,6 +15,8 @@ std = 0.24670669587238472
 median = 24.292378586161387
 """
 
+plt.rcParams['font.family'] = 'Times New Roman'
+
 load_keypoints = False
 
 data_type = "H02"
@@ -127,7 +129,7 @@ for exp, current_image_folder in enumerate(folders):
             #  ######################################################################################################  #
 
             path_strain = os.path.join(folder_n_corr, current_image_folder, "virtualExtensometer_1",
-                                       f"{current_image_folder}-virtExt_1_extension-tot (meters).txt")
+                                       f"{current_image_folder}-virtExt_1_strain-total.txt")
 
             datas_dic.append(np.loadtxt(path_strain)[beginning:] * 1000)
 
@@ -490,13 +492,14 @@ for ax in (ax1, ax2):
     ax.legend([handles[0], handles[-1]], [labels[0], labels[-1]],
               fontsize=8, bbox_to_anchor=(0.5, -0.3), loc="center", borderaxespad=0, ncol=4)
 
-    ax.set_ylabel("Total relative displacement [$mm$]")
-    ax.set_xlabel("Displacement [$mm$]")
+    ax.set_ylabel("Total relative strain [mm]")
+    ax.set_xlabel("Displacement [mm]")
     # ax.set_ylabel("Force [$N$]")
 
     ax.set_aspect('auto', adjustable='box')
 
 fig1.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-
+fig1.savefig("hex2.pdf", format="pdf", bbox_inches='tight')
+fig2.savefig("hex21.pdf", format="pdf", bbox_inches='tight')
 plt.show()

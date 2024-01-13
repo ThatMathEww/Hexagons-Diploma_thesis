@@ -9,7 +9,7 @@ sns.set_context("notebook")
 sns.heatmap(data, cmap='jet', vmin=0, vmax=1)
 """
 
-save_fig = False
+save_fig = True
 
 # Pixel map:
 color_grid = "white"  # 'white' // 'none'
@@ -84,6 +84,7 @@ if save_fig:
 data = cv2.resize(template, (20, 20), interpolation=cv2.INTER_LINEAR)
 
 fig, ax = plt.subplots(num="Resized tracked area")
+plt.rcParams['font.family'] = 'Times New Roman'
 ax.imshow(data, cmap='gray', extent=[0, data.shape[1], 0, data.shape[0]], interpolation='none')
 
 fig, ax = plt.subplots(num="Pixel values of resized tracked area")
