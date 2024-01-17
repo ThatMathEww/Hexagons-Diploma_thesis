@@ -103,7 +103,7 @@ for i in range(data.shape[0]):
     for j in range(data.shape[1]):
         value = data[i, j]
         ax.text((j + 0.5), data.shape[0] - (i + 0.5), f'{value:.2f}',
-                color='white' if 0 <= value < 0.35 else 'black', ha='center', va='center', fontsize=8)
+                color='white' if 0 <= value < 0.35 else 'black', ha='center', va='center', fontsize=9)
 
 ax.set_xticks(np.arange(data.shape[1]) + 0.5, labels=np.arange(data.shape[1]))
 ax.set_yticks(np.arange(data.shape[0]) + 0.5, labels=np.arange(data.shape[0]))
@@ -128,6 +128,9 @@ ax.set_aspect('equal', adjustable='box')
 
 if save_fig:
     plt.savefig("fig_2.pdf", format="pdf", dpi=700, bbox_inches='tight')
+    plt.savefig("pixels.png", format="png", dpi=700, bbox_inches='tight')
+
+plt.show()
 
 ########################################################################################################################
 ########################################################################################################################
