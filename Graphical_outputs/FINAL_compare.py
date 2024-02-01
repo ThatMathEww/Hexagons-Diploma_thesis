@@ -18,7 +18,7 @@ median = 24.292378586161387
 """
 load_keypoints = False
 
-data_type = "H01"
+data_type = "H02"
 
 mark_linear_part = True
 
@@ -48,14 +48,30 @@ if data_type == "H01":
 
 
 elif data_type == "H02":
-    data_indexes_I_K = np.arange(0, 8 * 6, 8) + 6
+    """data_indexes_I_K = np.arange(0, 8 * 6, 8) + 6
     data_indexes_II_K = np.arange(0, 8 * 6, 8) + 4
     data_indexes_III_K = np.arange(0, 8 * 6, 8) + 2
     data_indexes_I_N = np.arange(0, 8 * 6, 8) + 7
     data_indexes_II_N = np.arange(0, 8 * 6, 8) + 5
     data_indexes_III_N = np.arange(0, 8 * 6, 8) + 3
     data_indexes_max_N = np.arange(0, 8 * 6, 8) + 1
-    data_indexes_max_K = np.arange(0, 8 * 6, 8) + 0
+    data_indexes_max_K = np.arange(0, 8 * 6, 8) + 0"""
+    data_indexes_I_K = np.array(
+        [i for i in range(len(images_folders)) if "-I_" in images_folders[i] and "k" in images_folders[i]])
+    data_indexes_II_K = np.array(
+        [i for i in range(len(images_folders)) if "-II_" in images_folders[i] and "k" in images_folders[i]])
+    data_indexes_III_K = np.array(
+        [i for i in range(len(images_folders)) if "-III_" in images_folders[i] and "k" in images_folders[i]])
+    data_indexes_I_N = np.array(
+        [i for i in range(len(images_folders)) if "-I_" in images_folders[i] and "n" in images_folders[i]])
+    data_indexes_II_N = np.array(
+        [i for i in range(len(images_folders)) if "-II_" in images_folders[i] and "n" in images_folders[i]])
+    data_indexes_III_N = np.array(
+        [i for i in range(len(images_folders)) if "-III_" in images_folders[i] and "n" in images_folders[i]])
+    data_indexes_max_N = np.array(
+        [i for i in range(len(images_folders)) if "-max_" in images_folders[i] and "n" in images_folders[i]])
+    data_indexes_max_K = np.array(
+        [i for i in range(len(images_folders)) if "-max_" in images_folders[i] and "k" in images_folders[i]])
     linear_part = [3, 6]
 
 elif data_type == "S01":
@@ -600,7 +616,7 @@ labels = [f"H1_{l+1:02d}_B2"  for l in  range(len(labels))]
 fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=10)
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-plt.savefig("flex.pdf", format="pdf", bbox_inches='tight')
+plt.savefig(f".outputs/{data_type}_flex.pdf", format="pdf", bbox_inches='tight')
 
 # plt.tight_layout()
 
@@ -736,7 +752,7 @@ if mark_linear_part:
     # plt.tight_layout()
     fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 
-plt.savefig("flex2.pdf", format="pdf", bbox_inches='tight')
+plt.savefig(f".outputs/{data_type}_flex2.pdf", format="pdf", bbox_inches='tight')
 
 
 ########################################################################################################################
@@ -750,11 +766,11 @@ if data_type == "H01":
                      # (data_indexes_I, data_indexes_II, data_indexes_III)
                      ("dodgerblue", "red", "limegreen"))
 elif data_type == "H02":
-    datas_pack = zip(("I-K", "MAX-N"),
+    datas_pack = zip(("Infill type 1", "Infill type 2"),
                      # ("I-K", "II-K", "III-K", "I-N", "II-N", "III-N") // ("MAX-K", "MAX-N")
-                     (data_indexes_I_K,),
+                     # (data_indexes_I_N, data_indexes_I_K),
                      # (data_indexes_I_K, data_indexes_II_K, data_indexes_III_K) //
-                     # (data_indexes_max_K, data_indexes_max_N)
+                     (data_indexes_max_K, data_indexes_max_N),
                      ("dodgerblue", "red", "limegreen"))
 elif data_type == "S01":
     datas_pack = zip(("Orange", "White", "Gray"),
@@ -842,6 +858,6 @@ fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspac
 # fig2.tight_layout()
 
 
-fig.savefig("flex11.pdf", format="pdf", bbox_inches='tight')
-fig2.savefig("flex12.pdf", format="pdf", bbox_inches='tight')
+fig.savefig(f".outputs/{data_type}_flex11.pdf", format="pdf", bbox_inches='tight')
+fig2.savefig(f".outputs/{data_type}_flex12.pdf", format="pdf", bbox_inches='tight')
 plt.show()

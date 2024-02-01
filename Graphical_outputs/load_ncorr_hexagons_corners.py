@@ -499,6 +499,6 @@ for ax in (ax1, ax2):
 
 fig1.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-# fig1.savefig("hex2.pdf", format="pdf", bbox_inches='tight')
-# fig2.savefig("hex21.pdf", format="pdf", bbox_inches='tight')
+fig1.savefig(f".outputs/hex2.pdf", format="pdf", bbox_inches='tight')
+fig2.savefig(f".outputs/hex21.pdf", format="pdf", bbox_inches='tight')
 plt.show()
