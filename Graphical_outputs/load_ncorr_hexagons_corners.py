@@ -441,11 +441,10 @@ type_A = []
 type_B = []
 
 datas_pack = (("Infill type 1", "Infill type 2"),
-                 (np.array([i for i in range(len(folders)) if "n" in folders[i].lower()]),
-                  np.array([i for i in range(len(folders)) if "k" in folders[i].lower()])),
-                 ("dodgerblue", "red"), (type_A, type_B))
+              (np.array([i for i in range(len(folders)) if "n" in folders[i].lower()]),
+               np.array([i for i in range(len(folders)) if "k" in folders[i].lower()])),
+              ("dodgerblue", "red"), (type_A, type_B))
 pack2 = datas_pack
-
 
 fig1, ax1 = plt.subplots(figsize=(6, 3.5))
 fig2, ax2 = plt.subplots(figsize=(6, 3.5))
@@ -465,10 +464,10 @@ for n, (name, curve_indexes, color, t) in enumerate(zip(*datas_pack)):
     t.append(np.hstack((0, np.min(data_plot_dic, axis=0))))
 
 for i, (n, _, c, t) in enumerate(zip(*datas_pack)):
-    ax2.plot(t[1], t[2], lw=2, c=c, zorder=20, label=n)
-    ax2.fill_between(t[1], t[2] + t[3], t[2] - t[3], alpha=0.35, color=c, zorder=20 - i)
-    ax2.plot(t[1], t[4], ls="--", lw=1, c=c, zorder=20 - i, alpha=0.7)
-    ax2.plot(t[1], t[5], ls="--", lw=1, c=c, zorder=20 - i, alpha=0.7)
+    ax2.plot(t[0], t[2], lw=2, c=c, zorder=20, label=n)
+    ax2.fill_between(t[0], t[2] + t[3], t[2] - t[3], alpha=0.35, color=c, zorder=20 - i)
+    ax2.plot(t[0], t[4], ls="--", lw=1, c=c, zorder=20 - i, alpha=0.7)
+    ax2.plot(t[0], t[5], ls="--", lw=1, c=c, zorder=20 - i, alpha=0.7)
 
 for ax in (ax1, ax2):
     ax.grid(color="lightgray", linewidth=0.5, zorder=0)
@@ -500,6 +499,6 @@ for ax in (ax1, ax2):
 
 fig1.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-fig1.savefig("hex2.pdf", format="pdf", bbox_inches='tight')
-fig2.savefig("hex21.pdf", format="pdf", bbox_inches='tight')
+# fig1.savefig("hex2.pdf", format="pdf", bbox_inches='tight')
+# fig2.savefig("hex21.pdf", format="pdf", bbox_inches='tight')
 plt.show()
