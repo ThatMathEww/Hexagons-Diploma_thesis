@@ -170,7 +170,7 @@ labels = [f"T-{l}" for l in range(len(labels))]
 fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbox_to_anchor=(0.5, 0.05), ncol=10)
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-plt.savefig("short_tension.pdf", format="pdf", bbox_inches='tight')
+plt.savefig(".outputs/short_tension.pdf", format="pdf", bbox_inches='tight')
 plt.figure()
 [plt.plot(s * 100, f, zorder=3, label=l) for s, f, l in zip(found_strains, found_stresses, folders) if s is not None]
 plt.gca().set_xlabel(r"Strain [%]")
@@ -254,6 +254,6 @@ fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace
 fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 # fig.tight_layout()
 # fig2.tight_layout()
-fig.savefig("tension1.pdf", format="pdf", bbox_inches='tight')
-fig2.savefig("tension2.pdf", format="pdf", bbox_inches='tight')
+fig.savefig(".outputs/tension1.pdf", format="pdf", bbox_inches='tight')
+fig2.savefig(".outputs/tension2.pdf", format="pdf", bbox_inches='tight')
 plt.show()
