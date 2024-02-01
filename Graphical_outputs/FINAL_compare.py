@@ -19,8 +19,8 @@ median = 24.292378586161387
 load_keypoints = False
 
 cut_spikes = True
-
-data_type = "H01"
+data_type = "M01"
+scale_m01 = True
 
 mark_linear_part = True
 
@@ -801,9 +801,11 @@ elif data_type == "S01":
                      # (data_indexes__I_max, data_indexes__II_max, data_indexes__III_max)
                      ("Orange", "red", "dodgerblue"))
 elif data_type == "M01":
-    datas_pack = zip(("M-01", "M02"),
+    datas_pack = zip(("M-01", "M-02"),
                      (data_indexes_glued, data_indexes_whole),
-                     ("dodgerblue", "orange"))
+                     ("dodgerblue", "red"))
+
+    datas_y = []
 
 fig, ax = plt.subplots(figsize=(5.2, 3))
 fig2, ax2 = plt.subplots(figsize=(5.2, 3))
@@ -812,6 +814,9 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     datas = [all_datas[j] for j in curve_index if all_datas[j] is not None]
     data_plot_x = np.array([[x[-2].iloc[i, 2] for x in datas] for i in range(np.min([x[-2].shape[0] for x in datas]))])
     data_plot_y = np.array([[y[-2].iloc[i, 3] for y in datas] for i in range(np.min([y[-2].shape[0] for y in datas]))])
+
+    if data_type == "M01":
+        datas_y.append(data_plot_y)
 
     data_mean_x = np.mean(data_plot_x, axis=1)
     data_mean_y = np.mean(data_plot_y, axis=1)
@@ -845,6 +850,14 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     ax.fill_between(data_mean_x, data_mean_y + data_std, data_mean_y - data_std, alpha=0.35, color=color, zorder=10 + n)
     ax.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
     ax.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
+
+if data_type == "M01" and scale_m01:
+    datas = [all_datas[j] for j in data_indexes_glued if all_datas[j] is not None]
+    data_plot_x = np.array([[x[-2].iloc[i, 2] for x in datas] for i in range(np.min([x[-2].shape[0] for x in datas]))])
+
+    ratio = np.mean(datas_y[1] / datas_y[0])
+    print(f"\nRatio: {ratio: .5f}")
+    plt.plot(data_plot_x, datas_y[0] * ratio, ls="--", lw=1, c="green", label=f'Scaled M-01 ({ratio:.2f})', zorder=40)
 
 for axes in [ax, ax2]:
     axes.grid(color="lightgray", linewidth=0.5, zorder=0)
