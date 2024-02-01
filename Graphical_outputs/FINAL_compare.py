@@ -95,6 +95,8 @@ elif data_type == "H02":
                          "10s" in images_folders[i] and "max" not in images_folders[i] and images_folders[
                              i] in folders_nc])
 
+    datas_dic = []
+
 elif data_type == "S01":
     names = []
 
@@ -176,6 +178,8 @@ for exp, current_image_folder in enumerate(images_folders):
     zip_file_name = os.path.join(current_folder_path, saved_data_name)
     if saved_data_name not in zip_files:
         all_datas.append(None)
+        if data_type == "H02":
+            datas_dic.append(None)
         print(f'\033[31;1;21mERROR\033[0m\n\tVe složce [{current_image_folder}] se nenachází daný soubor ZIP')
         continue
 
@@ -256,12 +260,16 @@ for exp, current_image_folder in enumerate(images_folders):
             #  ###########################################     NCORR      ###########################################  #
             #  ######################################################################################################  #
             if data_type == "H02":
-                datas_dic = []
-
                 path_strain = os.path.join(folder_n_corr, current_image_folder, "virtualExtensometer_1",
                                            f"{current_image_folder}-virtExt_1_strain-total.txt")
 
-                datas_dic.append(np.loadtxt(path_strain)[beginning:] * 1000)
+                if os.path.isfile(path_strain):
+                    try:
+                        datas_dic.append(np.loadtxt(path_strain)[beginning:] * 1000)
+                    except (ValueError, Exception):
+                        datas_dic.append(None)
+                else:
+                    datas_dic.append(None)
 
             #  ######################################################################################################  #
             #  ############################################      H5      ############################################  #
@@ -676,7 +684,8 @@ if mark_linear_part:
 
     for i in range(len(indexes)):
         try:
-            [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, c='dodgerblue', lw=1,
+            [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, c='dodgerblue',
+                         lw=1,
                          alpha=0.5, zorder=4) for j in indexes[i] if all_datas[j] is not None]
         except ValueError:
             pass
@@ -701,7 +710,8 @@ if mark_linear_part:
         axs[i].yaxis.set_minor_locator(AutoMinorLocator())
         axs[i].xaxis.set_minor_locator(AutoMinorLocator())
 
-        axs[i].tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
+        axs[i].tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5,
+                           color="black")
         axs[i].tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
 
         # axs[i].legend(loc='center left', bbox_to_anchor=(1, 0.5))
@@ -796,7 +806,6 @@ plt.savefig(f".outputs/{data_type}_flex2.pdf", format="pdf", bbox_inches='tight'
 
 ########################################################################################################################
 
-
 if data_type == "H01":
     datas_pack = zip(("A", "B1", "B2"),
                      # ("I", "II", "III") // ("MAX", "NORM", "SNAPPED")
@@ -832,8 +841,10 @@ fig2, ax2 = plt.subplots(figsize=(5.2, 3))
 
 for n, (name, curve_index, color) in enumerate(datas_pack):
     datas = [all_datas[j] for j in curve_index if all_datas[j] is not None]
-    data_plot_x = np.array([[x[-2].iloc[i, 2] for x in datas] for i in range(np.min([x[-2].shape[0] for x in datas]))])
-    data_plot_y = np.array([[y[-2].iloc[i, 3] for y in datas] for i in range(np.min([y[-2].shape[0] for y in datas]))])
+    data_plot_x = np.array(
+        [[x[-2].iloc[i, 2] for x in datas] for i in range(np.min([x[-2].shape[0] for x in datas]))])
+    data_plot_y = np.array(
+        [[y[-2].iloc[i, 3] for y in datas] for i in range(np.min([y[-2].shape[0] for y in datas]))])
 
     if data_type == "M01":
         datas_y.append(data_plot_y)
@@ -867,17 +878,20 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     ax2.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
 
     ax.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
-    ax.fill_between(data_mean_x, data_mean_y + data_std, data_mean_y - data_std, alpha=0.35, color=color, zorder=10 + n)
+    ax.fill_between(data_mean_x, data_mean_y + data_std, data_mean_y - data_std, alpha=0.35, color=color,
+                    zorder=10 + n)
     ax.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
     ax.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
 
 if data_type == "M01" and scale_m01:
     datas = [all_datas[j] for j in data_indexes_glued if all_datas[j] is not None]
-    data_plot_x = np.array([[x[-2].iloc[i, 2] for x in datas] for i in range(np.min([x[-2].shape[0] for x in datas]))])
+    data_plot_x = np.array(
+        [[x[-2].iloc[i, 2] for x in datas] for i in range(np.min([x[-2].shape[0] for x in datas]))])
 
     ratio = np.mean(datas_y[1] / datas_y[0])
     print(f"\nRatio: {ratio: .5f}")
-    plt.plot(data_plot_x, datas_y[0] * ratio, ls="--", lw=1, c="green", label=f'Scaled M-01 ({ratio:.2f})', zorder=40)
+    plt.plot(data_plot_x, datas_y[0] * ratio, ls="--", lw=1, c="green", label=f'Scaled M-01 ({ratio:.2f})',
+             zorder=40)
 
 for axes in [ax, ax2]:
     axes.grid(color="lightgray", linewidth=0.5, zorder=0)
@@ -910,20 +924,19 @@ fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspac
 # fig.tight_layout()
 # fig2.tight_layout()
 
-
 fig.savefig(f".outputs/{data_type}_flex11.pdf", format="pdf", bbox_inches='tight')
 fig2.savefig(f".outputs/{data_type}_flex12.pdf", format="pdf", bbox_inches='tight')
 
 ########################################################################################################################
 if data_type == "H02":
-    folders = [images_folders[i] for i in corner_1]
+    corner = corner_1
 
     type_A = []
     type_B = []
 
     datas_pack = (("Infill type 1", "Infill type 2"),
-                  (np.array([i for i in range(len(folders)) if "n" in folders[i].lower()]),
-                   np.array([i for i in range(len(folders)) if "k" in folders[i].lower()])),
+                  (np.array([i for i in corner if "n" in images_folders[i].lower()]),
+                   np.array([i for i in corner if "k" in images_folders[i].lower()])),
                   ("dodgerblue", "red"), (type_A, type_B))
 
     fig1, ax1 = plt.subplots(figsize=(6, 3.5))
@@ -932,6 +945,8 @@ if data_type == "H02":
         data_plot_x = [all_datas[j][-3].iloc[:, 0].values for j in curve_indexes if all_datas[j] is not None]
         data_plot_y = [all_datas[j][-3].iloc[:, 1].values for j in curve_indexes if all_datas[j] is not None]
         data_plot_dic = [datas_dic[j] for j in curve_indexes if datas_dic[j] is not None]
+        data_plot_dic = [data_plot_dic[j][abs(len(data_plot_dic[j]) - len(data_plot_y[j])):] for j in
+                         range(len(data_plot_dic))]
 
         [ax1.plot(np.hstack((0, data_plot_y[i])), np.hstack((0, data_plot_dic[i])), lw=2, c=color, zorder=10 + n,
                   label=name) for i in range(len(data_plot_dic))]
@@ -979,7 +994,7 @@ if data_type == "H02":
 
     fig1.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
     fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-    fig1.savefig(f".outputs/hex2.pdf", format="pdf", bbox_inches='tight')
-    fig2.savefig(f".outputs/hex21.pdf", format="pdf", bbox_inches='tight')
+    fig1.savefig(f".outputs/hex_corner1.pdf", format="pdf", bbox_inches='tight')
+    fig2.savefig(f".outputs/hex_corner1.pdf", format="pdf", bbox_inches='tight')
 
 plt.show()
