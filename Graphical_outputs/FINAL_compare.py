@@ -19,7 +19,7 @@ median = 24.292378586161387
 load_keypoints = False
 
 cut_spikes = True
-data_type = "M01"
+data_type = "H02"
 scale_m01 = True
 
 mark_linear_part = True
@@ -35,6 +35,7 @@ out_put_folder = ""
 
 main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
+folder_n_corr = r'C:\Programy\Ncorr\Ncorr_post_v2e\export'
 
 ########################################################################################################################
 
@@ -57,7 +58,6 @@ if data_type == "H01":
     data_indexes_can_snapped = np.array([i for i in range(len(images_folders)) if "_p" in images_folders[i]
                                          and "max" not in images_folders[i] and "I" not in images_folders[i]])
     linear_part = [2, 3]
-
 
 elif data_type == "H02":
     """data_indexes_I_K = np.arange(0, 8 * 6, 8) + 6
@@ -85,6 +85,15 @@ elif data_type == "H02":
     data_indexes_max_K = np.array(
         [i for i in range(len(images_folders)) if "-max_" in images_folders[i] and "k" in images_folders[i]])
     linear_part = [3, 6]
+
+    folders_nc = [name for name in [os.path.splitext(file)[0] for file in os.listdir(folder_n_corr)]
+                  if name.startswith(data_type)]
+
+    corner_1 = np.array([i for i in range(len(images_folders)) if
+                         "12s" in images_folders[i] and "max" in images_folders[i] and images_folders[i] in folders_nc])
+    corner_2 = np.array([i for i in range(len(images_folders)) if
+                         "10s" in images_folders[i] and "max" not in images_folders[i] and images_folders[
+                             i] in folders_nc])
 
 elif data_type == "S01":
     names = []
@@ -242,6 +251,17 @@ for exp, current_image_folder in enumerate(images_folders):
                 np.argmin(photo_indexes[photo_indexes >= start_index])]"""
             # Nalezení indexu nejbližší vyšší hodnoty
             beginning = np.argmax(photo_indexes >= start_index)
+
+            #  ######################################################################################################  #
+            #  ###########################################     NCORR      ###########################################  #
+            #  ######################################################################################################  #
+            if data_type == "H02":
+                datas_dic = []
+
+                path_strain = os.path.join(folder_n_corr, current_image_folder, "virtualExtensometer_1",
+                                           f"{current_image_folder}-virtExt_1_strain-total.txt")
+
+                datas_dic.append(np.loadtxt(path_strain)[beginning:] * 1000)
 
             #  ######################################################################################################  #
             #  ############################################      H5      ############################################  #
@@ -893,4 +913,73 @@ fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspac
 
 fig.savefig(f".outputs/{data_type}_flex11.pdf", format="pdf", bbox_inches='tight')
 fig2.savefig(f".outputs/{data_type}_flex12.pdf", format="pdf", bbox_inches='tight')
+
+########################################################################################################################
+if data_type == "H02":
+    folders = [images_folders[i] for i in corner_1]
+
+    type_A = []
+    type_B = []
+
+    datas_pack = (("Infill type 1", "Infill type 2"),
+                  (np.array([i for i in range(len(folders)) if "n" in folders[i].lower()]),
+                   np.array([i for i in range(len(folders)) if "k" in folders[i].lower()])),
+                  ("dodgerblue", "red"), (type_A, type_B))
+
+    fig1, ax1 = plt.subplots(figsize=(6, 3.5))
+    fig2, ax2 = plt.subplots(figsize=(6, 3.5))
+    for n, (name, curve_indexes, color, t) in enumerate(zip(*datas_pack)):
+        data_plot_x = [all_datas[j][-3].iloc[:, 0].values for j in curve_indexes if all_datas[j] is not None]
+        data_plot_y = [all_datas[j][-3].iloc[:, 1].values for j in curve_indexes if all_datas[j] is not None]
+        data_plot_dic = [datas_dic[j] for j in curve_indexes if datas_dic[j] is not None]
+
+        [ax1.plot(np.hstack((0, data_plot_y[i])), np.hstack((0, data_plot_dic[i])), lw=2, c=color, zorder=10 + n,
+                  label=name) for i in range(len(data_plot_dic))]
+
+        t.append(np.hstack((0, np.mean(data_plot_x, axis=0))))
+        t.append(np.hstack((0, np.mean(data_plot_y, axis=0))))
+        t.append(np.hstack((0, np.mean(data_plot_dic, axis=0))))
+        t.append(np.hstack((0, np.std(data_plot_dic, axis=0))))
+        t.append(np.hstack((0, np.max(data_plot_dic, axis=0))))
+        t.append(np.hstack((0, np.min(data_plot_dic, axis=0))))
+
+    for i, (n, _, c, t) in enumerate(zip(*datas_pack)):
+        ax2.plot(t[0], t[2], lw=2, c=c, zorder=20, label=n)
+        ax2.fill_between(t[0], t[2] + t[3], t[2] - t[3], alpha=0.35, color=c, zorder=20 - i)
+        ax2.plot(t[0], t[4], ls="--", lw=1, c=c, zorder=20 - i, alpha=0.7)
+        ax2.plot(t[0], t[5], ls="--", lw=1, c=c, zorder=20 - i, alpha=0.7)
+
+    for ax in (ax1, ax2):
+        ax.grid(color="lightgray", linewidth=0.5, zorder=0)
+        for axis in ['top', 'right']:
+            ax.spines[axis].set_linewidth(0.5)
+            ax.spines[axis].set_color('lightgray')
+
+        if ax.get_xlim()[1] % ax.get_xticks()[-1] == 0:
+            ax.spines['right'].set_visible(False)
+        if ax.get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
+            ax.spines['top'].set_visible(False)
+
+        ax.yaxis.set_minor_locator(AutoMinorLocator())
+        ax.xaxis.set_minor_locator(AutoMinorLocator())
+
+        ax.tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
+        ax.tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
+
+        # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend([handles[0], handles[-1]], [labels[0], labels[-1]],
+                  fontsize=8, bbox_to_anchor=(0.5, -0.3), loc="center", borderaxespad=0, ncol=4)
+
+        ax.set_ylabel("Total relative strain [mm]")
+        ax.set_xlabel("Displacement [mm]")
+        # ax.set_ylabel("Force [$N$]")
+
+        ax.set_aspect('auto', adjustable='box')
+
+    fig1.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
+    fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
+    fig1.savefig(f".outputs/hex2.pdf", format="pdf", bbox_inches='tight')
+    fig2.savefig(f".outputs/hex21.pdf", format="pdf", bbox_inches='tight')
+
 plt.show()
