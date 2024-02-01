@@ -18,12 +18,16 @@ median = 24.292378586161387
 """
 load_keypoints = False
 
+cut_spikes = True
+
 data_type = "H02"
 
 mark_linear_part = True
 
 # Definice velikosti okna pro klouzavý průměr
+average_window_size_data = True
 window_size_data = 5
+average_window_size_plot = True
 window_size_plot = 5
 
 saved_data_name = "data_export_new.zip"
@@ -202,8 +206,13 @@ for exp, current_image_folder in enumerate(images_folders):
                 * 1.5), 1, 0), np.ones(int(np.ceil(d_len * 0.1))), mode='valid') == np.ceil(d_len * 0.1))[0][0]) - zr,
                                                           d_len), 0) + 1] <= 0)[0])
 
+            if data_type == "H01" and cut_spikes:
+                forces = forces[start_index:]
+                distances = distances[start_index:]
+                photo_indexes = photo_indexes[np.where(photo_indexes >= start_index)[0]]
+
             # Průměrování dat
-            if isinstance(window_size_data, int) and window_size_data >= 1:
+            if isinstance(window_size_data, int) and window_size_data >= 1 and average_window_size_data:
                 # Vytvoření průměrového filtru
                 window = np.ones(window_size_data) / window_size_data
 
@@ -354,7 +363,7 @@ for exp, current_image_folder in enumerate(images_folders):
                 time_stamps = time_stamps[start_index:] - time_stamps[start_index]
                 # time_stamps = [t - time_stamps[0] for t in time_stamps]
 
-                if isinstance(window_size_data, int) and window_size_data >= 1:
+                if isinstance(window_size_data, int) and window_size_data >= 1 and average_window_size_data:
                     time_stamps = time_stamps[:-window_size_data // 2]
 
 
@@ -812,12 +821,13 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     data_min = np.min(data_plot_y, axis=1)
     data_std = np.std(data_plot_y, axis=1)
 
-    # Aplikace klouzavého průměru
-    data_mean_x = data_mean_x[:-window_size_plot // 2]
-    data_mean_y = np.convolve(data_mean_y, window, mode='same')[:-window_size_plot // 2]
-    data_max = np.convolve(data_max, window, mode='same')[:-window_size_plot // 2]
-    data_min = np.convolve(data_min, window, mode='same')[:-window_size_plot // 2]
-    data_std = np.convolve(data_std, window, mode='same')[:-window_size_plot // 2]
+    if average_window_size_plot and isinstance(window_size_plot, int) and window_size_plot >= 1:
+        # Aplikace klouzavého průměru
+        data_mean_x = data_mean_x[:-window_size_plot // 2]
+        data_mean_y = np.convolve(data_mean_y, window, mode='same')[:-window_size_plot // 2]
+        data_max = np.convolve(data_max, window, mode='same')[:-window_size_plot // 2]
+        data_min = np.convolve(data_min, window, mode='same')[:-window_size_plot // 2]
+        data_std = np.convolve(data_std, window, mode='same')[:-window_size_plot // 2]
 
     ax2.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
 
