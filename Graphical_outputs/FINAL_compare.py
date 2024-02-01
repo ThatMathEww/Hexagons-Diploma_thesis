@@ -20,7 +20,7 @@ load_keypoints = False
 
 cut_spikes = True
 
-data_type = "H02"
+data_type = "H01"
 
 mark_linear_part = True
 
@@ -42,12 +42,20 @@ images_folders = [name for name in [os.path.splitext(file)[0] for file in os.lis
                   if name.startswith(data_type)]
 
 if data_type == "H01":
-    data_indexes_I = np.arange(0, 4 * 7, 5) + 3
+    """data_indexes_I = np.arange(0, 4 * 7, 5) + 3
     data_indexes_II = np.arange(0, 4 * 7, 5) + 2
     data_indexes_III = np.arange(0, 4 * 7, 5) + 1
     data_indexes_max = np.arange(0, 4 * 7, 5)
     data_indexes_can_norm = np.arange(0, 4 * 7, 5) + 4
-    data_indexes_can_snapped = np.arange(30, 36)
+    data_indexes_can_snapped = np.arange(30, 36)"""
+    data_indexes_I = np.array([i for i in range(len(images_folders)) if "-I_" in images_folders[i]])
+    data_indexes_II = np.array([i for i in range(len(images_folders)) if "-II_" in images_folders[i]])
+    data_indexes_III = np.array([i for i in range(len(images_folders)) if "-III_" in images_folders[i]])
+    data_indexes_max = np.array([i for i in range(len(images_folders)) if "-max_" in images_folders[i]])
+    data_indexes_can_norm = np.array([i for i in range(len(images_folders)) if "_p" not in images_folders[i]
+                                      and "max" not in images_folders[i] and "I" not in images_folders[i]])
+    data_indexes_can_snapped = np.array([i for i in range(len(images_folders)) if "_p" in images_folders[i]
+                                         and "max" not in images_folders[i] and "I" not in images_folders[i]])
     linear_part = [2, 3]
 
 
@@ -209,8 +217,13 @@ for exp, current_image_folder in enumerate(images_folders):
             # Najdi indexy, kde je rozdíl menší než -5
             snap_index = np.where(np.diff(forces) <= -5)[0]
 
-            if data_type == "H01" and cut_spikes:
-                spike_index = np.where(np.diff(forces) <= -5)[0]
+            if data_type == "H01" and cut_spikes and len(snap_index) > 0:
+                if forces[snap_index[0]] > forces[snap_index[0] - 1] + 5:
+                    forces[snap_index[0]] = forces[snap_index[0] - 1]
+
+                if np.mean(forces[snap_index[0] + 2:snap_index[0] + 7]) - 10 > forces[snap_index[0] + 1] < np.mean(
+                        forces[snap_index[0] + 2:snap_index[0] + 7]) + 10:
+                    forces[snap_index[0] + 1] = np.mean(forces[snap_index[0] + 2:snap_index[0] + 7])
 
             # Průměrování dat
             if isinstance(window_size_data, int) and window_size_data >= 1 and average_window_size_data:
@@ -619,7 +632,7 @@ for i in range(len(indexes)):
     axs[i].set_aspect('auto', adjustable='box')
 
 handles, labels = axs[0].get_legend_handles_labels()
-labels = [f"H1_{l+1:02d}_B2"  for l in  range(len(labels))]
+labels = [f"H1_{l + 1:02d}_B2" for l in range(len(labels))]
 fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=10)
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
@@ -760,7 +773,6 @@ if mark_linear_part:
     fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 
 plt.savefig(f".outputs/{data_type}_flex2.pdf", format="pdf", bbox_inches='tight')
-
 
 ########################################################################################################################
 
