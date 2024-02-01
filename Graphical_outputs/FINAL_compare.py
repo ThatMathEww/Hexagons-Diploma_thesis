@@ -206,10 +206,11 @@ for exp, current_image_folder in enumerate(images_folders):
                 * 1.5), 1, 0), np.ones(int(np.ceil(d_len * 0.1))), mode='valid') == np.ceil(d_len * 0.1))[0][0]) - zr,
                                                           d_len), 0) + 1] <= 0)[0])
 
+            # Najdi indexy, kde je rozdíl menší než -5
+            snap_index = np.where(np.diff(forces) <= -5)[0]
+
             if data_type == "H01" and cut_spikes:
-                forces = forces[start_index:]
-                distances = distances[start_index:]
-                photo_indexes = photo_indexes[np.where(photo_indexes >= start_index)[0]]
+                spike_index = np.where(np.diff(forces) <= -5)[0]
 
             # Průměrování dat
             if isinstance(window_size_data, int) and window_size_data >= 1 and average_window_size_data:
@@ -222,9 +223,6 @@ for exp, current_image_folder in enumerate(images_folders):
                 p = df['Photos'].notna()[:-window_size_data // 2]
                 photo_indexes = df['Photos'][:-window_size_data // 2]
                 photo_indexes = photo_indexes[p].index
-
-            # Najdi indexy, kde je rozdíl menší než -5
-            snap_index = np.where(np.diff(forces) <= -5)[0]
 
             # Nalezení nejbližší vyšší hodnoty
             """beginning = np.where(photo_indexes >= start_index)[0][
@@ -803,18 +801,6 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     data_plot_x = np.array([[x[-2].iloc[i, 2] for x in datas] for i in range(np.min([x[-2].shape[0] for x in datas]))])
     data_plot_y = np.array([[y[-2].iloc[i, 3] for y in datas] for i in range(np.min([y[-2].shape[0] for y in datas]))])
 
-    # Vytvoření průměrového filtru
-    window = np.ones(window_size_plot) / window_size_plot
-
-    """
-    # Převod dat na pandas DataFrame
-    df = pd.DataFrame({'y': y})
-    
-    # Vytvoření klouzavého průměru
-    window_size = 10
-    y_smooth = df['y'].rolling(window=window_size).mean()
-    """
-
     data_mean_x = np.mean(data_plot_x, axis=1)
     data_mean_y = np.mean(data_plot_y, axis=1)
     data_max = np.max(data_plot_y, axis=1)
@@ -822,6 +808,18 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     data_std = np.std(data_plot_y, axis=1)
 
     if average_window_size_plot and isinstance(window_size_plot, int) and window_size_plot >= 1:
+        # Vytvoření průměrového filtru
+        window = np.ones(window_size_plot) / window_size_plot
+
+        """
+        # Převod dat na pandas DataFrame
+        df = pd.DataFrame({'y': y})
+
+        # Vytvoření klouzavého průměru
+        window_size = 10
+        y_smooth = df['y'].rolling(window=window_size).mean()
+        """
+
         # Aplikace klouzavého průměru
         data_mean_x = data_mean_x[:-window_size_plot // 2]
         data_mean_y = np.convolve(data_mean_y, window, mode='same')[:-window_size_plot // 2]
