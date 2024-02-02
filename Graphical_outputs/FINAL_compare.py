@@ -666,7 +666,7 @@ labels = [f"H1_{l + 1:02d}_B2" for l in range(len(labels))]
 fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=10)
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-plt.savefig(f".outputs/{data_type}_flex.{file_type}", format=file_type, bbox_inches='tight')
+plt.savefig(f".outputs/{data_type}_multipleplot.{file_type}", format=file_type, bbox_inches='tight')
 
 # plt.tight_layout()
 
@@ -804,7 +804,7 @@ if mark_linear_part:
     # plt.tight_layout()
     fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 
-plt.savefig(f".outputs/{data_type}_flex2.{file_type}", format=file_type, bbox_inches='tight')
+plt.savefig(f".outputs/{data_type}_singleplot_linearpart.{file_type}", format=file_type, bbox_inches='tight')
 
 ########################################################################################################################
 
@@ -926,8 +926,8 @@ fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspac
 # fig.tight_layout()
 # fig2.tight_layout()
 
-fig.savefig(f".outputs/{data_type}_flex11.{file_type}", format=file_type, bbox_inches='tight')
-fig2.savefig(f".outputs/{data_type}_flex12.{file_type}", format=file_type, bbox_inches='tight')
+fig.savefig(f".outputs/{data_type}_finalplot_tot.{file_type}", format=file_type, bbox_inches='tight')
+fig2.savefig(f".outputs/{data_type}_finalplot_singleline.{file_type}", format=file_type, bbox_inches='tight')
 
 ########################################################################################################################
 if data_type == "H02":
