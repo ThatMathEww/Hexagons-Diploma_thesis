@@ -8,14 +8,21 @@ import time
 import cv2
 import os
 
-plt.rcParams['font.family'] = 'Times New Roman'
-
 """
 ratio:
 mean = 24.392700425124065
 std = 0.24670669587238472
 median = 24.292378586161387
 """
+
+
+# Nastavení globální palety barev
+custom_colors1 = ("dodgerblue", "red", "limegreen", "orange", "purple", "cyan", "pink", "black", "yellow", "magenta")
+custom_colors2 = ['#78DCE8', '#FF6188', '#A9DC76', '#AB9DF2', '#FC9867', '#FFD866']  # Monokai Pro
+plt.rcParams['axes.prop_cycle'] = plt.cycler(color=custom_colors1)
+
+do_tex = False
+
 load_keypoints = False
 
 file_type = "pdf"
@@ -40,6 +47,11 @@ folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_proj
 folder_n_corr = r'C:\Programy\Ncorr\Ncorr_post_v2e\export'
 
 ########################################################################################################################
+if do_tex:
+    plt.rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
+    plt.rc('text', usetex=True)
+    plt.rc('text.latex', preamble=r'\usepackage{lmodern, amsmath, amsfonts, amssymb, amsthm, bm}')
+    # plt.rcParams['font.size'] = 14
 
 images_folders = [name for name in [os.path.splitext(file)[0] for file in os.listdir(main_image_folder)]
                   if name.startswith(data_type)]
@@ -267,7 +279,8 @@ for exp, current_image_folder in enumerate(images_folders):
 
                 if os.path.isfile(path_strain):
                     try:
-                        datas_dic.append(np.loadtxt(path_strain)[beginning:] * 1000)
+                        datas_dic.append(np.loadtxt(path_strain)[beginning:] *
+                                         (100 if "strain" in path_strain else 1000))
                     except (ValueError, Exception):
                         datas_dic.append(None)
                 else:
@@ -613,8 +626,6 @@ elif data_type == "M01":
     indexes = [data_indexes_glued, data_indexes_whole]
 
 # Vytvoření subplots
-colors = ("dodgerblue", "red", "limegreen", "orange", "purple", "cyan", "pink", "black", "yellow", "magenta")
-
 fig, axs = plt.subplots(2, 2, figsize=(12, 6)) if 5 > len(indexes) >= 3 else plt.subplots(1, 2, figsize=(12, 4)) \
     if len(indexes) == 2 else plt.subplots(1, 1, figsize=(6, 4))
 try:
@@ -633,7 +644,7 @@ for i in range(len(indexes)):
     except ValueError:
         pass
 
-    [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, color=colors[c], lw=1.5,
+    [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, lw=1.5,
                  label=all_datas[j][0], zorder=40 - len(indexes[i]) - c) for c, j in enumerate(indexes[i]) if
      all_datas[j] is not None]
 
@@ -988,7 +999,7 @@ if data_type == "H02":
         ax.legend([handles[0], handles[-1]], [labels[0], labels[-1]],
                   fontsize=8, bbox_to_anchor=(0.5, -0.3), loc="center", borderaxespad=0, ncol=4)
 
-        ax.set_ylabel("Total relative strain [mm]")
+        ax.set_ylabel(r"Total relative strain [\%]")
         ax.set_xlabel("Displacement [mm]")
         # ax.set_ylabel("Force [$N$]")
 

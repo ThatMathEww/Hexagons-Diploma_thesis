@@ -6154,10 +6154,10 @@ def main():
     else:
         images_folders = check_folder(main_image_folder, "Složka s fotkami", "neexistuje", "je prázdná")
 
-    images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(",")]
+    images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(".")]
     # images_folders = images_folders[16:]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[6], images_folders[14]]
+    images_folders = [images_folders[0]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
