@@ -142,6 +142,7 @@ def program_shutdown(message: Exception | str = "\n\nUkončení programu", try_s
     plt.close('all')
     ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
     print(f"\n\033[1;31;9;21m{'‗' * 55}\033[0m\n{str(message)}")
+    print(f"\nČas ukončení:  {time.strftime('%H:%M, %d.%m. %Y', time.localtime())}")
     sys.exit()
 
 
@@ -1026,6 +1027,8 @@ def set_roi(finish_marking=False, just_load=False):
                     points_track = [tuple([np.int32(sub_var) for sub_var in var]) for var in points_track]
                 if isinstance(points_pos, list):
                     points_pos = [np.int32(var) for var in points_pos]
+                if old_version:
+                    points_pos = [points_pos]
 
                 if len(roi_areas) < 6 or any(value is None for value in roi_areas.values()):
 
@@ -1535,8 +1538,6 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
         plt.subplots_adjust(right=0.99, left=0.1, top=0.9, bottom=0.1, wspace=0.2, hspace=0.5)
         # plt.tight_layout()
 
-        plt.show()
-
         plt.pause(0.5)
         plt.show(block=block_graphs)
         plt.pause(2)
@@ -1869,7 +1870,10 @@ def distance_error(point, distances, known_points):
     except (ValueError, Exception):
         return None
     known_points = np.float64(known_points)
-    distances = np.float64(distances)
+    if len(distances) > 0:
+        distances = np.float64(distances)
+    else:
+        distances = 0
 
     errors = (np.sqrt((x_i - known_points[:, 0]) ** 2 + (y_i - known_points[:, 1]) ** 2) - distances) ** 2
     error = np.sum(errors)
@@ -3738,8 +3742,9 @@ def perform_calculations():
                     # show_results_graph(show_final_image)  # Vykreslení výsledného grafu fotografie
                     show_results_graph(h)"""
 
-    if (((do_calculations['Do Fine detection'] and not calculations_statuses['Fine detection'])
-         or recalculate['Re Fine detection']) and calculations_statuses['Rough detection']):
+    if ((((do_calculations['Do Fine detection'] and not calculations_statuses['Fine detection'])
+          or recalculate['Re Fine detection']) and calculations_statuses['Rough detection']) and
+            calculations_statuses['Rough detection']):
         """print("\n\033[32m_________________________________________________________________\033[0m"
               "\n\033[32m_________________________________________________________________\033[0m")"""
 
@@ -6157,7 +6162,7 @@ def main():
     images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(".")]
     # images_folders = images_folders[16:]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[0]]
+    images_folders = [images_folders[5]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6931,7 +6936,9 @@ def main():
     except tk.TclError:
         pass
     ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
+
     print("\nUkončení programu.")
+    print(f"\nČas ukončení:  {time.strftime('%H:%M, %d.%m. %Y', time.localtime())}")
 
 
 def reset_parameters():
@@ -6995,7 +7002,7 @@ if __name__ == '__main__':
     #                                                                                                                  #
     ####################################################################################################################
 
-    block_graphs = True  # False = kód poběží dál / True = kód se zastaví
+    block_graphs = False  # False = kód poběží dál / True = kód se zastaví
 
     dynamic_mode = False
 
@@ -7008,21 +7015,21 @@ if __name__ == '__main__':
     do_calculations = {'Do Correlation': True,
                        'Do Rough detection': False,
                        'Do Fine detection': False,
-                       'Do Point detection': False}
+                       'Do Point detection': True}
 
     main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 
     folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
 
-    start_, end_ = 0, "all"
+    start_, end_ = 1, "all"
 
-    data_type = "H02"
+    data_type = "H01"
 
     templates_path = folder_measurements + fr'\templates\templates_{data_type}'
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'data_export_new'  # data_export_new
+    saved_data = 'data_graphic'  # data_export_new
     save_calculated_data = True
     load_calculated_data = True
     do_finishing_calculation = False
@@ -7030,7 +7037,7 @@ if __name__ == '__main__':
 
     make_video = False
 
-    size = 200  # !=_ 135 _=!,   250 - pro hexagony , 100, 85 - min,   (40)
+    size = 100  # !=_ 135 _=!,   250 - pro hexagony , 100, 85 - min,   (40)
     fine_size = 20  # np.int32(size * 0.1)
 
     points_limit = 1200
@@ -7039,6 +7046,7 @@ if __name__ == '__main__':
     show_final_image = -1  # Kterou fotografii vykreslit
 
     program_version = 'v0.9.01'
+    old_version = True
 
     preload_photos = False
 
@@ -7053,7 +7061,7 @@ if __name__ == '__main__':
     set_sigma = 1.6
 
     recalculate = {'Re Correlation': False,
-                   'Re Rough detection': False,
+                   'Re Rough detection': True,
                    'Re Fine detection': False,
                    'Re Point detection': False}
 
