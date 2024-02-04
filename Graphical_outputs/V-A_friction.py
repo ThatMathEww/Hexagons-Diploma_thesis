@@ -8,7 +8,7 @@ from pyzbar.pyzbar import decode
 
 scale_qr_ratio = 12 * 210 / 270
 
-plt.rcParams['font.family'] = 'Times New Roman'
+# plt.rcParams['font.family'] = 'Times New Roman'
 
 show_images = False
 show_match = False

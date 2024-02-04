@@ -4063,7 +4063,7 @@ def plot_final_forces(file: str | bytes, correlation_area_coordinates: list | tu
     plt.show()
 
 
-def show_results_graph(image_number, img_color=0):
+def show_results_graph(image_number, img_color=0, save_graph=False):
     index = get_index(image_number)
 
     print("\n  -  Vykreslení výsledků: Fotografie - {}: {}".format(index + 1, image_files[index]))
@@ -4072,8 +4072,8 @@ def show_results_graph(image_number, img_color=0):
 
     h, w = image.shape[:2]
 
-    fig, ax = plt.subplots(figsize=(np.int8(0.0017 * w), np.int8(0.0017 * h)), num="Final result graph")
-    plt.title('Triangle elements - Image {}: {}'.format(index + 1, image_files[index]), wrap=True)
+    fig, ax = plt.subplots(figsize=(np.int8(0.0027 * w), np.int8(0.0027 * h)), num="Final result graph")
+    # plt.title('Triangle elements - Image {}: {}'.format(index + 1, image_files[index]), wrap=True)
 
     ax.imshow(image, cmap='gray')
     fig.set_facecolor('none')
@@ -4089,9 +4089,9 @@ def show_results_graph(image_number, img_color=0):
         [ax.add_patch(Polygon(triangle, closed=True, facecolor='darkorange', edgecolor='none', alpha=0.45)) for
          triangle in wrong_triangle_coordinates]
 
-        ax.triplot(triangles[:, 0], triangles[:, 1], tri_index, color='green')
+        ax.triplot(triangles[:, 0], triangles[:, 1], tri_index, c='green', lw=2)
 
-        ax.scatter(new_center[:, 0], new_center[:, 1], s=8, marker='o')
+        # ax.scatter(new_center[:, 0], new_center[:, 1], s=8, marker='o', c='dodgerblue')
     except NameError:
         pass
 
@@ -4113,6 +4113,10 @@ def show_results_graph(image_number, img_color=0):
         ax.set_aspect('equal', adjustable='box')
         ax.autoscale(True)
 
+        if save_graph:
+            plt.savefig(os.path.join(current_folder_path, f"Result_{index + 1}.pdf"), dpi=800,
+                        format='pdf', bbox_inches='tight')
+
         plt.pause(0.5)
         plt.show(block=block_graphs)
         plt.pause(2)
@@ -4126,7 +4130,8 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
                     indexes_cor: np.ndarray | list | tuple | int = 'all',
                     index_pt: np.ndarray | list | tuple | int = 'all',
                     index_cor: np.ndarray | list | tuple | int = 'all',
-                    text_size: float | int = 9):
+                    text_size: float | int = 9,
+                    save_plot=False, plot_name="points_paths", plot_format="pdf", save_dpi=300, ):
     index = get_index(image_number)
 
     if not calculations_statuses['Point detection']:
@@ -4189,6 +4194,9 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
             points = [make_angle_correction(points_to_warp=p) for p in points]
         areas = [make_angle_correction(points_to_warp=a).reshape(-1, 2, 2) for a in areas]
         image = make_angle_correction(image_to_warp=image)
+
+        if save_plot:
+            show_menu = False
 
         fig, ax = plt.subplots(figsize=(np.int8(0.002 * w), np.int8(0.0017 * h)), num="Points paths graph")
         plt.title('Points paths - Image {}: {}'.format(index + 1, image_files[index]), wrap=True, pad=12)
@@ -4291,6 +4299,17 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
     rax.set_aspect('equal', adjustable='box')
     ax.autoscale(True)
     rax.autoscale(True)
+
+    if save_plot:
+        plot_format = plot_format.replace(".", "")
+        if plot_format not in ('jpg', 'jpeg', 'JPG', 'eps', 'pdf', 'pgf', 'png', 'ps', 'raw', 'rgba', 'svg', 'svgz',
+                               'tif', 'tiff', 'webp'):
+            print(f"\nNepodporavaný formát [ *.{plot_format} ], automaticky změněno na [ *.pdf ]")
+            plot_format = 'pdf'
+        if plot_name is None:
+            plot_name = "marked_points"
+        plot_name = plot_name.replace(".", "_") + "." + plot_format
+        plt.savefig(os.path.join(current_folder_path, plot_name), format=plot_format, dpi=save_dpi, bbox_inches='tight')
 
     plt.pause(0.5)
     plt.show(block=block_graphs or show_menu)
@@ -6162,7 +6181,7 @@ def main():
     images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(".")]
     # images_folders = images_folders[16:]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[5]]
+    images_folders = [images_folders[-1]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -7023,13 +7042,13 @@ if __name__ == '__main__':
 
     start_, end_ = 1, "all"
 
-    data_type = "H01"
+    data_type = "M01"
 
     templates_path = folder_measurements + fr'\templates\templates_{data_type}'
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'data_graphic'  # data_export_new
+    saved_data = 'data_export_new'  # data_export // data_export_new // data_graphic
     save_calculated_data = True
     load_calculated_data = True
     do_finishing_calculation = False
