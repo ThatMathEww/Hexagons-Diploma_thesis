@@ -1400,7 +1400,7 @@ def set_roi(finish_marking=False, just_load=False):
     return divide_image(points_pos, points_neg, size)
 
 
-def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=True):
+def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=True, save_graph=False):
     """Divide ROI to triangle elements"""
 
     """if 'pygmsh' not in sys.modules:
@@ -1414,8 +1414,8 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
     triangle_indexes = []
     mesh = []
 
-    if isinstance(area1, list) and len(area1) > 0 and isinstance(area1[0], np.ndarray):
-        area1 = [area1]
+    """if isinstance(area1, list) and len(area1) > 0 and isinstance(area1[0], np.ndarray):
+        area1 = [area1]"""
 
     n = len(area1)
 
@@ -1537,6 +1537,9 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
 
         plt.subplots_adjust(right=0.99, left=0.1, top=0.9, bottom=0.1, wspace=0.2, hspace=0.5)
         # plt.tight_layout()
+
+        if save_graph:
+            plt.savefig(os.path.join(current_folder_path, f"Divided_roi.pdf"), dpi=800, format='pdf', bbox_inches='tight')
 
         plt.pause(0.5)
         plt.show(block=block_graphs)
@@ -3330,7 +3333,7 @@ def point_tracking_calculation(use_correlation=True, interpolate_new_points=Fals
         [plt.scatter(p[0][0], p[0][1], c='blue', zorder=3) for p in points_track]
         [plt.text(p[0][0] + 10, p[0][1] - 10, f"{n + 1}", fontsize=5, ha='left', va='bottom', color='darkblue',
                   fontweight='bold') for n, p in enumerate(points_track)]
-        [plt.fill(p[1][:, 0], p[1][:, 1], facecolor='skyblue', edgecolor='none', alpha=0.5) for p in points_track]
+        [plt.fill(p[1][:, 0], p[1][:, 1], facecolor='darkcyan', edgecolor='none', alpha=0.5) for p in points_track]
         plt.show()
 
     if 'key_points_all' not in globals():
@@ -4073,7 +4076,7 @@ def show_results_graph(image_number, img_color=0, save_graph=False):
     h, w = image.shape[:2]
 
     fig, ax = plt.subplots(figsize=(np.int8(0.0027 * w), np.int8(0.0027 * h)), num="Final result graph")
-    # plt.title('Triangle elements - Image {}: {}'.format(index + 1, image_files[index]), wrap=True)
+    plt.title('Triangle elements - Image {}: {}'.format(index + 1, image_files[index]), wrap=True)
 
     ax.imshow(image, cmap='gray')
     fig.set_facecolor('none')
@@ -4124,7 +4127,7 @@ def show_results_graph(image_number, img_color=0, save_graph=False):
         plt.close("Final result graph")
 
 
-def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plot_tracked_paths=False,
+def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plot_tracked_paths=False, show_legend=True,
                     plot_rough_paths=False, plot_fine_paths=False, show_menu=True, show_cor=False, show_areas=False,
                     indexes_pt: np.ndarray | list | tuple | int = 'all',
                     indexes_cor: np.ndarray | list | tuple | int = 'all',
@@ -4170,9 +4173,10 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
         index_ = [None] * 4
 
         i = 0
-        for ind_1, ind_2, coordinates in (zip([index_cor, index_pt], [indexes_cor, indexes_pt],
-                                              [correlation_area_points_all, tracked_points_all])
-        if plot_tracked_paths else zip([index_cor], [indexes_cor], [correlation_area_points_all])):
+        for ind_1, ind_2, coordinates in (
+                zip([index_cor, index_pt], [indexes_cor, indexes_pt],
+                    [correlation_area_points_all, tracked_points_all]) if plot_tracked_paths
+                else zip([index_cor], [indexes_cor], [correlation_area_points_all])):
 
             length_1, length_2 = len(coordinates), len(coordinates[0])
             for ind, length in zip((ind_1, ind_2), (length_1, length_2)):
@@ -4199,7 +4203,7 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
             show_menu = False
 
         fig, ax = plt.subplots(figsize=(np.int8(0.002 * w), np.int8(0.0017 * h)), num="Points paths graph")
-        plt.title('Points paths - Image {}: {}'.format(index + 1, image_files[index]), wrap=True, pad=12)
+        # plt.title('Points paths - Image {}: {}'.format(index + 1, image_files[index]), wrap=True, pad=12)
 
         box_width = 0.2 if show_menu else 0
 
@@ -4286,11 +4290,13 @@ def plot_point_path(image_number, img_color=0, plot_correlation_paths=False, plo
     check.on_clicked(update)
     [update(key) for key in objets.keys()]
 
-    h, n = ax.get_legend_handles_labels()
-    leg_ax = rax if show_menu else ax
-    leg = leg_ax.legend(h, n, borderaxespad=0.1, title='Legenda', frameon=True, title_fontsize=11, edgecolor='#AEAEAE',
-                        fontsize=9, framealpha=1 if show_menu else 0.95, fancybox=True, shadow=show_menu, ncols=1)
-    (leg.set_bbox_to_anchor((0.037, 0)), leg.set_loc('upper left')) if show_menu else None
+    if show_legend:
+        h, n = ax.get_legend_handles_labels()
+        leg_ax = rax if show_menu else ax
+        leg = leg_ax.legend(h, n, borderaxespad=0.1, title='Legenda', frameon=True, title_fontsize=11,
+                            edgecolor='#AEAEAE', fontsize=9, framealpha=1 if show_menu else 0.95, fancybox=True,
+                            shadow=show_menu, ncols=1)
+        (leg.set_bbox_to_anchor((0.037, 0)), leg.set_loc('upper left')) if show_menu else None
 
     ax.axis('off')
     rax.axis('off')
@@ -5797,14 +5803,19 @@ def make_angle_correction(image_to_get_angle=None, image_to_warp=None, points_to
         if (point1 is None and point2 is None) and not (point3 is None and point4 is None):
             point1, point2, point3, point4 = point3, point4, None, None
 
-        if (point1 is None and point2 is None):
+        if point1 is None and point2 is None:
             print(f"\n\033[33;1;21mWARRNING\033[0m\n\tQR kódy pro určení natočení nebyly nalezeny.")
             scale_paths = os.path.join(folder_measurements, "templates\Angles", data_type)
-            template1 = cv2.imread(scale_paths + r"\start_1.png", 0)
-            template2 = cv2.imread(scale_paths + r"\end_1.png", 0)
-            point1 = match(template1, img, tolerance=0.6)[0]
-            point2, _, w, _ = match(template2, img, tolerance=0.6)
-            point2 = (point2[0] + w, point2[1])
+            try:
+                template1 = cv2.imread(scale_paths + r"\start_1.png", 0)
+                template2 = cv2.imread(scale_paths + r"\end_1.png", 0)
+                point1 = match(template1, img, tolerance=0.6)[0]
+                point2, _, w, _ = match(template2, img, tolerance=0.6)
+                point2 = (point2[0] + w, point2[1])
+            except (AttributeError, Exception):
+                print(f"\n\033[33;1;21mWARRNING\033[0m\n\tChyba v načtení šablon pro určení natočení."
+                      f"\n\tCesta k šablonám: {scale_paths}")
+                return
 
         if point1 is None or point2 is None:
             print(f"\n\033[33;1;21mWARRNING\033[0m\n\tBody pro výpočet úhlu nebyly nalezeny."
@@ -6595,7 +6606,7 @@ def main():
 
             # for i in range(len(image_files)):
             plot_point_path(0, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True,
-                            text_size=7,
+                            text_size=10, save_plot=True, plot_format='pdf', save_dpi=700, show_legend=False,
                             )  # indexes_pt=[16]
 
             for j in [0]:  # TODO KONTROLA
@@ -7032,7 +7043,7 @@ if __name__ == '__main__':
     mark_points_by_hand = True
 
     do_calculations = {'Do Correlation': True,
-                       'Do Rough detection': False,
+                       'Do Rough detection': True,
                        'Do Fine detection': False,
                        'Do Point detection': True}
 
@@ -7049,14 +7060,14 @@ if __name__ == '__main__':
     source_image_type = ['original', 'modified']
 
     saved_data = 'data_export_new'  # data_export // data_export_new // data_graphic
-    save_calculated_data = True
+    save_calculated_data = False
     load_calculated_data = True
-    do_finishing_calculation = False
+    do_finishing_calculation = True
     make_temporary_savings = False
 
     make_video = False
 
-    size = 100  # !=_ 135 _=!,   250 - pro hexagony , 100, 85 - min,   (40)
+    size = 200  # !=_ 135 _=!,   250 - pro hexagony , 100, 85 - min,   (40)
     fine_size = 20  # np.int32(size * 0.1)
 
     points_limit = 1200
@@ -7065,7 +7076,7 @@ if __name__ == '__main__':
     show_final_image = -1  # Kterou fotografii vykreslit
 
     program_version = 'v0.9.01'
-    old_version = True
+    old_version = False
 
     preload_photos = False
 
@@ -7080,7 +7091,7 @@ if __name__ == '__main__':
     set_sigma = 1.6
 
     recalculate = {'Re Correlation': False,
-                   'Re Rough detection': True,
+                   'Re Rough detection': False,
                    'Re Fine detection': False,
                    'Re Point detection': False}
 
