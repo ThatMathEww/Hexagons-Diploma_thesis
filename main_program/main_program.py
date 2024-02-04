@@ -3333,7 +3333,8 @@ def point_tracking_calculation(use_correlation=True, interpolate_new_points=Fals
         [plt.scatter(p[0][0], p[0][1], c='blue', zorder=3) for p in points_track]
         [plt.text(p[0][0] + 10, p[0][1] - 10, f"{n + 1}", fontsize=5, ha='left', va='bottom', color='darkblue',
                   fontweight='bold') for n, p in enumerate(points_track)]
-        [plt.fill(p[1][:, 0], p[1][:, 1], facecolor='darkcyan', edgecolor='none', alpha=0.5) for p in points_track]
+        [plt.fill(p[1][:, 0], p[1][:, 1], facecolor='skyblue', edgecolor='none', alpha=0.5) for p in points_track]
+        # darkcyan
         plt.show()
 
     if 'key_points_all' not in globals():
