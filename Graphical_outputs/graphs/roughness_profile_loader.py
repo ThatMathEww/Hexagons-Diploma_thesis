@@ -17,7 +17,7 @@ plot_min_max = False
 
 plt.rcParams['font.family'] = 'Times New Roman'
 
-path = os.path.join(folder, files[0])
+path = os.path.join(folder, r'M1\3-up-20 (type B)\3-up-20x-6.csv' ) #files[0])
 
 df = pd.read_csv(path, skiprows=16, header=None)
 
@@ -121,6 +121,7 @@ y_waviness = approximate_waveform(x, y, num_components)
 
 plt.plot(x, y_waviness, label=f"Aproximovaná vlnová křivka ({num_components} komponenty)", linestyle="--", color="red")
 """
-plt.savefig("S1.pdf", format="pdf", bbox_inches='tight')
+# plt.savefig("S1.pdf", format="pdf", bbox_inches='tight')
 # Zobrazení grafu
+print(np.max(y))
 plt.show()

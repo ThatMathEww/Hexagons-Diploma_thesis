@@ -7,8 +7,11 @@ import os
 # Načtení dat ze souboru CSV
 path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_csv'
 
-t = "s01"
+t = "b01"
+file_type = "jpg"
+out_dpi = 600
 
+do_tex = False
 
 file_names = np.array([p for p in os.listdir(path) if os.path.isfile(os.path.join(path, p))
                        and p.lower().endswith(".csv") and p.lower().startswith(t)])
@@ -51,12 +54,17 @@ elif str(file_names[0]).lower().startswith("h02"):
                               )).T
 elif str(file_names[0]).lower().startswith("m01"):
     measurements1 = np.array(([0, 2]  # Glued / Test / Whole
-                                         )).T
+                                      )).T
 elif str(file_names[0]).lower().startswith("b01"):
     measurements1 = np.array(([0, 1, 2, 3, 4, 5, 6]
                              )).T
 
-plt.rcParams['font.family'] = 'Times New Roman'
+########################################################################################################################
+if do_tex:
+    plt.rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
+    plt.rc('text', usetex=True)
+    plt.rc('text.latex', preamble=r'\usepackage{lmodern, amsmath, amsfonts, amssymb, amsthm, bm}')
+    # plt.rcParams['font.size'] = 14
 measurement = measurements1[:]  # measurements3[2, :]
 # measurements3[:-1, 4] , measurements3[:, :]
 
@@ -75,7 +83,6 @@ else:
     while len(colors) < len(file_names):
         colors.extend(colors)
 
-
 plt.figure(figsize=(10, 5))
 plt.xlabel('Displacement [mm]')
 plt.ylabel('Force [N]')
@@ -93,8 +100,6 @@ for file in file_names:
     # y_data = -((df.iloc[:, 1].values - df.iloc[:zr, 1].mean()) + (df.iloc[:, 2].values - df.iloc[:zr, 2].mean()))
     y_data = -(df.iloc[:, 1].values + df.iloc[:, 2].values)
     photo_indexes = df[df['Photos'].notna()].index
-
-
 
     if str(file_names[0]).lower().startswith("b01"):
         x_data = -x_data
@@ -133,8 +138,7 @@ for file in file_names:
         y_data1 = y_data.copy()
         x_data1 = x_data.copy()"""
 if t == "b01":
-    file_names = [f"B-{n+1:02d}" for n in range(len(file_names))]
-
+    file_names = [f"B-{n + 1:02d}" for n in range(len(file_names))]
 
 [plt.plot(x, y, label=f'{os.path.splitext(n)[0]}', color=c) for x, y, n, c in zip(line_x, line_y, file_names, colors)]
 
@@ -185,5 +189,5 @@ plt.gca().set_aspect(((x_range_end - x_range_start) / (y_range_end - y_range_sta
 plt.gca().autoscale(True)
 plt.tight_layout(pad=3)
 
-plt.savefig("macro.pdf", format="pdf", bbox_inches='tight')
+plt.savefig(f".outputs/{t}_plot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
 plt.show()

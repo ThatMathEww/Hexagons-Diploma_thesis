@@ -15,7 +15,6 @@ std = 0.24670669587238472
 median = 24.292378586161387
 """
 
-
 # Nastavení globální palety barev
 custom_colors1 = ("dodgerblue", "red", "limegreen", "orange", "purple", "cyan", "pink", "black", "yellow", "magenta")
 custom_colors2 = ['#78DCE8', '#FF6188', '#A9DC76', '#AB9DF2', '#FC9867', '#FFD866']  # Monokai Pro
@@ -25,10 +24,11 @@ do_tex = False
 
 load_keypoints = False
 
-file_type = "pdf"
+file_type = "jpg"
+out_dpi = 600
 
 cut_spikes = True
-data_type = "H02"
+data_type = "T01"
 scale_m01 = True
 
 mark_linear_part = True
@@ -128,49 +128,55 @@ elif data_type == "S01":
         [i for i in range(len(images_folders)) if "-III-" in images_folders[i] and "MAX" in images_folders[i]])
 
     data_indexes__I_O = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                  "MAX" not in images_folders[i] and "O" not in images_folders[i]])
+                                  "MAX" not in images_folders[i] and "_O" not in images_folders[i]])
     data_indexes__II_O = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                   "MAX" not in images_folders[i] and "O" in images_folders[i]])
+                                   "MAX" not in images_folders[i] and "_O" in images_folders[i]])
     data_indexes__III_O = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                    "MAX" not in images_folders[i] and "O" in images_folders[i]])
+                                    "MAX" not in images_folders[i] and "_O" in images_folders[i]])
     data_indexes__I_max_O = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                      "MAX" in images_folders[i] and "O" in images_folders[i]])
+                                      "MAX" in images_folders[i] and "_O" in images_folders[i]])
     data_indexes__II_max_O = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                       "MAX" in images_folders[i] and "O" in images_folders[i]])
+                                       "MAX" in images_folders[i] and "_O" in images_folders[i]])
     data_indexes__III_max_O = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                        "MAX" in images_folders[i] and "O" in images_folders[i]])
+                                        "MAX" in images_folders[i] and "_O" in images_folders[i]])
 
-    data_indexes__I_B = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                  "MAX" not in images_folders[i] and "B" in images_folders[i]])
-    data_indexes__II_B = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                   "MAX" not in images_folders[i] and "B" in images_folders[i]])
-    data_indexes__III_B = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                    "MAX" not in images_folders[i] and "B" in images_folders[i]])
-    data_indexes__I_max_B = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                      "MAX" in images_folders[i] and "B" in images_folders[i]])
-    data_indexes__II_max_B = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                       "MAX" in images_folders[i] and "B" in images_folders[i]])
-    data_indexes__III_max_B = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                        "MAX" in images_folders[i] and "B" in images_folders[i]])
+    data_indexes__I_G = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
+                                  "MAX" not in images_folders[i] and "_S" in images_folders[i]])
+    data_indexes__II_G = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
+                                   "MAX" not in images_folders[i] and "_S" in images_folders[i]])
+    data_indexes__III_G = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
+                                    "MAX" not in images_folders[i] and "_S" in images_folders[i]])
+    data_indexes__I_max_G = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
+                                      "MAX" in images_folders[i] and "_S" in images_folders[i]])
+    data_indexes__II_max_G = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
+                                       "MAX" in images_folders[i] and "_S" in images_folders[i]])
+    data_indexes__III_max_G = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
+                                        "MAX" in images_folders[i] and "_S" in images_folders[i]])
 
-    data_indexes__I_S = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                  "MAX" not in images_folders[i] and "S" in images_folders[i]])
-    data_indexes__II_S = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                   "MAX" not in images_folders[i] and "S" in images_folders[i]])
-    data_indexes__III_S = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                    "MAX" not in images_folders[i] and "S" in images_folders[i]])
-    data_indexes__I_max_S = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                      "MAX" in images_folders[i] and "S" in images_folders[i]])
-    data_indexes__II_max_S = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
-                                       "MAX" in images_folders[i] and "S" in images_folders[i]])
-    data_indexes__III_max_S = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
-                                        "MAX" in images_folders[i] and "S" in images_folders[i]])
+    data_indexes__I_W = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
+                                  "MAX" not in images_folders[i] and "_B" in images_folders[i]])
+    data_indexes__II_W = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
+                                   "MAX" not in images_folders[i] and "_B" in images_folders[i]])
+    data_indexes__III_W = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
+                                    "MAX" not in images_folders[i] and "_B" in images_folders[i]])
+    data_indexes__I_max_W = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
+                                      "MAX" in images_folders[i] and "_B" in images_folders[i]])
+    data_indexes__II_max_W = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
+                                       "MAX" in images_folders[i] and "_B" in images_folders[i]])
+    data_indexes__III_max_W = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
+                                        "MAX" in images_folders[i] and "_B" in images_folders[i]])
     linear_part = [1.2, 2.2]
 
 elif data_type == "M01":
     data_indexes_glued = [0]
     data_indexes_whole = [2]
     linear_part = [1, 2]
+elif data_type == "T01":
+    raise ValueError(f"Tah je v jiném souboru: {data_type}")
+
+
+else:
+    raise ValueError(f"Neznámý typ dat: {data_type}")
 
 all_datas = []
 ########################################################################################################################
@@ -590,7 +596,7 @@ for exp, current_image_folder in enumerate(images_folders):
         print(f'\033[31;1;21mERROR\033[0m\n\tSoubor [{current_image_folder}] se nepovedlo načíst.\n\tPOPIS: {e}')
         continue
 
-print("\n\033[33;1mHotovo.\033[0m")
+print("\n\033[33;1mNačítání hotovo.\033[0m")
 
 """plt.figure()
 data_plot = all_datas[0]
@@ -607,6 +613,7 @@ plt.show()"""
     [plt.plot(d[:, j], d[:, j + 1], ) for j in range(0, d.shape[1], 2)]
     plt.show()"""
 
+# TODO INDEXES
 if data_type == "H01":
     indexes = [data_indexes_I, data_indexes_II, data_indexes_III, data_indexes_max]
     indexes = [data_indexes_can_norm]
@@ -616,8 +623,8 @@ elif data_type == "H02":
     indexes = [data_indexes_I_K, data_indexes_II_K, data_indexes_III_K, data_indexes_max_K]
 elif data_type == "S01":
     """indexes = [np.hstack((data_indexes__I_O, data_indexes__II_O, data_indexes__III_O)),
-               np.hstack((data_indexes__I_B, data_indexes__II_B, data_indexes__III_O)),
-               np.hstack((data_indexes__I_S, data_indexes__II_S, data_indexes__III_S))
+               np.hstack((data_indexes__I_W, data_indexes__II_W, data_indexes__III_W)),
+               np.hstack((data_indexes__I_G, data_indexes__II_G, data_indexes__III_G))
                ]"""
     indexes = [data_indexes__I_max, data_indexes__II_max, data_indexes__III_max]
     # indexes = [data_indexes__I, data_indexes__II, data_indexes__III]
@@ -673,11 +680,11 @@ for i in range(len(indexes)):
     axs[i].set_aspect('auto', adjustable='box')
 
 handles, labels = axs[0].get_legend_handles_labels()
-labels = [f"H1_{l + 1:02d}_B2" for l in range(len(labels))]
+labels = [f"H1_{l + 1:02d}_B2" for l in range(len(labels))]  # TODO LABELS
 fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=10)
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-plt.savefig(f".outputs/{data_type}_multipleplot.{file_type}", format=file_type, bbox_inches='tight')
+plt.savefig(f".outputs/{data_type}_multipleplot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
 
 # plt.tight_layout()
 
@@ -815,7 +822,8 @@ if mark_linear_part:
     # plt.tight_layout()
     fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 
-plt.savefig(f".outputs/{data_type}_singleplot_linearpart.{file_type}", format=file_type, bbox_inches='tight')
+plt.savefig(f".outputs/{data_type}_singleplot_linearpart.{file_type}", format=file_type, dpi=out_dpi,
+            bbox_inches='tight')
 
 ########################################################################################################################
 
@@ -835,12 +843,20 @@ elif data_type == "H02":
                      ("dodgerblue", "red", "limegreen"))
 elif data_type == "S01":
     datas_pack = zip(("Orange", "White", "Gray"),
-                     # ("I-K", "II-K", "III-K", "I-N", "II-N", "III-N") // ("MAX-K", "MAX-N")
+                     #                           ("Infill I", "Infill II", "Infill III") // ("Orange", "White", "Gray")
+                     #                           ("I-K", "II-K", "III-K", "I-N", "II-N", "III-N") // ("MAX-K", "MAX-N")
+
+                     # (np.hstack((data_indexes__I_O, data_indexes__I_G)),
+                     # np.hstack((data_indexes__II_O, data_indexes__II_G)),
+                     # np.hstack((data_indexes__III_O, data_indexes__III_G))),
+
                      (np.hstack((data_indexes__I_O, data_indexes__II_O, data_indexes__III_O)),
-                      np.hstack((data_indexes__I_B, data_indexes__II_B, data_indexes__III_O)),
-                      np.hstack((data_indexes__I_S, data_indexes__II_S, data_indexes__III_S))),
+                      np.hstack((data_indexes__I_W, data_indexes__II_W, data_indexes__III_W)),
+                      np.hstack((data_indexes__I_G, data_indexes__II_G, data_indexes__III_G))),
+
                      # (data_indexes__I, data_indexes__II, data_indexes__III) //
-                     # (data_indexes__I_max, data_indexes__II_max, data_indexes__III_max)
+                     # (data_indexes__I_max, data_indexes__II_max, data_indexes__III_max),
+
                      ("Orange", "red", "dodgerblue"))
 elif data_type == "M01":
     datas_pack = zip(("M-01", "M-02"),
@@ -925,7 +941,7 @@ for axes in [ax, ax2]:
 
     # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     axes.legend(fontsize=8, bbox_to_anchor=(0.5, -0.3), loc="center", borderaxespad=0, ncol=4)
-    axes.set_xlabel('Distance [mm]')
+    axes.set_xlabel('Displacement [mm]')
     axes.set_ylabel('Force [N]')
 
     axes.set_aspect('auto', adjustable='box')
@@ -937,8 +953,9 @@ fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspac
 # fig.tight_layout()
 # fig2.tight_layout()
 
-fig.savefig(f".outputs/{data_type}_finalplot_tot.{file_type}", format=file_type, bbox_inches='tight')
-fig2.savefig(f".outputs/{data_type}_finalplot_singleline.{file_type}", format=file_type, bbox_inches='tight')
+fig.savefig(f".outputs/{data_type}_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+fig2.savefig(f".outputs/{data_type}_finalplot_singleline.{file_type}", format=file_type, dpi=out_dpi,
+             bbox_inches='tight')
 
 ########################################################################################################################
 if data_type == "H02":
@@ -999,7 +1016,7 @@ if data_type == "H02":
         ax.legend([handles[0], handles[-1]], [labels[0], labels[-1]],
                   fontsize=8, bbox_to_anchor=(0.5, -0.3), loc="center", borderaxespad=0, ncol=4)
 
-        ax.set_ylabel(r"Total relative strain [\%]")
+        ax.set_ylabel(r'Total relative strain [\%]' if do_tex else 'Total relative strain [%]')
         ax.set_xlabel("Displacement [mm]")
         # ax.set_ylabel("Force [$N$]")
 
@@ -1007,7 +1024,7 @@ if data_type == "H02":
 
     fig1.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
     fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-    fig1.savefig(f".outputs/hex_corner1.{file_type}", format=file_type, bbox_inches='tight')
-    fig2.savefig(f".outputs/hex_corner2.{file_type}", format=file_type, bbox_inches='tight')
+    fig1.savefig(f".outputs/hex_corner1.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+    fig2.savefig(f".outputs/hex_corner2.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
 
 plt.show()

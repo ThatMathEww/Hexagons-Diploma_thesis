@@ -22,12 +22,26 @@ tolerance = 0.24
 
 kinetic_type = True
 
+do_tex = False
+
+file_type = "jpg"
+out_dpi = 600
+
+
 distance_limit = {'static': 35, 'kinetic': 100}  # mm
 
 image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\Friction_photos'
 
 folders = [f for f in os.listdir(image_folder) if os.path.isdir(os.path.join(image_folder, f)) and
            not f.startswith(("_", "."))]
+
+
+########################################################################################################################
+if do_tex:
+    plt.rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
+    plt.rc('text', usetex=True)
+    plt.rc('text.latex', preamble=r'\usepackage{lmodern, amsmath, amsfonts, amssymb, amsthm, bm}')
+    # plt.rcParams['font.size'] = 14
 
 if kinetic_type:
     folders = [f for f in folders if "_K" in f]
@@ -329,14 +343,14 @@ for i, folder in enumerate(folders):
         ax1.plot(found_points[:, 0], found_points[:, 1], 'o-')
         ax1.axis('equal')
         ax1.invert_yaxis()
-        ax1.set_xlabel('x [$m$]')
-        ax1.set_ylabel('y [$m$]')
+        ax1.set_xlabel('x [m]')
+        ax1.set_ylabel('y [m]')
 
         ax2.set_title("Total displacement")
         ax2.plot(time_stamps, positions[0], '-', lw=3)
         ax2.plot(time_stamps, positions[1], linestyle="--", color="yellow")
-        ax2.set_xlabel('t [$s$]')
-        ax2.set_ylabel('d [$m$]')
+        ax2.set_xlabel('t [s]')
+        ax2.set_ylabel('d [m]')
 
         ax3.set_title("Velocity")
         if plot_real_data:
@@ -345,8 +359,8 @@ for i, folder in enumerate(folders):
                    label=f"Average speed: {average_speeds[1]:.2f} mm/s")"""
         ax3.plot(time_stamps[:len(speeds[1])], speeds[1], '-', c='orange')
         # ax2.plot(regression, speed_av[linear_points_indexes], '-', color='darkred')
-        ax3.set_xlabel('t [$s$]')
-        ax3.set_ylabel('v [$m/s$]')
+        ax3.set_xlabel('t [s]')
+        ax3.set_ylabel('v [m/s]')
 
         ax4.set_title("Acceleration")
         if plot_real_data:
@@ -356,12 +370,13 @@ for i, folder in enumerate(folders):
         ax4.plot(time_stamps[:len(accelerations[1])], accelerations[1], '-', color='red')
         """ax4.hlines(mean_linear_accelerations[1], time_stamps[linear_accelerations_indexes[1][0]],
                    time_stamps[linear_accelerations_indexes[1][-1]], linestyle='--', color='darkred')"""
-        ax4.set_xlabel('t [$s$]')
-        ax4.set_ylabel('a [$m/s^2$]')
+        ax4.set_xlabel('t [s]')
+        ax4.set_ylabel(r'a [$\mathrm{m/s}^2$]')
 
         # plt.tight_layout()
-        plt.subplots_adjust(right=0.97, left=0.15, top=0.92, bottom=0.12, wspace=1, hspace=0.8)
-        plt.savefig("kcof.pdf", format="pdf", bbox_inches='tight')
+        plt.subplots_adjust(right=0.97, left=0.15, top=0.92, bottom=0.12, wspace=1, hspace=1.1)
+        plt.savefig(f"./.outputs/kcof_{os.path.basename(folder)}.{file_type}", format=file_type, dpi=out_dpi,
+                    bbox_inches='tight')
         plt.show()
 
 print(f"\nAverage acceleration: {np.mean(accelerations_print):.4f} m/s^2")

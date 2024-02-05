@@ -1509,7 +1509,7 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
 
         print("\t\tSecond graph: finished.")
 
-        triangle = min(10, len(triangle_indexes[0]) - 1)  # který trojúhelník chci vykreslit
+        triangle = max(min(5, len(triangle_indexes[0]) - 1), 0)  # který trojúhelník chci vykreslit
 
         triangle_cor = triangle_points[0][triangle_indexes[0][triangle]]
 
@@ -1730,24 +1730,6 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
                     unique_keypoints1.append(selected_keypoints[m.queryIdx])
                     corresponding_keypoints2.append(keypoints2_sift[m.trainIdx])
 
-        """# Vykreslení bodů na první fotografii
-        output_image1 = cv2.drawKeypoints(gray1, unique_keypoints1, None)
-        output_image2 = cv2.drawKeypoints(gray2, corresponding_keypoints2, None)"""
-
-        """if state == 0:
-            coordinates_image1 = np.array([kp.pt for kp in unique_keypoints1])
-            coordinates_image2 = np.array([kp.pt for kp in corresponding_keypoints2])
-
-            # Zobrazení výsledných obrázků s unikátními body na první fotografii a druhé fotografii
-            plt.figure(figsize=(10, 7))
-            plt.subplot(1, 2, 1)
-            plt.imshow(cv2.cvtColor(gray1, cv2.COLOR_BGR2RGB))
-            plt.scatter(coordinates_image1[:, 0], coordinates_image1[:, 1], s=20)
-            plt.subplot(1, 2, 2)
-            plt.imshow(cv2.cvtColor(gray2, cv2.COLOR_BGR2RGB))
-            plt.scatter(coordinates_image2[:, 0], coordinates_image2[:, 1], s=20)
-            plt.tight_layout()
-            plt.show()"""
 
         # Aplikace prahu na shody mezi popisovači
         good_matches = [m for m, n in matches if m.distance < precision * n.distance]
@@ -1785,6 +1767,33 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
         # angle_old.extend([selected_keypoints[m.queryIdx].angle for m in good_matches])
         # angle_new.extend([keypoints2[m.trainIdx].angle for m in good_matches])
         index.append(index[counter] + limit_of_points)
+
+        """# Vykreslení bodů na první fotografii
+        output_image1 = cv2.drawKeypoints(gray1, unique_keypoints1[:limit_of_points], None)
+        output_image2 = cv2.drawKeypoints(gray2, corresponding_keypoints2[:limit_of_points], None)
+        plt.figure(figsize=(10, 7))
+        plt.subplot(1, 2, 1)
+        plt.imshow(cv2.cvtColor(output_image1, cv2.COLOR_BGR2RGB))
+        plt.subplot(1, 2, 2)
+        plt.imshow(cv2.cvtColor(output_image2, cv2.COLOR_BGR2RGB))
+        plt.tight_layout()
+        plt.show()"""
+
+
+        """if state == 0:
+            coordinates_image1 = np.array([kp.pt for kp in unique_keypoints1][:limit_of_points])
+            coordinates_image2 = np.array([kp.pt for kp in corresponding_keypoints2][:limit_of_points])
+
+            # Zobrazení výsledných obrázků s unikátními body na první fotografii a druhé fotografii
+            plt.figure(figsize=(10, 7))
+            plt.subplot(1, 2, 1)
+            plt.imshow(cv2.cvtColor(gray1, cv2.COLOR_BGR2RGB))
+            plt.scatter(coordinates_image1[:, 0], coordinates_image1[:, 1], s=20)
+            plt.subplot(1, 2, 2)
+            plt.imshow(cv2.cvtColor(gray2, cv2.COLOR_BGR2RGB))
+            plt.scatter(coordinates_image2[:, 0], coordinates_image2[:, 1], s=20)
+            plt.tight_layout()
+            plt.show()"""
 
         """if counter == 0:
             print("\t\tElement", counter + 1, "hotov.\t\t[", counter + 1, "/", length, "]")
@@ -6193,7 +6202,7 @@ def main():
     images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(".")]
     # images_folders = images_folders[16:]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[-1]]
+    images_folders = [images_folders[5]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6734,7 +6743,7 @@ def main():
                 image_files = image_files[start:end]  # načátání snímků (první je 0) př: "image_files[2:5] od 2 do 5"
                 """image_files = [image_files[0], image_files[7], image_files[14], image_files[21],
                                image_files[-1]]"""  # TODO ############ potom změnit počet fotek
-                # image_files = [image_files[0], image_files[-1]]
+                image_files = [image_files[0], image_files[-1]]
 
                 if preload_photos:
                     preloaded_images = [load_photo(i, photo_type) for i in range(len(image_files))]
@@ -7054,7 +7063,7 @@ if __name__ == '__main__':
 
     start_, end_ = 1, "all"
 
-    data_type = "M01"
+    data_type = "H01"
 
     templates_path = folder_measurements + fr'\templates\templates_{data_type}'
 
@@ -7062,7 +7071,7 @@ if __name__ == '__main__':
 
     saved_data = 'data_export_new'  # data_export // data_export_new // data_graphic
     save_calculated_data = False
-    load_calculated_data = True
+    load_calculated_data = False
     do_finishing_calculation = True
     make_temporary_savings = False
 
@@ -7076,8 +7085,8 @@ if __name__ == '__main__':
 
     show_final_image = -1  # Kterou fotografii vykreslit
 
-    program_version = 'v0.9.01'
-    old_version = False
+    program_version = 'v0.9.02'
+    old_version = True
 
     preload_photos = False
 
