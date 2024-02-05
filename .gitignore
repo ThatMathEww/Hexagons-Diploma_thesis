@@ -1,0 +1,7 @@
+# Vyloučení všech souborů a složek kromě .tex a daných složek
+*.zip
+*.mp4
+*.avi
+*.obj
+*.3mf
+*.stl
