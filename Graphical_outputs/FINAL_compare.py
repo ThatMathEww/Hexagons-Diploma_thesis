@@ -28,7 +28,7 @@ file_type = "jpg"
 out_dpi = 600
 
 cut_spikes = True
-data_type = "T01"
+data_type = "M01"
 scale_m01 = True
 
 mark_linear_part = True
@@ -919,8 +919,8 @@ if data_type == "M01" and scale_m01:
 
     ratio = np.mean(datas_y[1] / datas_y[0])
     print(f"\nRatio: {ratio: .5f}")
-    plt.plot(data_plot_x, datas_y[0] * ratio, ls="--", lw=1, c="green", label=f'Scaled M-01 ({ratio:.2f})',
-             zorder=40)
+    plt.plot(data_plot_x, datas_y[0] * ratio, ls="-", lw=1.5, c="tab:green", label=f'Scaled M-01 ({ratio:.2f})',
+             zorder=40, alpha=0.7)
 
 for axes in [ax, ax2]:
     axes.grid(color="lightgray", linewidth=0.5, zorder=0)
