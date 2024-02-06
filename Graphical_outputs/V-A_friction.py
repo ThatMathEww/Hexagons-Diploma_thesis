@@ -346,13 +346,13 @@ for i, folder in enumerate(folders):
         ax1.set_xlabel('x [m]')
         ax1.set_ylabel('y [m]')
 
-        ax2.set_title("Total displacement")
+        ax2.set_title("Position - time")
         ax2.plot(time_stamps, positions[0], '-', lw=3)
         ax2.plot(time_stamps, positions[1], linestyle="--", color="yellow")
         ax2.set_xlabel('t [s]')
         ax2.set_ylabel('d [m]')
 
-        ax3.set_title("Velocity")
+        ax3.set_title("Velocity - time")
         if plot_real_data:
             ax3.plot(time_stamps[:len(speeds[0])], speeds[0], '-.', c='#D9A465', alpha=0.5)
         """ax3.hlines(average_speeds[1], time_stamps[0], time_stamps[-1], color='tomato', linestyle='--',
@@ -362,7 +362,7 @@ for i, folder in enumerate(folders):
         ax3.set_xlabel('t [s]')
         ax3.set_ylabel('v [m/s]')
 
-        ax4.set_title("Acceleration")
+        ax4.set_title("Acceleration - time")
         if plot_real_data:
             ax4.plot(time_stamps[:len(accelerations[0])], accelerations[0], '-.', c='#FF7476', alpha=0.5)
         ax4.hlines(average_accelerations[1], time_stamps[0], time_stamps[-1], color='darkorange', linestyle='--',
