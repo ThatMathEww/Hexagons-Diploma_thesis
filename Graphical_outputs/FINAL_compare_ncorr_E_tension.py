@@ -141,12 +141,13 @@ if len(indexes) == 3:
 
 for i in range(len(indexes)):
     try:
-        [axs[i].plot(found_strains[j], found_stresses[j], c='gray', lw=1, alpha=0.5, zorder=30)
+        [axs[i].plot(found_strains[j] * 100 if "strain" in path_strain else 1, found_stresses[j], c='gray', lw=1,
+                     alpha=0.5, zorder=5)
          for j in np.hstack(indexes[:i] + indexes[i + 1:]) if found_strains[j] is not None]
     except ValueError:
         pass
 
-    [axs[i].plot(found_strains[j], found_stresses[j], color=colors[c], lw=1.5,
+    [axs[i].plot(found_strains[j] * 100 if "strain" in path_strain else 1, found_stresses[j], color=colors[c], lw=1.5,
                  label=folders[j], zorder=40 - len(indexes[i]) - c) for c, j in enumerate(indexes[i]) if
      found_strains[j] is not None]
 
@@ -207,13 +208,15 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     data_min = np.min(data_plot_y, axis=0)
     data_std = np.std(data_plot_y, axis=0)
 
-    ax2.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
+    ax2.plot(data_mean_x * 100 if "strain" in path_strain else 1, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
 
-    ax1.plot(data_mean_x, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
-    ax1.fill_between(data_mean_x, data_mean_y + data_std, data_mean_y - data_std, alpha=0.35, color=color,
-                     zorder=10 + n)
-    ax1.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
-    ax1.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
+    ax1.plot(data_mean_x * 100 if "strain" in path_strain else 1, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
+    ax1.fill_between(data_mean_x * 100 if "strain" in path_strain else 1, data_mean_y + data_std,
+                     data_mean_y - data_std, alpha=0.35, color=color, zorder=10 + n)
+    ax1.plot(data_mean_x * 100 if "strain" in path_strain else 1, data_max, ls="--", lw=1, c=color, zorder=30 + n,
+             alpha=0.7)
+    ax1.plot(data_mean_x * 100 if "strain" in path_strain else 1, data_min, ls="--", lw=1, c=color, zorder=30 + n,
+             alpha=0.7)
 
     modules = []
 
@@ -221,7 +224,7 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
         index_max_strain = np.where(data_plot_x[i] < 0.01, data_plot_x[i], np.inf).argmax()
 
         module = (data_plot_y[i][index_max_strain] - data_plot_y[i][1]) / (
-                    data_plot_x[i][index_max_strain] - data_plot_x[i][1])
+                data_plot_x[i][index_max_strain] - data_plot_x[i][1])
 
         modules.append(module)
 
@@ -262,5 +265,6 @@ fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspac
 # fig.tight_layout()
 # fig2.tight_layout()
 fig.savefig(f"./{out_put_folder}/tension_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
-fig2.savefig(f"./{out_put_folder}/tension_finalplot_single.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+fig2.savefig(f"./{out_put_folder}/tension_finalplot_single.{file_type}", format=file_type, dpi=out_dpi,
+             bbox_inches='tight')
 plt.show()

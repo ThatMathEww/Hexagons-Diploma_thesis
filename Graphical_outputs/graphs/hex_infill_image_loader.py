@@ -96,6 +96,6 @@ for i, image_path in enumerate(images_path, start=1):
 
     ax.axis('off')
 
-    fig.savefig(f"hex{i}.pdf", format="pdf", bbox_inches='tight')
+    fig.savefig(f"hex{i}.pdf", format="pdf", bbox_inches='tight', dpi=1500)
     plt.tight_layout()
 plt.show()
