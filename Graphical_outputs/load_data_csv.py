@@ -1,16 +1,20 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import AutoMinorLocator
 
 """from scipy.optimize import curve_fit
 from sklearn.linear_model import LinearRegression"""
+
+file_type = "jpg"
+out_dpi = 600
 
 # H01_04_12s.csv
 # H01_10_12s_p.csv
 # H01_03-I_10s.csv / H01_03-II_10s.csv / H01_03-III_10s.csv   //   H01_03-II-max_12s.csv
 
 # Načtení dat ze souboru CSV
-file_path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_csv\H01_03-I_10s.csv'
+file_path = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data\data_csv\M01_glued_10s.csv'
 df = pd.read_csv(file_path)  # DATAFRAME
 
 zr = 5
@@ -254,4 +258,36 @@ plt.legend(fontsize=8, bbox_to_anchor=(1.04, 0.5), loc="center left", borderaxes
 plt.grid()
 # plt.axis('equal')
 plt.tight_layout()
+
+fig, ax = plt.subplots(figsize=(6, 3.5))
+
+x_data_plot = x_data - x_data[0]
+
+ax.plot(x_data_plot, y_data1, ls="-", lw=1, c="dodgerblue", zorder=10, alpha=1)
+ax.plot(x_data_plot, y_data2, ls="-", lw=1, c="tab:orange", zorder=11, alpha=1)
+
+ax.grid(color="lightgray", linewidth=0.5, zorder=0)
+for axis in ['top', 'right']:
+    ax.spines[axis].set_linewidth(0.5)
+    ax.spines[axis].set_color('lightgray')
+
+if ax.get_xlim()[1] % ax.get_xticks()[-1] == 0:
+    ax.spines['right'].set_visible(False)
+if ax.get_ylim()[1] % plt.gca().get_yticks()[-1] == 0:
+    ax.spines['top'].set_visible(False)
+
+ax.yaxis.set_minor_locator(AutoMinorLocator())
+ax.xaxis.set_minor_locator(AutoMinorLocator())
+
+ax.tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
+ax.tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
+
+ax.set_xlabel('Displacement [mm]')
+ax.set_ylabel('Force [N]')
+
+ax.set_aspect('auto', adjustable='box')
+plt.tight_layout()
+name = file_path.split("\\")[-1].split(".")[0]
+plt.savefig(f'.outputs/support_plot_{name}.{file_type}', format=file_type, dpi=out_dpi, bbox_inches='tight')
+
 plt.show()
