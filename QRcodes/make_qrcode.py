@@ -139,7 +139,7 @@ for i in range(1,2):
     if error_correction == qrcode.constants.ERROR_CORRECT_H and use_logo:
         try:
             # Otevření logo obrázku
-            logo = Image.open("logo.png")
+            logo = Image.open("open-mechanics_logo.png")
 
             # Výpočet pozice, kam umístit logo (zde upravte podle svých potřeb)
             logo_size = (img.size[0] // 4, img.size[1] // 4)
