@@ -223,6 +223,9 @@ weights = np.ones(window_size) / window_size
 extended_data = np.concatenate((y_data, np.repeat(y_data[-1], window_size)))
 smoothed_data = np.convolve(extended_data, weights, mode='valid')"""
 
+########################################################################################################################
+########################################################################################################################
+
 plt.figure(figsize=(10, 4))
 
 # plt.scatter(x_data[start_index3], y_data[start_index3], label='Start position', c="red", marker='X', s=100)
@@ -259,11 +262,26 @@ plt.grid()
 # plt.axis('equal')
 plt.tight_layout()
 
+########################################################################################################################
+########################################################################################################################
+
 fig, ax = plt.subplots(figsize=(6, 3.5))
 
 x_data_plot = x_data - x_data[0]
 
-ax.plot(x_data_plot, y_data1, ls="-", lw=1, c="dodgerblue", zorder=10, alpha=1)
+# Nahrazení hodnot průměrem hodnoty před a po indexech
+drop_indexes = np.where((0.25 >= np.diff(y_data1)) & (np.diff(y_data1) >= 0.1))[0]
+before_ind = drop_indexes - 1
+after_ind = drop_indexes + 1
+# Zajištění, že indexy jsou v rozmezí pole
+valid_indices = (before_ind >= 0) & (after_ind < len(y_data1))
+# Nahrazení hodnot průměrem
+y_data_plot1 = y_data1.copy()
+y_data_plot1[drop_indexes[valid_indices]] = (y_data1[before_ind[valid_indices]] + y_data1[after_ind[valid_indices]]) / 2
+
+# ax.scatter(x_data_plot[drop_indexes], y_data1[drop_indexes], label='Drop', c="red", marker='X', s=100)
+
+ax.plot(x_data_plot, y_data_plot1, ls="-", lw=1, c="dodgerblue", zorder=10, alpha=1)
 ax.plot(x_data_plot, y_data2, ls="-", lw=1, c="tab:orange", zorder=11, alpha=1)
 
 ax.grid(color="lightgray", linewidth=0.5, zorder=0)
