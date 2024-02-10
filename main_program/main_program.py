@@ -5854,6 +5854,8 @@ def make_angle_correction(image_to_get_angle=None, image_to_warp=None, points_to
         print(f"\n\033[93mÚhel pootočení stroje je: \033[95m{angle_degrees} °\033[0m")"""
 
     try:
+        if angle_correction_matrix.dtype != float:
+            angle_correction_matrix = angle_correction_matrix.astype(np.float64)
         if isinstance(image_to_warp, np.ndarray):
             # Aplikujte transformační matici na obrázek
             image_to_warp = cv2.warpAffine(image_to_warp, angle_correction_matrix, (width, height))
@@ -6299,7 +6301,9 @@ def main():
 
     # cyklus mezi složkami - HLAVNÍ CYKLUS
     for current_image_folder in images_folders:
-        angle_correction_matrix = np.array([[1, 0, 0], [0, 1, 0]])  # cv2.getRotationMatrix2D(center, 0, 1.0)
+
+        angle_correction_matrix = np.array([[1, 0, 0], [0, 1, 0]], dtype=np.float64)
+        # cv2.getRotationMatrix2D((width // 2, height // 2), 0, 1.0)
         photos_times = []
 
         try:
@@ -7073,7 +7077,7 @@ if __name__ == '__main__':
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'data_export_new2'  # data_export // data_export_new // data_graphic
+    saved_data = 'data_export_new'  # data_export // data_export_new // data_graphic
     save_calculated_data = True
     load_calculated_data = True
     do_finishing_calculation = True
