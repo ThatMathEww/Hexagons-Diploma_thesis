@@ -1191,7 +1191,7 @@ def set_roi(finish_marking=False, just_load=False):
                                        do_calculations['Do Point detection'])))):
 
         while True:
-            p_num = askinteger("Počet hledaných bodů", "Počet hledaných bod.\nZadejte číslo: ")
+            p_num = askinteger("Počet hledaných oblastí", "Počet hledaných oblastí.\nZadejte číslo: ")
             try:
                 p_num = np.int16(abs(round(np.float16(p_num))))  # pokus o převod na číslo
                 break
@@ -1539,7 +1539,8 @@ def divide_image(area1, area2=None, mesh_size=300, show_graph=True, printout=Tru
         # plt.tight_layout()
 
         if save_graph:
-            plt.savefig(os.path.join(current_folder_path, f"Divided_roi.pdf"), dpi=800, format='pdf', bbox_inches='tight')
+            plt.savefig(os.path.join(current_folder_path, f"Divided_roi.pdf"), dpi=800, format='pdf',
+                        bbox_inches='tight')
 
         plt.pause(0.5)
         plt.show(block=block_graphs)
@@ -1707,7 +1708,7 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
         # Porovnání popisovačů pomocí algoritmu BFMatcher
         bf = cv2.BFMatcher()
 
-        def select(key, des, mask):
+        def select_keys(key, des, mask):
             selected_key = [key[idx] for idx, kp in enumerate(key) if
                             mask[np.int32(np.round(kp.pt[1])), np.int32(np.round(kp.pt[0]))]]
             selected_des = des[[idx for idx, kp in enumerate(key) if
@@ -1715,7 +1716,7 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
             return selected_key, selected_des
 
         # Nalezení klíčových bodů a popisovačů pro oba obrazy - POUZE těch v MASCE1
-        selected_keypoints, selected_descriptors = select(keypoints1_sift, descriptors1_sift, mask1)
+        selected_keypoints, selected_descriptors = select_keys(keypoints1_sift, descriptors1_sift, mask1)
         matches = bf.knnMatch(selected_descriptors, descriptors2_sift, k=2)
 
         # matches = sorted(matches, key=lambda x: x[0].distance)
@@ -1729,7 +1730,6 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
                 if selected_keypoints[m.queryIdx].pt not in [kp.pt for kp in unique_keypoints1]:
                     unique_keypoints1.append(selected_keypoints[m.queryIdx])
                     corresponding_keypoints2.append(keypoints2_sift[m.trainIdx])
-
 
         # Aplikace prahu na shody mezi popisovači
         good_matches = [m for m, n in matches if m.distance < precision * n.distance]
@@ -1778,7 +1778,6 @@ def point_locator(mesh, current_shift=None, shift_start=None, m1=None, m2=None, 
         plt.imshow(cv2.cvtColor(output_image2, cv2.COLOR_BGR2RGB))
         plt.tight_layout()
         plt.show()"""
-
 
         """if state == 0:
             coordinates_image1 = np.array([kp.pt for kp in unique_keypoints1][:limit_of_points])
@@ -2065,17 +2064,19 @@ def results_adjustment(result, old_center, limit, mesh, upper_area_cor=None):
     # Vytvoření nových trojúhelníků průměrem hodnot jednotlyvých elementů
     next_data = np.zeros_like(triangle_points_old, dtype=np.float64)
     np.add.at(next_data, np.int32(np.round(tri_index)), tri_cor_new)
-    quantity = np.bincount(np.int32(np.round(tri_index)).ravel())
 
-    # np.seterr(divide='ignore', invalid='ignore')  # ignorování chybových hlášek
-    nonzero_indices = (quantity != 0)  # Kontrola na neplatné hodnoty před dělením
-    try:
-        next_data[nonzero_indices] /= quantity[nonzero_indices, np.newaxis]  # průměrování souřadnic počtem výskytu
-    except IndexError:
-        next_data = next_data[:len(quantity)]
-        next_data[nonzero_indices] /= quantity[nonzero_indices, np.newaxis]
-        print("\n\tChyba, seznam byl zkrácen.\n")
-    # np.seterr(divide='warn', invalid='warn')  # obnovení chybových hlášek
+    if continuous_area:  # průměrování trojúhelníků
+        quantity = np.bincount(np.int32(np.round(tri_index)).ravel())
+
+        # np.seterr(divide='ignore', invalid='ignore')  # ignorování chybových hlášek
+        nonzero_indices = (quantity != 0)  # Kontrola na neplatné hodnoty před dělením
+        try:
+            next_data[nonzero_indices] /= quantity[nonzero_indices, np.newaxis]  # průměrování souřadnic počtem výskytu
+        except IndexError:
+            next_data = next_data[:len(quantity)]
+            next_data[nonzero_indices] /= quantity[nonzero_indices, np.newaxis]
+            print("\n\tChyba, seznam byl zkrácen.\n")
+        # np.seterr(divide='warn', invalid='warn')  # obnovení chybových hlášek
 
     """wrong_list, wrong_index = [], []
     up_limit, down_limit, right_limit, left_limit = np.int32(min(points_pos[:, 1]) + 600), \
@@ -5344,7 +5345,10 @@ def get_files_from_zipped_folder(zip_folder_name="image_folder"):
     zip_obj.close()
     if not files_names:
         print("\n\033[1;21mWARRNING\033[0m:  Chyba v načtení fotek ze souboru ZIP.")
-        files_names = get_photos_from_folder(current_path_to_photos)
+        try:
+            files_names = get_photos_from_folder(current_path_to_photos)
+        except (NameError, Exception):
+            files_names = None
     return files_names
 
 
@@ -6202,7 +6206,7 @@ def main():
     images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(".")]
     # images_folders = images_folders[16:]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[5]]
+    images_folders = [images_folders[0]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6295,7 +6299,7 @@ def main():
 
     # cyklus mezi složkami - HLAVNÍ CYKLUS
     for current_image_folder in images_folders:
-        angle_correction_matrix = None
+        angle_correction_matrix = np.array([[1, 0, 0], [0, 1, 0]])  # cv2.getRotationMatrix2D(center, 0, 1.0)
         photos_times = []
 
         try:
@@ -7055,13 +7059,13 @@ if __name__ == '__main__':
     do_calculations = {'Do Correlation': True,
                        'Do Rough detection': True,
                        'Do Fine detection': False,
-                       'Do Point detection': True}
+                       'Do Point detection': False}
 
     main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 
     folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
 
-    start_, end_ = 1, "all"
+    start_, end_ = 0, "all"
 
     data_type = "H01"
 
@@ -7069,13 +7073,15 @@ if __name__ == '__main__':
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'data_export_new'  # data_export // data_export_new // data_graphic
-    save_calculated_data = False
-    load_calculated_data = False
+    saved_data = 'data_export_new2'  # data_export // data_export_new // data_graphic
+    save_calculated_data = True
+    load_calculated_data = True
     do_finishing_calculation = True
     make_temporary_savings = False
 
     make_video = False
+
+    continuous_area = True
 
     size = 200  # !=_ 135 _=!,   250 - pro hexagony , 100, 85 - min,   (40)
     fine_size = 20  # np.int32(size * 0.1)
@@ -7086,7 +7092,7 @@ if __name__ == '__main__':
     show_final_image = -1  # Kterou fotografii vykreslit
 
     program_version = 'v0.9.02'
-    old_version = True
+    old_version = False
 
     preload_photos = False
 
