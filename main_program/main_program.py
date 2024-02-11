@@ -2504,16 +2504,16 @@ def fast_fine_calculation(mesh_size=10):
 
         for i in range(tot_im):
             current_photo_fine_points, current_photo_fine_centers = np.empty((0, 3, 2)), np.empty((0, 2))
-            for j in range(len(triangle_points)):
+            for j in range(len(triangle_points)):  # TODO - funkce "divide_image" více vstupů naráz -> není nutný cyklus
                 current_end_marks_all = end_marks_all[i]
                 current_key_points = key_points_all[i][current_end_marks_all[j]:current_end_marks_all[j + 1]]
 
                 mat, _ = cv2.findHomography(current_key_points[:, :2], current_key_points[:, 2:], cv2.RANSAC, 5.0)
 
-                fine_mesh, fine_mesh_centers = divide_image(triangle_points[j], mesh_size=mesh_size,
+                fine_mesh, fine_mesh_centers = divide_image([triangle_points[j]], mesh_size=mesh_size,
                                                             show_graph=False, printout=False)
 
-                fine_triangle_points = fine_mesh.points[fine_mesh.get_cells_type("triangle")][:, :, :2]
+                fine_triangle_points = fine_mesh[0].points[fine_mesh[0].get_cells_type("triangle")][:, :, :2]
 
                 data = np.zeros((3, 2))
                 for p in range(len(fine_triangle_points)):
@@ -2522,7 +2522,7 @@ def fast_fine_calculation(mesh_size=10):
                             fine_triangle_points[p, k].reshape(-1, 1, 2), mat).reshape(1, 2)
                     current_photo_fine_points = np.append(current_photo_fine_points, [data], axis=0)
 
-                transformed_data = cv2.perspectiveTransform(fine_mesh_centers.reshape(-1, 1, 2), mat).reshape(-1, 2)
+                transformed_data = cv2.perspectiveTransform(fine_mesh_centers[0].reshape(-1, 1, 2), mat).reshape(-1, 2)
                 current_photo_fine_centers = np.append(current_photo_fine_centers, transformed_data, axis=0)
 
             fine_points_all.append(current_photo_fine_points)
@@ -3765,7 +3765,7 @@ def perform_calculations():
         fast_fine_calculation(mesh_size=fine_size)
         # fine_calculation_____________(mesh_size=fine_size)
         show_heat_graph(-1, 0, "y", fine_triangle_points_all, fine_mesh_centers_all, scaling=scale,
-                        colorbar_label='[mm]', block_graph=block_graphs)  # TODO BLOKACE GRAFU
+                        colorbar_label='[mm]', block_graph=block_graphs, make_iterated_map=False)  # TODO BLOKACE GRAFU
 
     if ((do_calculations['Do Point detection'] and not calculations_statuses['Point detection'])
             or recalculate['Re Point detection']):
@@ -4020,7 +4020,7 @@ def plot_final_forces(file: str | bytes, correlation_area_coordinates: list | tu
     ax[0].set_aspect(((x_range_end - x_range_start) / (y_range_end - y_range_start)) / 3, adjustable='box')
     ax[0].grid(color="lightgray")
     ax[0].legend(fancybox=True).set_zorder(10)
-    ax[0].set_xlabel('Distance [mm]')
+    ax[0].set_xlabel('Displacement [mm]')
     ax[0].set_ylabel('Force [N]')
 
     if fill_area:
@@ -4477,7 +4477,8 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                     colorbar_label=None, get_graph=False, saved_graph_name=None, save_graph=False,
                     save_graph_separately=False, graph_format="pdf", save_dpi=300, use_latex=False,
                     show_correlation_areas=False, correlation_values=None, image_color_type=0, block_graph=True,
-                    make_masked_image=False):
+                    make_masked_image=False, add_machine_press_shift=False,
+                    make_iterated_map=True, iterated_map_divider=15):
     print("\nVytvoření grafu posunů.")
 
     global correlation_area_points_all
@@ -4527,14 +4528,14 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
 
     ratio = (img.shape[1] / img.shape[0])
     if save_graph:
-        fig_size = 5
+        fig_size = 5.5
     elif figures == 3:
         fig_size = 16 / (figures * ratio)
         ratio = ratio + 1.5
-    elif figures * 5 * ratio > 16:
+    elif figures * 5.5 * ratio > 16:
         fig_size = 16 / (figures * ratio)
     else:
-        fig_size = 5
+        fig_size = 5.5
 
     # LaTeX setup
     if ((save_graph or save_graph_separately) and graph_format in ("pgf", "eps", "ps") and use_latex) or use_latex:
@@ -4679,7 +4680,7 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
             for i in ((inner_axes.axhline, None), (inner_axes.axvline, None)):
                 i[0](0, color='black', linewidth=1.4, linestyle='-', alpha=0.3, zorder=3, label=i[1])  # "Zero state"
 
-            inner_axes.set_xlabel('Distance [mm]', labelpad=5)
+            inner_axes.set_xlabel('Displacement [mm]', labelpad=5)
             inner_axes.set_ylabel('Force [N]', labelpad=3)
             inner_axes.legend(fontsize=9, fancybox=True)
 
@@ -4745,6 +4746,8 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
             # inner_axes.set_ylim(np.min(y1), np.max(y1))
             # inner_axes.axis('equal')
         else:
+            subregions_coords_back = coordinates[background_index]
+
             if correlation_values is not None:
                 if correlation_values.ndim > 1:
                     if axes == "tot" or axes == '2' or axes == "tot2" or axes == '4':
@@ -4826,28 +4829,47 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                         print("\n\033[33;1;21mWARRNING\033[0m\n\t - Špatně definovaný směr.")
                         return
 
+                if make_iterated_map:
+                    div_sub_cor = [np.array([[(1 - step) * triangle[i] + step * triangle[(i + 1) % 3] for step in
+                                              np.linspace(0, 1, iterated_map_divider) for i in range(3)]
+                                             for triangle in triangles]).reshape(-1, 2) for triangles in coordinates]
+
                 if dic == 2:
                     if axes == "tot" or axes == '2':
-                        subregion_values = np.linalg.norm(centers[shift_index] - centers[0], axis=1) * scaling
+                        if make_iterated_map:
+                            subregion_values = np.linalg.norm(div_sub_cor[shift_index] - div_sub_cor[0],
+                                                              axis=1) * scaling
+                        else:
+                            subregion_values = np.linalg.norm(centers[shift_index] - centers[0], axis=1) * scaling
                     elif axes == "tot2" or axes == '4':
-                        subregion_values = (centers[shift_index] - centers[0]).reshape(-1, 2)
-                        subregion_values = (subregion_values[:, 0] + subregion_values[:, 1]) * scaling
+                        if make_iterated_map:
+                            subregion_values = (div_sub_cor[shift_index] - div_sub_cor[0]).reshape(-1, 2)
+                            subregion_values = (subregion_values[:, 0] + subregion_values[:, 1]) * scaling
+                        else:
+                            subregion_values = (centers[shift_index] - centers[0]).reshape(-1, 2)
+                            subregion_values = (subregion_values[:, 0] + subregion_values[:, 1]) * scaling
                     else:
                         print("\n\033[33;1;21mWARRNING\033[0m\n\t - Špatně definovaný směr.")
                         return
                 else:
-                    subregion_values = (centers[shift_index][:, dic] - centers[0][:, dic]) * scaling
+                    if make_iterated_map:
+                        subregion_values = (div_sub_cor[shift_index][:, dic] - div_sub_cor[0][:, dic]) * scaling
+                    else:
+                        subregion_values = (centers[shift_index][:, dic] - centers[0][:, dic]) * scaling
 
-                if dic == 1:
+                if dic == 1 and add_machine_press_shift:
                     try:
                         subregion_values += x_data[0]
-                    except (NameError, ValueError):
-                        x_data, _, _ = load_forces(current_name=current_image_folder, window_size_average=1)
-                        if x_data is not None:
-                            x_data = x_data * ((np.linalg.norm(np.array(correlation_area_points_all[-1][0][0]) -
-                                                               np.array(correlation_area_points_all[0][0][0]))
-                                                * scaling) / np.linalg.norm(x_data[-1] - x_data[0]))
-                            subregion_values += x_data[0]
+                    except (NameError, ValueError, Exception):
+                        try:
+                            x_data, _, _ = load_forces(current_name=current_image_folder, window_size_average=1)
+                            if x_data is not None:
+                                x_data = x_data * ((np.linalg.norm(np.array(correlation_area_points_all[-1][0][0]) -
+                                                                   np.array(correlation_area_points_all[0][0][0]))
+                                                    * scaling) / np.linalg.norm(x_data[-1] - x_data[0]))
+                                subregion_values += x_data[0]
+                        except (NameError, ValueError, Exception):
+                            pass
 
                 try:
                     min_value = min(np.min(subregion_values), np.min(cor_values))
@@ -4899,8 +4921,6 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                     max_value = max(np.max(subregion_values), np.max(cor_values))
                 except TypeError:
                     max_value = np.max(subregion_values)"""
-
-            subregions_coords = coordinates[background_index]
 
             if heat_graph_title is None and dic is not None:
                 heat_title = (f"Image {background_index}:  -  shift in direction:  '{axis[dic]}'\n"
@@ -4968,23 +4988,49 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
             for i in ([0, 0.25], [0.75, 1]):
                 cbar.ax.plot(i, [0, 0], color='black', lw=0.6, alpha=0.5)
 
-            """# Vykreslení podoblastí a jejich hodnot jako heatmapy
-            for i, subregion_coords in enumerate(subregions_coords):
-                # subregion_value = subregion_values[i]
-                # Normalizace hodnoty pro lepší zobrazení barev na heatmapě
-                # normalized_value = (subregion_value - min(subregion_values)) /
-                #                      (max(subregion_values) - min(subregion_values))
+            if make_iterated_map:
+                from scipy.interpolate import griddata
 
-                # Vybrání vhodné barvy pro heatmapu
-                # heatmap_color = plt.cm.jet(subregion_values[i])
-                heatmap_color = scalar_map.to_rgba(subregion_values[i])
+                subregions_coords_back = div_sub_cor[background_index].copy().reshape(-1, 2)
+                x, y = subregions_coords_back[:, 0], subregions_coords_back[:, 1]
+                xi, yi = np.meshgrid(np.arange(0, img.shape[1], 1), np.arange(0, img.shape[0], 1))
 
-                subregion_patch = Polygon(subregion_coords, closed=True, alpha=0.75, facecolor=heatmap_color,
-                                          edgecolor='none')
-                ax.add_patch(subregion_patch)"""
-            # Vykreslení podoblastí a jejich hodnot jako heatmapyg
-            [ax.add_patch(Polygon(subregion_coords, facecolor=scalar_map.to_rgba(subregion_values[i]), edgecolor='none',
-                                  closed=True, alpha=0.75)) for i, subregion_coords in enumerate(subregions_coords)]
+                print("\n\t- Vytváření iterované tepelné mapy.")
+
+                zi = griddata((x, y), subregion_values, (xi, yi), method='linear')
+
+                # Vykreslení mnohoúhelníků na maskách
+                mask = np.zeros(img.shape[:2], dtype=np.uint8)
+                [cv2.fillPoly(mask, [np.int32(np.round(polygon))], 255) for polygon in
+                 triangle_points_all[background_index]]
+
+                zi_masked = np.ma.masked_array(zi, mask=~mask)
+
+                ax.imshow(zi_masked, extent=(0, img.shape[1], 0, img.shape[0]), origin='lower',
+                          cmap=scalar_map.cmap, alpha=0.75, zorder=2)
+
+                # ax.contourf(xi, yi, zi_masked, cmap=scalar_map.cmap, alpha=0.9, zorder=3)
+
+            else:
+
+                """# Vykreslení podoblastí a jejich hodnot jako heatmapy
+                for i, subregion_coords in enumerate(subregions_coords_back):
+                    # subregion_value = subregion_values[i]
+                    # Normalizace hodnoty pro lepší zobrazení barev na heatmapě
+                    # normalized_value = (subregion_value - min(subregion_values)) /
+                    #                      (max(subregion_values) - min(subregion_values))
+    
+                    # Vybrání vhodné barvy pro heatmapu
+                    # heatmap_color = plt.cm.jet(subregion_values[i])
+                    heatmap_color = scalar_map.to_rgba(subregion_values[i])
+    
+                    subregion_patch = Polygon(subregion_coords, closed=True, alpha=0.75, facecolor=heatmap_color,
+                                              edgecolor='none')
+                    ax.add_patch(subregion_patch)"""
+                # Vykreslení podoblastí a jejich hodnot jako heatmapyg
+                [ax.add_patch(
+                    Polygon(subregion_coords, facecolor=scalar_map.to_rgba(subregion_values[i]), edgecolor='none',
+                            closed=True, alpha=0.75)) for i, subregion_coords in enumerate(subregions_coords_back)]
 
             if cor_values is not None:
                 [ax.add_patch(
@@ -5990,7 +6036,7 @@ def make_final_report():
     max_index_force = np.argmax(data_forces)
 
     data = [
-        {"comment": "Final distance [mm]", "value": round(distance_correlation, 3)},
+        {"comment": "Final displacement [mm]", "value": round(distance_correlation, 3)},
         {"comment": "Final force [N]", "value": round(data_forces[-1], 3)},
         {"comment": "Distance at maximum force [mm]", "value": round(data_distances[max_index_force], 3)},
         {"comment": "Maximum force [N]", "value": round(data_forces[max_index_force], 3)},
@@ -6208,7 +6254,7 @@ def main():
     images_folders = [name for name in images_folders if name.startswith(data_type) or name.startswith(".")]
     # images_folders = images_folders[16:]  # TODO ############ potom změnit počet složek
     # images_folders = [images_folders[i] for i in (31,)]  # (10, 11, 12, 13, 19, 33, 37, 38)
-    images_folders = [images_folders[0]]
+    images_folders = [images_folders[5]]
     """images_folders = [images_folders[i] for i in range(len(images_folders)) if
                       i not in (10, 11, 12, 13, 19, 33, 37, 38)]"""
 
@@ -6605,7 +6651,7 @@ def main():
             plt.gca().set_aspect('auto', adjustable='box')
             plt.show()"""
 
-            show_results_graph(show_final_image)
+            """show_results_graph(show_final_image)
 
             if (len(images_folders) > 1 and  # not super_speed and
                     (calculations_statuses['Correlation'] != do_calculations['Do Correlation'] or
@@ -6624,7 +6670,7 @@ def main():
 
             # for i in range(len(image_files)):
             plot_point_path(0, show_menu=True, plot_correlation_paths=True, plot_tracked_paths=True,
-                            text_size=10, save_plot=True, plot_format='pdf', save_dpi=700, show_legend=False,
+                            text_size=10, save_plot=False, plot_format='pdf', save_dpi=700, show_legend=False,
                             )  # indexes_pt=[16]
 
             for j in [0]:  # TODO KONTROLA
@@ -6647,8 +6693,8 @@ def main():
                 plt.gcf().set_facecolor((0, 0, 0, 0))
                 plt.gca().set_facecolor((0, 0, 0, 0))
 
-                """[plt.gca().add_patch(Polygon(np.array(polygon_coords), edgecolor='b', facecolor='none'))
-                 for polygon_coords in triangle_points_all[j]]"""
+                #[plt.gca().add_patch(Polygon(np.array(polygon_coords), edgecolor='b', facecolor='none'))
+                #for polygon_coords in triangle_points_all[j]]
                 plt.tight_layout()
                 plt.gca().autoscale(True)
                 plt.gca().set_aspect('equal', adjustable='box')
@@ -6672,15 +6718,15 @@ def main():
             plt.show()
 
             plot_final_forces(current_image_folder, correlation_area_points_all[:], show_photos=True,
-                              interactive_mode=True, fill_area=True)
+                              interactive_mode=True, fill_area=True)"""
 
-            if calculations_statuses['Fine detection']:
+            if calculations_statuses['Fine detection'] or calculations_statuses['Rough detection']:
                 # fine_calculation(50)  # fine_calculation(fine_size)  /  fine_calculation2(fine_size)
 
-                show_heat_graph(show_final_image, 0, "Y", fine_triangle_points_all, colorbar_label='[mm]',
+                show_heat_graph(show_final_image, 0, "Y", triangle_points_all, colorbar_label='[mm]',
                                 scaling=scale, centers=fine_mesh_centers_all, make_line_graph=True,
                                 save_graph_separately=False, graph_format="jpg", show_correlation_areas=True,
-                                image_color_type=0)
+                                image_color_type=0, make_iterated_map=True, iterated_map_divider=30)
 
             if make_video and calculations_statuses['Fine detection']:
                 if not os.path.exists(os.path.join(current_folder_path, "video_output")):
@@ -6724,7 +6770,7 @@ def main():
                                     make_line_graph=True, max_val=max_value, min_val=min_value, graph_format="jpg",
                                     saved_graph_name=os.path.join("video_output",
                                                                   f"Image_{im:03d}_{image_files[im]}"),
-                                    show_correlation_areas=False)
+                                    show_correlation_areas=False, make_iterated_map=True, iterated_map_divider=30)
                     plt.cla()
                     plt.close('all')
                     plt.pause(0.5)
@@ -7062,8 +7108,8 @@ if __name__ == '__main__':
 
     do_calculations = {'Do Correlation': True,
                        'Do Rough detection': True,
-                       'Do Fine detection': False,
-                       'Do Point detection': False}
+                       'Do Fine detection': True,
+                       'Do Point detection': True}
 
     main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 
@@ -7077,7 +7123,7 @@ if __name__ == '__main__':
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'data_export_new'  # data_export // data_export_new // data_graphic
+    saved_data = 'data_export_new_new'  # data_export // data_export_new // data_graphic
     save_calculated_data = True
     load_calculated_data = True
     do_finishing_calculation = True
@@ -7095,8 +7141,8 @@ if __name__ == '__main__':
 
     show_final_image = -1  # Kterou fotografii vykreslit
 
-    program_version = 'v0.9.02'
-    old_version = False
+    program_version = 'v0.9.03'
+    old_version = True
 
     preload_photos = False
 
