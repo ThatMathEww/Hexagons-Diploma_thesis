@@ -4550,6 +4550,8 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
     else:
         fig_size = 5.5
 
+    plt.rcParams['axes.formatter.use_locale'] = True
+
     # LaTeX setup
     if ((save_graph or save_graph_separately) and graph_format in ("pgf", "eps", "ps") and use_latex) or use_latex:
         plt.rcParams['text.latex.preamble'] = r'\usepackage{mathptmx}'  # load times roman font
@@ -6674,7 +6676,7 @@ def main():
             plt.gca().set_aspect('auto', adjustable='box')
             plt.show()"""
 
-            """show_results_graph(show_final_image)
+            show_results_graph(show_final_image)
 
             if (len(images_folders) > 1 and  # not super_speed and
                     (calculations_statuses['Correlation'] != do_calculations['Do Correlation'] or
@@ -6719,7 +6721,7 @@ def main():
                 plt.tight_layout()
                 plt.gca().autoscale(True)
                 plt.gca().set_aspect('equal', adjustable='box')
-                plt.show()
+                plt.show(block=False)
 
             plt.figure(num="Graph of loading bar movement")  # TODO KONTROLA
             plt.title("Movement of loading bar")
@@ -6736,10 +6738,10 @@ def main():
             plt.tight_layout()
             plt.gca().autoscale(True)
             plt.gca().set_aspect('auto', adjustable='box')
-            plt.show()
+            plt.show(block=True)
 
             plot_final_forces(current_image_folder, correlation_area_points_all[:], show_photos=True,
-                              interactive_mode=True, fill_area=True)"""
+                              interactive_mode=True, fill_area=True)
 
             if calculations_statuses['Fine detection'] or calculations_statuses['Rough detection']:
                 # fine_calculation(50)  # fine_calculation(fine_size)  /  fine_calculation2(fine_size)
