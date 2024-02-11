@@ -20,6 +20,8 @@ custom_colors1 = ("dodgerblue", "red", "limegreen", "orange", "purple", "cyan", 
 custom_colors2 = ['#78DCE8', '#FF6188', '#A9DC76', '#AB9DF2', '#FC9867', '#FFD866']  # Monokai Pro
 plt.rcParams['axes.prop_cycle'] = plt.cycler(color=custom_colors1)
 
+save_figures = False
+
 do_tex = False
 
 load_keypoints = False
@@ -28,7 +30,7 @@ file_type = "jpg"
 out_dpi = 600
 
 cut_spikes = True
-data_type = "M01"
+data_type = "H01"  # "H01" # "H02"  # "S01"  # "M01"
 scale_m01 = True
 
 mark_linear_part = True
@@ -684,7 +686,8 @@ labels = [f"H1_{l + 1:02d}_B2" for l in range(len(labels))]  # TODO LABELS
 fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=10)
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-plt.savefig(f".outputs/{data_type}_multipleplot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+if save_figures:
+    plt.savefig(f".outputs/{data_type}_multipleplot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
 
 # plt.tight_layout()
 
@@ -821,9 +824,9 @@ if mark_linear_part:
 
     # plt.tight_layout()
     fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-
-plt.savefig(f".outputs/{data_type}_singleplot_linearpart.{file_type}", format=file_type, dpi=out_dpi,
-            bbox_inches='tight')
+if save_figures:
+    plt.savefig(f".outputs/{data_type}_singleplot_linearpart.{file_type}", format=file_type, dpi=out_dpi,
+                bbox_inches='tight')
 
 ########################################################################################################################
 
@@ -868,6 +871,8 @@ elif data_type == "M01":
 fig, ax = plt.subplots(figsize=(5.2, 3))
 fig2, ax2 = plt.subplots(figsize=(5.2, 3))
 
+mean_std = []
+
 for n, (name, curve_index, color) in enumerate(datas_pack):
     datas = [all_datas[j] for j in curve_index if all_datas[j] is not None]
     data_plot_x = np.array(
@@ -883,6 +888,7 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     data_max = np.max(data_plot_y, axis=1)
     data_min = np.min(data_plot_y, axis=1)
     data_std = np.std(data_plot_y, axis=1)
+    mean_std.extend(data_std)
 
     if average_window_size_plot and isinstance(window_size_plot, int) and window_size_plot >= 1:
         # Vytvoření průměrového filtru
@@ -911,6 +917,8 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
                     zorder=10 + n)
     ax.plot(data_mean_x, data_max, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
     ax.plot(data_mean_x, data_min, ls="--", lw=1, c=color, zorder=30 + n, alpha=0.7)
+
+print(f"\nMean STD: {np.mean(mean_std):.3f}")
 
 if data_type == "M01" and scale_m01:
     datas = [all_datas[j] for j in data_indexes_glued if all_datas[j] is not None]
@@ -953,9 +961,10 @@ fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspac
 # fig.tight_layout()
 # fig2.tight_layout()
 
-fig.savefig(f".outputs/{data_type}_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
-fig2.savefig(f".outputs/{data_type}_finalplot_singleline.{file_type}", format=file_type, dpi=out_dpi,
-             bbox_inches='tight')
+if save_figures:
+    fig.savefig(f".outputs/{data_type}_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+    fig2.savefig(f".outputs/{data_type}_finalplot_singleline.{file_type}", format=file_type, dpi=out_dpi,
+                 bbox_inches='tight')
 
 ########################################################################################################################
 if data_type == "H02":
@@ -1024,7 +1033,9 @@ if data_type == "H02":
 
     fig1.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
     fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-    fig1.savefig(f".outputs/hex_corner1.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
-    fig2.savefig(f".outputs/hex_corner2.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+
+    if save_figures:
+        fig1.savefig(f".outputs/hex_corner1.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+        fig2.savefig(f".outputs/hex_corner2.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
 
 plt.show()
