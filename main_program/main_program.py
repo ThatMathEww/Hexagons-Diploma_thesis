@@ -4477,11 +4477,24 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                     colorbar_label=None, get_graph=False, saved_graph_name=None, save_graph=False,
                     save_graph_separately=False, graph_format="pdf", save_dpi=300, use_latex=False,
                     show_correlation_areas=False, correlation_values=None, image_color_type=0, block_graph=True,
-                    make_masked_image=False, add_machine_press_shift=False,
+                    make_masked_image=False, add_machine_press_shift=False, reduce_snap_spike=False,
                     make_iterated_map=True, iterated_map_divider=15):
     print("\nVytvoření grafu posunů.")
 
     global correlation_area_points_all
+
+    try:
+        coordinates = coordinates.copy()
+    except (AttributeError, Exception):
+        pass
+    try:
+        centers = centers.copy()
+    except (AttributeError, Exception):
+        pass
+    try:
+        line_values = line_values.copy()
+    except (AttributeError, Exception):
+        pass
 
     tot_im = len(image_files)
 
@@ -4567,7 +4580,8 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                     print("\n\033[33;1;21mWARRNING\033[0m\n\tNelze vytvořit graf se silami.")
                     continue
 
-                x_data, y_data, photos = load_forces(current_name=current_image_folder, window_size_average=1)
+                x_data, y_data, photos = load_forces(current_name=current_image_folder, window_size_average=1,
+                                                     crop_spike=reduce_snap_spike)
                 if any(data is None for data in (x_data, y_data, photos)):
                     print("\n\033[33;1;21mWARRNING\033[0m\n\tNelze vytvořit graf se silami.")
                     continue
@@ -4581,7 +4595,7 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
             photos_taken = len(photos)
 
             if line_graph_title is None:
-                line_graph_title = 'Total force\n'
+                line_graph_title = 'Loading curve\n'
             ax.set_title(line_graph_title, pad=10, wrap=True)
 
             # Časové úseky pořízení fotografií
@@ -4749,6 +4763,7 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
             subregions_coords_back = coordinates[background_index]
 
             if correlation_values is not None:
+                # if isinstance(correlation_values, list) and correlation_values[0].ndim > 1:
                 if correlation_values.ndim > 1:
                     if axes == "tot" or axes == '2' or axes == "tot2" or axes == '4':
                         print("\n\033[33;1;21mWARRNING\033[0m\n\t - Chybně zadaná data s typem grafu.")
@@ -4766,7 +4781,7 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                 else:
                     subregion_values = heat_values
 
-                if dic == 1:
+                if dic == 1 and add_machine_press_shift:
                     try:
                         subregion_values += x_data[0]
                     except (NameError, ValueError):
@@ -4802,24 +4817,27 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
             elif centers is not None:
                 if show_correlation_areas:
                     if axes == "tot" or axes == '2':
-                        cor_values = (
-                                np.linalg.norm(np.array(correlation_area_points_all[shift_index][:][0][0]) -
-                                               np.array(correlation_area_points_all[0][:][0][0]), axis=1) * scaling)
+                        cor_values = [np.linalg.norm(np.array(correlation_area_points_all[shift_index][i][0]) -
+                                                     np.array(correlation_area_points_all[0][i][0]), axis=1) * scaling
+                                      for i in range(len(correlation_area_points_all[0]))]
                     elif axes == "tot2" or axes == '4':
-                        cor_values = (np.array(correlation_area_points_all[shift_index][:][0][0]) -
-                                      np.array(correlation_area_points_all[0][:][0][0])).reshape(-1, 2)
-                        cor_values = (cor_values[:, 0] + cor_values[:, 1]) * scaling
+                        cor_values = [(np.array(correlation_area_points_all[shift_index][i][0]) -
+                                       np.array(correlation_area_points_all[0][i][0])).reshape(-1, 2)
+                                      for i in range(len(correlation_area_points_all[0]))]
+                        cor_values = [(c[:, 0] + c[:, 1]) * scaling for c in cor_values]
                     elif dic == 0:
-                        cor_values = (correlation_area_points_all[shift_index][:][0][0, dic] -
-                                      correlation_area_points_all[0][:][0][0, dic]) * scaling
+                        cor_values = [(np.array(correlation_area_points_all[shift_index][i][0, dic]) -
+                                       np.array(correlation_area_points_all[0][i][0, dic])) * scaling
+                                      for i in range(len(correlation_area_points_all[0]))]
                     elif dic == 1:
-                        cor_values = (correlation_area_points_all[shift_index][:][0][0, dic] -
-                                      correlation_area_points_all[0][:][0][0, dic]) * scaling
+                        cor_values = [(np.array(correlation_area_points_all[shift_index][i][0, dic]) -
+                                       np.array(correlation_area_points_all[0][0][0, dic])) * scaling
+                                      for i in range(len(correlation_area_points_all[0]))]
                         try:
                             cor_values += x_data[0]
                         except (NameError, ValueError):
                             x_data, _, _ = load_forces(current_name=current_image_folder, window_size_average=1)
-                            if x_data is not None:
+                            if x_data is not None and add_machine_press_shift:
                                 x_data = x_data * ((np.linalg.norm(
                                     np.array(correlation_area_points_all[-1][0][0]) -
                                     np.array(correlation_area_points_all[0][0][0])) * scaling)
@@ -4831,7 +4849,7 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
 
                 if make_iterated_map:
                     div_sub_cor = [np.array([[(1 - step) * triangle[i] + step * triangle[(i + 1) % 3] for step in
-                                              np.linspace(0, 1, iterated_map_divider) for i in range(3)]
+                                              np.linspace(0, 1, max(2, iterated_map_divider)) for i in range(3)]
                                              for triangle in triangles]).reshape(-1, 2) for triangles in coordinates]
 
                 if dic == 2:
@@ -4872,44 +4890,26 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                             pass
 
                 try:
-                    min_value = min(np.min(subregion_values), np.min(cor_values))
+                    if min_val is None:
+                        try:
+                            min_value = min(np.min(subregion_values), np.min(cor_values))
+                        except TypeError:
+                            min_value = np.min(subregion_values)
+                    elif len(min_val) > 1:
+                        min_value = min_val[dic]
                 except TypeError:
-                    min_value = np.min(subregion_values)
-                try:
-                    max_value = max(np.max(subregion_values), np.max(cor_values))
-                except TypeError:
-                    max_value = np.max(subregion_values)
+                    min_value = min_val
 
-            elif show_correlation_areas:
-                if axes == "tot" or axes == '2':
-                    cor_values = (np.linalg.norm(np.array(correlation_area_points_all[shift_index][:][0][0]) -
-                                                 np.array(correlation_area_points_all[0][:][0][0]), axis=1) * scaling)
-                elif axes == "tot2" or axes == '4':
-                    cor_values = (np.array(correlation_area_points_all[shift_index][:][0][0]) -
-                                  np.array(correlation_area_points_all[0][:][0][0])).reshape(-1, 2)
-                    cor_values = (cor_values[:, 0] + cor_values[:, 1]) * scaling
-                elif dic == 0:
-                    cor_values = (np.array(correlation_area_points_all[shift_index][:][0][0, dic]) -
-                                  np.array(correlation_area_points_all[0][:][0][0, dic])) * scaling
-                elif dic == 1:
-                    cor_values = (np.array(correlation_area_points_all[shift_index][:][0, dic]) -
-                                  np.array(correlation_area_points_all[0][0][:][0, dic[0]])) * scaling
-                    try:
-                        cor_values += x_data[0]
-                    except (NameError, ValueError):
-                        x_data, _, _ = load_forces(current_name=current_image_folder, window_size_average=1)
-                        if x_data is not None:
-                            x_data = x_data * ((np.linalg.norm(
-                                np.array(correlation_area_points_all[-1][0][0]) -
-                                np.array(correlation_area_points_all[0][0][0])) * scaling)
-                                               / np.linalg.norm(x_data[-1] - x_data[0]))
-                            cor_values += x_data[0]
-                else:
-                    print("\n\033[33;1;21mWARRNING\033[0m\n\t - Špatně definovaný směr.")
-                    return
-            else:
-                print("\n\033[33;1;21mWARRNING\033[0m\n\tŠpatná definice zadání.")
-                return
+                try:
+                    if max_val is None:
+                        try:
+                            max_value = max(np.max(subregion_values), np.max(cor_values))
+                        except TypeError:
+                            max_value = np.max(subregion_values)
+                    elif len(max_val) > 1:
+                        max_value = max_val[dic]
+                except TypeError:
+                    max_value = max_val
 
             """if min_val is None:
                 try:
@@ -4991,13 +4991,24 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
             if make_iterated_map:
                 from scipy.interpolate import griddata
 
-                subregions_coords_back = div_sub_cor[background_index].copy().reshape(-1, 2)
+                try:
+                    subregions_coords_back = div_sub_cor[background_index].copy().reshape(-1, 2)
+                except (UnboundLocalError, Exception):
+                    if isinstance(coordinates, np.ndarray) and coordinates.shape[1] == 2:
+                        subregions_coords_back = coordinates
+                    else:
+                        div_sub_cor = np.array([[(1 - step) * triangle[i] + step * triangle[(i + 1) % 3] for step in
+                                                 np.linspace(0, 1, max(2, iterated_map_divider)) for i in range(3)]
+                                                for triangle in coordinates[background_index]]).reshape(-1, 2)
+                        subregions_coords_back = div_sub_cor.copy().reshape(-1, 2)
+
                 x, y = subregions_coords_back[:, 0], subregions_coords_back[:, 1]
                 xi, yi = np.meshgrid(np.arange(0, img.shape[1], 1), np.arange(0, img.shape[0], 1))
 
                 print("\n\t- Vytváření iterované tepelné mapy.")
 
                 zi = griddata((x, y), subregion_values, (xi, yi), method='linear')
+                a = np.nanmax(zi)
 
                 # Vykreslení mnohoúhelníků na maskách
                 mask = np.zeros(img.shape[:2], dtype=np.uint8)
@@ -5007,7 +5018,7 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                 zi_masked = np.ma.masked_array(zi, mask=~mask)
 
                 ax.imshow(zi_masked, extent=(0, img.shape[1], 0, img.shape[0]), origin='lower',
-                          cmap=scalar_map.cmap, alpha=0.75, zorder=2)
+                          cmap=scalar_map.cmap, alpha=0.75, zorder=2, aspect='equal', vmin=min_value, vmax=max_value)
 
                 # ax.contourf(xi, yi, zi_masked, cmap=scalar_map.cmap, alpha=0.9, zorder=3)
 
@@ -5033,11 +5044,12 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                             closed=True, alpha=0.75)) for i, subregion_coords in enumerate(subregions_coords_back)]
 
             if cor_values is not None:
+                cv = cor_values[shift_index if len(cor_values) > 1 else 0]
                 [ax.add_patch(
                     Rectangle((subregion_coords[0]), abs(subregion_coords[1, 0] - subregion_coords[0, 0]),
                               abs(subregion_coords[1, 1] - subregion_coords[0, 1]), edgecolor='none',
-                              facecolor=scalar_map.to_rgba(cor_values), alpha=0.75)) for subregion_coords in
-                    correlation_area_points_all[background_index]]
+                              facecolor=scalar_map.to_rgba(cv), alpha=0.75))
+                    for subregion_coords in correlation_area_points_all[background_index]]
 
                 """subregion_coords = correlation_area_points_all[background_index][0]
                 ax.add_patch(Rectangle((subregion_coords[0]), abs(subregion_coords[1, 0] - subregion_coords[0, 0]),
@@ -5111,7 +5123,7 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
 
 
 def create_video_from_images(image_folder, output_video_path, fps=30, frame_width=1920, frame_height=1080,
-                             video_length=None, codec='none'):
+                             video_length=None, codec='none', background_color=(0, 0, 0)):
     if (frame_width, frame_height) not in ((640, 480), (1280, 720), (1920, 1080), (1440, 1080), (2560, 1440),
                                            (2048, 1080), (3840, 2160), (7680, 4320)):
         print("\nŠpatné rozlišení videa.")
@@ -5180,7 +5192,7 @@ def create_video_from_images(image_folder, output_video_path, fps=30, frame_widt
         resized_image = cv2.resize(image, (new_width, new_height))
 
         # Vytvoření prázdného pole
-        output_image = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
+        output_image = np.full((frame_height, frame_width, 3), background_color, dtype=np.uint8)
 
         # Umístěte fotografii na střed obrazu
         output_image[y_offset:y_offset + new_height, x_offset:x_offset + new_width] = resized_image
@@ -5191,12 +5203,12 @@ def create_video_from_images(image_folder, output_video_path, fps=30, frame_widt
 
 
 def load_forces(current_name: str | bytes, zero_stage: int = 10, window_size_average: int = 3,
-                window_size_start: int = 5):
+                window_size_start: int = 5, crop_spike=False):
     csv_file_name = current_name + ".csv"
 
     print("\nNačítání naměřených dat zatížení.")
 
-    def load_csv(path):
+    def load_csv(path, spike_reduction):
         import pandas as pd
 
         if not isinstance(path, zipfile.ZipExtFile):
@@ -5250,6 +5262,17 @@ def load_forces(current_name: str | bytes, zero_stage: int = 10, window_size_ave
         smoothed_data = np.convolve(extended_data, weights, mode='valid')
         smoothed_data = smoothed_data[:-1]
 
+        # Najdi indexy, kde je rozdíl menší než -5
+        snap_index = np.where(np.diff(smoothed_data) <= -5)[0]
+
+        if data_type == "H01" and spike_reduction and len(snap_index) > 0:
+            if smoothed_data[snap_index[0]] > smoothed_data[snap_index[0] - 1] + 5:
+                smoothed_data[snap_index[0]] = smoothed_data[snap_index[0] - 1]
+
+            if np.mean(smoothed_data[snap_index[0] + 2:snap_index[0] + 7]) - 10 > smoothed_data[
+                snap_index[0] + 1] < np.mean(smoothed_data[snap_index[0] + 2:snap_index[0] + 7]) + 10:
+                smoothed_data[snap_index[0] + 1] = np.mean(smoothed_data[snap_index[0] + 2:snap_index[0] + 7])
+
         # del sys.modules['pandas']  ##################################################  ????????
         return x_data, smoothed_data, photo_indexes
 
@@ -5261,7 +5284,7 @@ def load_forces(current_name: str | bytes, zero_stage: int = 10, window_size_ave
             with zipfile.ZipFile(path_to_zip_file, "r") as zip_obj:
                 # Načítání souboru CSV z ZIP
                 with zip_obj.open(csv_file_name) as file:
-                    distances, forces, photo = load_csv(file)
+                    distances, forces, photo = load_csv(file, crop_spike)
         except KeyError as ke:
             try:
                 path_to_csv = os.path.join(folder_measurements, "data_csv", csv_file_name)
@@ -5269,7 +5292,7 @@ def load_forces(current_name: str | bytes, zero_stage: int = 10, window_size_ave
                       f'\n\tPOPIS: {ke}\n\t\t➤ Pokus o načtení souboru ze složky: '
                       f'[{os.path.join(folder_measurements, "data_csv")}]')
                 # Načtení CVS z dané cesty
-                distances, forces, photo = load_csv(path_to_csv)
+                distances, forces, photo = load_csv(path_to_csv, crop_spike)
                 print(f' - Úspěšné načtení dat')
             except Exception as e:
                 print(f'\n\033[33;1;21mWARRNING\033[0m\n\tSelhalo načtení dat.\n\tPOPIS: {e}')
@@ -5279,7 +5302,7 @@ def load_forces(current_name: str | bytes, zero_stage: int = 10, window_size_ave
                 return None, None, None
     else:
         # Načtení CVS z dané cesty
-        distances, forces, photo = load_csv(os.path.join(folder_measurements, "data_csv", csv_file_name))
+        distances, forces, photo = load_csv(os.path.join(folder_measurements, "data_csv", csv_file_name), crop_spike)
 
     print("\tUkončení načítání dat.")
 
@@ -6662,8 +6685,6 @@ def main():
                 reset_parameters()
                 continue
 
-            # dmake_angle_correction() # TODO opravit výpočet úhlu
-
             if calculations_statuses['Point detection']:
                 plot_marked_points(0, show_menu=False, show_arrows=True, save_plot=False, plot_format='jpg',
                                    save_dpi=700, text_size=10, show_marked_points=False)
@@ -6722,68 +6743,98 @@ def main():
 
             if calculations_statuses['Fine detection'] or calculations_statuses['Rough detection']:
                 # fine_calculation(50)  # fine_calculation(fine_size)  /  fine_calculation2(fine_size)
-
-                show_heat_graph(show_final_image, 0, "Y", triangle_points_all, colorbar_label='[mm]',
-                                scaling=scale, centers=fine_mesh_centers_all, make_line_graph=True,
+                pass
+                show_heat_graph(show_final_image, 0, "Y", triangle_points_all, centers=triangle_points_all,
+                                colorbar_label='[mm]', scaling=scale, make_line_graph=True,
                                 save_graph_separately=False, graph_format="jpg", show_correlation_areas=True,
-                                image_color_type=0, make_iterated_map=True, iterated_map_divider=30)
+                                image_color_type=0, make_iterated_map=True, iterated_map_divider=15,
+                                add_machine_press_shift=False, reduce_snap_spike=True)
 
-            if make_video and calculations_statuses['Fine detection']:
+            if make_video and (calculations_statuses['Fine detection'] or calculations_statuses['Rough detection']):
                 if not os.path.exists(os.path.join(current_folder_path, "video_output")):
                     os.makedirs(os.path.join(current_folder_path, "video_output"))
                     print(f"Složka {os.path.join(current_folder_path, 'video_output')} byla vytvořena.")
 
                 direction_of_heat_graph = "y"
+                iteration_divider = 30
+                coordinates_type = triangle_points_all.copy()  # fine_mesh_centers_all.copy()
+                add_machine_shift = False
+                show_corel_areas = True
 
                 print("\nZahájení vytváření videa.")
                 original_stdout = sys.stdout  # Uložení původního standardního výstupu
                 sys.stdout = open('nul', 'w')  # Nastavení standardního výstupu na nulový objekt
 
+                sub_cor = [np.array([[(1 - step) * triangle[i] + step * triangle[(i + 1) % 3] for step in
+                                      np.linspace(0, 1, max(2, iteration_divider)) for i in range(3)]
+                                     for triangle in triangles]).reshape(-1, 2) for triangles in coordinates_type]
+
                 if direction_of_heat_graph in ("tot", 2):
-                    r_values = [(np.linalg.norm(c[:, :] - fine_mesh_centers_all[0][:, :], axis=1)
-                                 * scale) for c in fine_mesh_centers_all]
+                    r_values = [(np.linalg.norm(c[:, :].copy() - sub_cor[0][:, :], axis=1) * scale) for c in sub_cor]
+                    if show_corel_areas:
+                        corel_values = [[
+                            np.linalg.norm(np.array(cor[i][0]) - np.array(correlation_area_points_all[0][i][0]),
+                                           axis=1) * scale
+                            for i in range(len(cor))] for cor in correlation_area_points_all]
                 elif direction_of_heat_graph in ("tot2", 4):
-                    r_values = [((c[:, :] - fine_mesh_centers_all[0][:, :]) * scale) for c in
-                                fine_mesh_centers_all]
+                    r_values = [((c[:, :] - sub_cor[0][:, :]) * scale) for c in sub_cor]
                     r_values = [value[:, 0] + value[:, 1] for value in r_values]
+                    if show_corel_areas:
+                        corel_values = [[(np.array(cor[i][0]) -
+                                         np.array(correlation_area_points_all[0][i][0])).reshape(-1, 2)
+                                        for i in range(len(cor))] for cor in correlation_area_points_all]
                 elif direction_of_heat_graph in ("x", "y", "both", 0, 1, 3):
-                    r_values = [((c[:, :] - fine_mesh_centers_all[0][:, :]) * scale) for c in
-                                fine_mesh_centers_all]
-                    x_data, _, _ = load_forces(current_name=current_image_folder, window_size_average=1)
-                    if x_data is not None:
+                    r_values = [((c[:, :] - sub_cor[0][:, :]) * scale) for c in sub_cor]
+                    if show_corel_areas:
+                        corel_values = [[(np.array(cor[i][0]) -
+                                         np.array(correlation_area_points_all[0][i][0])) * scale
+                                        for i in range(len(cor))] for cor in correlation_area_points_all]
+                    x_data = load_forces(current_name=current_image_folder, window_size_average=1,
+                                         crop_spike=True)[0]
+
+                    if x_data is not None and add_machine_shift:
                         x_data = x_data * ((np.linalg.norm(np.array(correlation_area_points_all[-1][0][0]) -
                                                            np.array(correlation_area_points_all[0][0][0])) * scale)
                                            / np.linalg.norm(x_data[-1] - x_data[0]))
                         for vector in r_values:
                             vector[:, 1] += x_data[0]
+                        for cor in show_corel_areas:
+                            cor += x_data[0]
+
+                corel_values = np.array([cor[0] for cor in corel_values])
 
                 max_value = np.max([np.max(vector, axis=0) for vector in r_values], axis=0)
                 min_value = np.min([np.min(vector, axis=0) for vector in r_values], axis=0)
+                """if show_corel_areas:
+                    max_value = np.max([np.max([np.max(vector, axis=0) for vector in corel_values], axis=0),
+                                       max_value], axis=0)
+                    min_value = np.min([np.min([np.min(vector, axis=0) for vector in corel_values], axis=0),
+                                       min_value], axis=0)"""
                 # max_value = np.max(r_values)
                 # min_value = np.min(r_values)
 
                 tot_im = len(image_files)
 
                 for im in range(tot_im):
-                    show_heat_graph(im, im, direction_of_heat_graph, fine_triangle_points_all, save_graph=True,
+                    show_heat_graph(im, im, direction_of_heat_graph, sub_cor[im], save_graph=True,
                                     heat_values=r_values[im], scaling=scale, colorbar_label='[mm]', save_dpi=400,
                                     make_line_graph=True, max_val=max_value, min_val=min_value, graph_format="jpg",
-                                    saved_graph_name=os.path.join("video_output",
-                                                                  f"Image_{im:03d}_{image_files[im]}"),
-                                    show_correlation_areas=False, make_iterated_map=True, iterated_map_divider=30)
+                                    saved_graph_name=os.path.join("video_output", f"Image_{im:03d}_{image_files[im]}"),
+                                    show_correlation_areas=show_corel_areas, reduce_snap_spike=True,
+                                    iterated_map_divider=iteration_divider, correlation_values=corel_values)
                     plt.cla()
                     plt.close('all')
                     plt.pause(0.5)
 
                     sys.stdout = original_stdout  # Navrácení původního standardního výstupu
-                    print(f"\t\t\033[37mVytvořen graf [{im + 1} / {tot_im + 1}]\033[0m")
+                    print(f"\t\t\033[37mVytvořen graf [{im + 1} / {tot_im}]\033[0m")
                     sys.stdout = open('nul', 'w')  # Nastavení standardního výstupu na nulový objekt
 
                 sys.stdout = original_stdout  # Navrácení původního standardního výstupu
                 create_video_from_images(image_folder=os.path.join(current_folder_path, "video_output"),
                                          output_video_path=os.path.join(current_folder_path, "video_output",
                                                                         current_image_folder + ".mp4"),
-                                         video_length=30, codec="mp4v", )
+                                         video_length=30, codec="mp4v", background_color=(255, 255, 255))
 
         ####################################
         # Do calculation
@@ -6797,7 +6848,7 @@ def main():
                 image_files = image_files[start:end]  # načátání snímků (první je 0) př: "image_files[2:5] od 2 do 5"
                 """image_files = [image_files[0], image_files[7], image_files[14], image_files[21],
                                image_files[-1]]"""  # TODO ############ potom změnit počet fotek
-                image_files = [image_files[0], image_files[-1]]
+                # image_files = [image_files[0], image_files[-1]]
 
                 if preload_photos:
                     preloaded_images = [load_photo(i, photo_type) for i in range(len(image_files))]
@@ -7108,14 +7159,14 @@ if __name__ == '__main__':
 
     do_calculations = {'Do Correlation': True,
                        'Do Rough detection': True,
-                       'Do Fine detection': True,
-                       'Do Point detection': True}
+                       'Do Fine detection': False,
+                       'Do Point detection': False}
 
     main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 
     folder_measurements = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\data'
 
-    start_, end_ = 0, "all"
+    start_, end_ = 1, "all"
 
     data_type = "H01"
 
@@ -7123,13 +7174,13 @@ if __name__ == '__main__':
 
     source_image_type = ['original', 'modified']
 
-    saved_data = 'data_export_new_new'  # data_export // data_export_new // data_graphic
+    saved_data = 'data_export__'  # data_export // data_export_new // data_graphic
     save_calculated_data = True
     load_calculated_data = True
-    do_finishing_calculation = True
+    do_finishing_calculation = False
     make_temporary_savings = False
 
-    make_video = False
+    make_video = True
 
     continuous_area = True
 
