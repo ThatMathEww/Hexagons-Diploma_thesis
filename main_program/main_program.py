@@ -5010,7 +5010,6 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                 print("\n\t- Vytváření iterované tepelné mapy.")
 
                 zi = griddata((x, y), subregion_values, (xi, yi), method='linear')
-                a = np.nanmax(zi)
 
                 # Vykreslení mnohoúhelníků na maskách
                 mask = np.zeros(img.shape[:2], dtype=np.uint8)
@@ -5019,10 +5018,16 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
 
                 zi_masked = np.ma.masked_array(zi, mask=~mask)
 
-                ax.imshow(zi_masked, extent=(0, img.shape[1], 0, img.shape[0]), origin='lower',
-                          cmap=scalar_map.cmap, alpha=0.75, zorder=2, aspect='equal', vmin=min_value, vmax=max_value)
+                heat_m = ax.imshow(zi_masked, extent=(0, img.shape[1], 0, img.shape[0]), origin='lower', aspect='equal',
+                                   cmap=scalar_map.cmap, alpha=0.75, zorder=2, vmin=min_value, vmax=max_value)
 
-                # ax.contourf(xi, yi, zi_masked, cmap=scalar_map.cmap, alpha=0.9, zorder=3)
+                """clip_path = Polygon(np.concatenate(triangle_points_all[background_index]),
+                                    edgecolor='none', linewidth=0, facecolor='none', closed=True, alpha=0)
+                ax.add_patch(clip_path)
+                heat_m.set_clip_path(clip_path)"""
+
+                ax.contour(xi, yi, zi_masked, levels=15, zdir='z', linestyles="solid", colors='black', alpha=0.85,
+                           antialiased=True, zorder=3, )
 
             else:
 
@@ -6716,8 +6721,8 @@ def main():
                 plt.gcf().set_facecolor((0, 0, 0, 0))
                 plt.gca().set_facecolor((0, 0, 0, 0))
 
-                #[plt.gca().add_patch(Polygon(np.array(polygon_coords), edgecolor='b', facecolor='none'))
-                #for polygon_coords in triangle_points_all[j]]
+                # [plt.gca().add_patch(Polygon(np.array(polygon_coords), edgecolor='b', facecolor='none'))
+                # for polygon_coords in triangle_points_all[j]]
                 plt.tight_layout()
                 plt.gca().autoscale(True)
                 plt.gca().set_aspect('equal', adjustable='box')
@@ -6783,14 +6788,14 @@ def main():
                     r_values = [value[:, 0] + value[:, 1] for value in r_values]
                     if show_corel_areas:
                         corel_values = [[(np.array(cor[i][0]) -
-                                         np.array(correlation_area_points_all[0][i][0])).reshape(-1, 2)
-                                        for i in range(len(cor))] for cor in correlation_area_points_all]
+                                          np.array(correlation_area_points_all[0][i][0])).reshape(-1, 2)
+                                         for i in range(len(cor))] for cor in correlation_area_points_all]
                 elif direction_of_heat_graph in ("x", "y", "both", 0, 1, 3):
                     r_values = [((c[:, :] - sub_cor[0][:, :]) * scale) for c in sub_cor]
                     if show_corel_areas:
                         corel_values = [[(np.array(cor[i][0]) -
-                                         np.array(correlation_area_points_all[0][i][0])) * scale
-                                        for i in range(len(cor))] for cor in correlation_area_points_all]
+                                          np.array(correlation_area_points_all[0][i][0])) * scale
+                                         for i in range(len(cor))] for cor in correlation_area_points_all]
                     x_data = load_forces(current_name=current_image_folder, window_size_average=1,
                                          crop_spike=True)[0]
 
@@ -7182,7 +7187,7 @@ if __name__ == '__main__':
     do_finishing_calculation = False
     make_temporary_savings = False
 
-    make_video = True
+    make_video = False
 
     continuous_area = True
 
