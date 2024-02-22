@@ -4472,13 +4472,14 @@ def plot_marked_points(image_number=0, img_color=0, make_title=False, indexes: n
 def show_heat_graph(image_index_shift, image_index_background, axes, coordinates, centers=None, heat_values=None,
                     line_values=None, scaling: float = 1, heat_graph_title=None, line_graph_title=None,
                     graph_title=None, make_line_graph=False, figure_rgba=(1, 1, 1, 1), main_ax_rgba=(0, 0, 0, 0),
-                    line_graph_main_ax_rgba=(0, 0, 0, 0), line_graph_sub_ax_rgba=(1, 1, 1, 1),
-                    fill_between=False, min_val=None, max_val=None, colorbar_spacing=9, colorbar_style='jet',
+                    line_graph_main_ax_rgba=(0, 0, 0, 0), line_graph_sub_ax_rgba=(1, 1, 1, 1), fill_between=False,
+                    min_val=None, max_val=None, colorbar_spacing: int = 9, colorbar_style: any = 'jet',
                     colorbar_label=None, get_graph=False, saved_graph_name=None, save_graph=False,
-                    save_graph_separately=False, graph_format="pdf", save_dpi=300, use_latex=False,
+                    save_graph_separately=False, graph_format="pdf", save_dpi: int = 300, use_latex=False,
                     show_correlation_areas=False, correlation_values=None, image_color_type=0, block_graph=True,
                     make_masked_image=False, add_machine_press_shift=False, reduce_snap_spike=False,
-                    make_iterated_map=True, iterated_map_divider=15):
+                    make_iterated_map=True, iterated_map_divider=15, show_contours=False, contours_colours: str = None,
+                    contours_levels: int = 15):
     print("\nVytvoření grafu posunů.")
 
     global correlation_area_points_all
@@ -4501,8 +4502,10 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
     shift_index = get_index(image_index_shift)
     background_index = get_index(image_index_background)
 
-    if scale == 1:
-        do_scale(load_photo(img_index=0, color_type=0))
+    contours_colours = None if contours_colours == 'none' else contours_colours
+
+    """if scale == 1:
+        do_scale(load_photo(img_index=0, color_type=0))"""
 
     axes = str(axes).lower()
     if axes == "y" or axes == '1':
@@ -5019,15 +5022,18 @@ def show_heat_graph(image_index_shift, image_index_background, axes, coordinates
                 zi_masked = np.ma.masked_array(zi, mask=~mask)
 
                 heat_m = ax.imshow(zi_masked, extent=(0, img.shape[1], 0, img.shape[0]), origin='lower', aspect='equal',
-                                   cmap=scalar_map.cmap, alpha=0.75, zorder=2, vmin=min_value, vmax=max_value)
+                                   cmap=scalar_map.cmap, zorder=2, vmin=min_value, vmax=max_value,
+                                   alpha=0.4 if show_contours and contours_colours is None else 0.75)
 
                 """clip_path = Polygon(np.concatenate(triangle_points_all[background_index]),
                                     edgecolor='none', linewidth=0, facecolor='none', closed=True, alpha=0)
                 ax.add_patch(clip_path)
                 heat_m.set_clip_path(clip_path)"""
 
-                ax.contour(xi, yi, zi_masked, levels=15, zdir='z', linestyles="solid", colors='black', alpha=0.85,
-                           antialiased=True, zorder=3, )
+                if show_contours:
+                    heat_c = ax.contour(xi, yi, zi_masked, levels=contours_levels, linestyles="solid", alpha=0.9,
+                                        antialiased=True, colors=contours_colours, vmin=min_value, vmax=max_value,
+                                        cmap=scalar_map.cmap if contours_colours is None else None, zorder=3, )
 
             else:
 
