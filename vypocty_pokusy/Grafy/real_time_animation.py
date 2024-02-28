@@ -84,6 +84,7 @@ x_divider = 20
 y_divider = 4
 
 # Zdrojový typ
+webcam = 0
 source_type = 'photos'  # pohotos // webcam
 folder = r'foo'
 alpha = 0.5
@@ -109,14 +110,20 @@ cv2.setUseOptimized(True)  # Zapnutí optimalizace (může využívat akceleraci
 cv2.setNumThreads(cv2.getNumThreads())  # Přepnutí na použití CPU počet jader
 print("Počet využitých jader:", cv2.getNumThreads())
 
+# camera = cv2.VideoCapture(webcam, cv2.CAP_MSMF)  # cv2.CAP_ANY
+
 # Seznam fotografií
 photos = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f)) and f.lower().endswith("jpg")]
 photos = sorted(photos, key=lambda filename: int(os.path.splitext(filename)[0].split("_")[-1]))
 photos = [photos[0], photos[11], photos[23], photos[35], photos[-1]]
 
-images = [cv2.imread(os.path.join(folder, f)) for f in photos]
+photo = 0
+tot_photos = len(photos) - 1
+# images = [cv2.imread(os.path.join(folder, f)) for f in photos]
 
-img_height, img_width = images[0].shape[:2]
+reference_image = cv2.imread(os.path.join(folder, photos[0]))
+
+img_height, img_width = reference_image.shape[:2]
 
 bar_width: int = round(max(100, min(img_width * 0.1, 200)))
 window_height = round(img_height / (img_width + 4 * bar_width) * window_width)
@@ -147,8 +154,6 @@ plt.tight_layout()
 plt.show()"""
 
 first_cmap_values = [np.mean(tri.points[triangle_indices], axis=0)[direction] for triangle_indices in tri.simplices]
-c_map = []
-points_roi = [tri.points]
 
 sift = cv2.SIFT_create(
     nfeatures=n_features,  # __________________ Počet detekovaných rysů (0 = všechny dostupné) ______ def = 0
@@ -163,9 +168,9 @@ fast.setNonmaxSuppression(False)
 # Porovnání popisovačů pomocí algoritmu BFMatcher
 bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
 
-mask = np.zeros_like(cv2.cvtColor(images[0], cv2.COLOR_BGR2GRAY), dtype=np.uint8)
+mask = np.zeros(reference_image.shape[:2], dtype=np.uint8)
 mask[roi[0, 1]:roi[1, 1], roi[0, 0]:roi[1, 0]] = 255
-keypoints1, descriptors1 = sift.detectAndCompute(images[0], mask)
+keypoints1, descriptors1 = sift.detectAndCompute(reference_image, mask)
 
 print("Colorbar making...")
 
@@ -190,32 +195,34 @@ for i, (label, y) in enumerate(zip(tick_labels, tick_positions)):
                 (0, 0, 0), round(font_size * 3), cv2.LINE_AA)
     cv2.line(color_bar, (bar_width, y), (int(bar_width * 1.15), y), (0, 0, 0), int(font_size * 2))
 
-print("Keypoints making...")
-for i in range(1, len(photos)):
-    print(f"\tPhoto {i} / {len(photos) - 1}")
+print("Window making...")
+cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
+cv2.resizeWindow('Image with Heatmap', window_width, window_height)
 
-    tm = time.time()
-    keypoints2, descriptors2 = sift.detectAndCompute(cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY), None)
+key = None
+# Cyklus pro vykreslení tepelné mapy na každý obrázek
+while True:
+    if photo == tot_photos:
+        photo = 0
+    else:
+        photo += 1
+    image = cv2.imread(os.path.join(folder, photos[photo]))
+
+    # _, image = camera.read()
+
+    keypoints2, descriptors2 = sift.detectAndCompute(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), None)
     """im2 = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
     mask2 = make_eroded_mask(im2)
     keypoints2, descriptors2 = sift.detectAndCompute(im2, mask2)"""
     """im2 = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
     keypoints2 = fast.detect(im2, None)
     keypoints2, descriptors2 = sift.compute(im2, keypoints2)"""
-    print(time.time() - tm)
-
-    tm = time.time()
 
     p_old, p_new = [], []
 
-    matches = bf.match(descriptors1, descriptors2)
-    matches = sorted(matches, key=lambda x: x.distance)
-
-    # [(p_old.extend([keypoints1[m.queryIdx].pt]), p_new.extend([keypoints2[m.trainIdx].pt])) for m in matches]
-    for m in matches:
+    for m in sorted(bf.match(descriptors1, descriptors2), key=lambda x: x.distance):
         p_old.extend([keypoints1[m.queryIdx].pt])
         p_new.extend([keypoints2[m.trainIdx].pt])
-    print(time.time() - tm)
 
     def_roi = np.empty((0, 2))
     p_old, p_new = np.array(p_old), np.array(p_new)
@@ -229,70 +236,34 @@ for i in range(1, len(photos)):
             c += 0.05
 
         tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
-        def_roi = np.vstack([def_roi,
-                             cv2.perspectiveTransform(np.float32(reference_point).reshape(-1, 1, 2), tran_mat)[0][0]])
+        def_roi = np.vstack(
+            [def_roi, cv2.perspectiveTransform(np.float32(reference_point).reshape(-1, 1, 2), tran_mat)[0][0]])
 
-    points_roi.append(def_roi)
-
-"""for _ in range(len(photos)):
-    # Generování náhodné tepelné mapy (pro ilustrační účely)
-    heatmap = np.random.rand(roi[1, 1] - roi[0, 1], roi[1, 0] - roi[0, 0]) * 255
-
-    # Aplikace barevné mapy na tepelnou mapu
-    heatmap_color = cv2.applyColorMap(np.uint8(heatmap), cv2.COLORMAP_JET)
-    c_map.append(heatmap_color)"""
-
-print("Heatmap making...")
-# Vykreslení každého trojúhelníku s náhodnou barvou
-for i in range(len(photos)):
-    print(f"\tPhoto {i} / {len(photos) - 1}")
-    h = np.zeros_like(images[0], dtype=np.uint8)
-    # h = np.zeros((roi[1, 1] - roi[0, 1], roi[1, 0] - roi[0, 0], 3), dtype=np.uint8)
+    # Vytvoření kopie aktuálního obrázku pro aplikaci tepelné mapy
+    cmap = np.zeros_like(reference_image, dtype=np.uint8)
     for j, triangle_indices in enumerate(tri.simplices):
         color = cv2.applyColorMap(
             np.uint8(normalize_value(
-                np.mean(points_roi[i][triangle_indices], axis=0)[direction] - first_cmap_values[j])).reshape((1, 1)),
+                np.mean(def_roi[triangle_indices], axis=0)[direction] - first_cmap_values[j])).reshape(
+                (1, 1)),
             cv2.COLORMAP_JET)[0][0].tolist()
-        # np.array(plt.cm.jet(random_values[i])[:3]) * 255  # Konverze barvy pomocí colormapy JET
-        cv2.drawContours(h, [points_roi[i][triangle_indices].astype(int)], -1, color, -1)
-        # cv2.fillPoly(h, [tri.points[triangle_indices].astype(int)], color)
-    c_map.append(h)  # [roi[0, 1]:roi[1, 1], roi[0, 0]:roi[1, 0]]
+        cv2.drawContours(cmap, [def_roi[triangle_indices].astype(int)], -1, color, -1)
 
-print("Window making...")
-cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
-cv2.resizeWindow('Image with Heatmap', window_width, window_height)
+    # Přidání colorbaru vedle obrázku s mezerou
+    combined_image = np.ones((img_height, img_width + 4 * bar_width, 3), dtype=np.uint8) * 255
+    combined_image[:img_height, :img_width] = cv2.addWeighted(image, alpha, cmap, 1 - alpha, 0)
+    combined_image[:, img_width + bar_width:, :] = color_bar
 
-key = None
-# Cyklus pro vykreslení tepelné mapy na každý obrázek
-while True:
-    for img, cmap in zip(images, c_map):
-        # Vytvoření kopie aktuálního obrázku pro aplikaci tepelné mapy
-        """
-        img_with_colorbar = np.zeros((max(img.shape[0], colorbar.shape[0]), img.shape[1] + colorbar.shape[1] + 10, 3),
-                                     dtype=np.uint8)"""
+    if cv2.getWindowProperty('Image with Heatmap', cv2.WND_PROP_VISIBLE) < 1:
+        cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
+        cv2.resizeWindow('Image with Heatmap', window_width, window_height)
 
-        # Přidání colorbaru vedle obrázku s mezerou
-        combined_image = np.ones((img_height, img_width + 4 * bar_width, 3), dtype=np.uint8) * 255
-        """combined_image[:img_height, :img_width] = img.copy()
-        combined_image[roi[0, 1]:roi[1, 1], roi[0, 0]:roi[1, 0]] = cv2.addWeighted(
-            combined_image[roi[0, 1]:roi[1, 1], roi[0, 0]:roi[1, 0]], alpha, cmap, 1 - alpha, 0)"""
-        combined_image[:img_height, :img_width] = cv2.addWeighted(img.copy(), alpha, cmap, 1 - alpha, 0)
-        combined_image[:, img_width + bar_width:, :] = color_bar
+    # Zobrazení obrázku s tepelnou mapou
+    cv2.imshow('Image with Heatmap', combined_image)
+    key = cv2.waitKey(1)  # Zpoždění 1 sekundy pro každý obrázek (1000 ms)
 
-        if cv2.getWindowProperty('Image with Heatmap', cv2.WND_PROP_VISIBLE) < 1:
-            cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
-            cv2.resizeWindow('Image with Heatmap', window_width, window_height)
-
-        # Zobrazení obrázku s tepelnou mapou
-        cv2.imshow('Image with Heatmap', combined_image)
-        key = cv2.waitKey(100)  # Zpoždění 1 sekundy pro každý obrázek (1000 ms)
-
-        # Kontrola stisknutí klávesy ESC
-        if key == 27:  # Kód pro klávesu ESC
-            break
-
-    # Kontrola stisknutí klávesy ESC v cyklu
-    if key == 27:
+    # Kontrola stisknutí klávesy ESC
+    if key == 27:  # Kód pro klávesu ESC
         break
 
 cv2.destroyAllWindows()
