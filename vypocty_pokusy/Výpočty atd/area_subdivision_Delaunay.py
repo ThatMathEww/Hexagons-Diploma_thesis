@@ -70,10 +70,10 @@ ax.set_ylim(-10, 10)  # Přizpůsobte rozsah grafu vašim potřebám
 plt.title('Vyberte body oblasti')
 x = [-10, 10]
 y = [0, 0]
-ax.plt(x, y, color='black', linewidth=0.8, linestyle='dashed')
+ax.plot(x, y, color='black', linewidth=0.8, linestyle='dashed')
 y = [-10, 10]
 x = [0, 0]
-ax.plt(x, y, color='black', linewidth=0.8, linestyle='dashed')
+ax.plot(x, y, color='black', linewidth=0.8, linestyle='dashed')
 plt.tight_layout()
 plt.grid()
 
@@ -92,7 +92,7 @@ polygon_points = np.array(polygon_points)
 tri = Delaunay(polygon_points)
 
 # Počet podrozdělení
-num_subdivisions = 2
+num_subdivisions = 5
 
 tri1, tri2 = tri, tri
 

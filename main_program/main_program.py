@@ -3429,12 +3429,12 @@ def point_tracking_calculation(use_correlation=True, interpolate_new_points=Fals
                 mask_2 = cv2.erode(cv2.dilate(mask_2, kernel, iterations=2), kernel, iterations=1)
                 masked_img_2 = cv2.bitwise_and(gray_2, gray_2, mask=mask_2)"""
 
-            # Odhad transformační matice
+            """# Odhad transformační matice
             transform_matrix1 = cv2.estimateAffine2D(current_key_points[:, 2:].astype(np.float32),
                                                      current_key_points[:, :2].astype(np.float32))[0]
 
             # Matice obsahuje informace o translaci (posunu) a rotaci
-            rotation1 = np.arctan2(transform_matrix1[1, 0], transform_matrix1[0, 0])
+            rotation1 = np.arctan2(transform_matrix1[1, 0], transform_matrix1[0, 0])"""
 
             transform_matrix = cv2.estimateAffinePartial2D(current_key_points[:, 2:].astype(np.float32),
                                                            current_key_points[:, :2].astype(np.float32))[0]
