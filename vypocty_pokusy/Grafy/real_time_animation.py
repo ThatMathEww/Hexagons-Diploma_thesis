@@ -290,7 +290,7 @@ for i, (label, y) in enumerate(zip(tick_labels, tick_positions)):
 combined_image = np.ones((img_height, img_width + 4 * bar_width, 3), dtype=np.uint8) * 255
 combined_image[:, img_width + bar_width:, :] = color_bar
 
-del color_bar, tick_labels, tick_positions, text_size, font_size, points, _, i, label, y, roi
+del color_bar, tick_labels, tick_positions, text_size, font_size, points, _, label, y, roi
 
 print("Window making...")
 cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
@@ -368,10 +368,10 @@ while True:
     tm = time.time()
     # Vytvoření kopie aktuálního obrázku pro aplikaci tepelné mapy
     cmap = np.zeros_like(reference_image, dtype=np.uint8)
-    for j, triangle_indices in enumerate(tri.simplices):
+    for i, triangle_indices in enumerate(tri.simplices):
         color = cv2.applyColorMap(
             np.uint8(normalize_value(
-                np.mean(def_roi[triangle_indices], axis=0)[direction] - first_cmap_values[j])).reshape(
+                np.mean(def_roi[triangle_indices], axis=0)[direction] - first_cmap_values[i])).reshape(
                 (1, 1)),
             cv2.COLORMAP_JET)[0][0].tolist()
         cv2.drawContours(cmap, [def_roi[triangle_indices].astype(int)], -1, color, -1)
