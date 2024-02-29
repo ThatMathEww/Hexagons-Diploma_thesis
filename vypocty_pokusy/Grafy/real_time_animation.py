@@ -31,14 +31,14 @@ def bar_down(_):
     down = int(img_height - cv2.getTrackbarPos("DOWN", "Crop"))
 
 
-def mark_rectangle_on_canvas(image):
+def mark_rectangle_on_canvas(source_image):
     def onselect(_, __):
         pass
 
     figure, axis = plt.subplots(num="Mark rectangle")
     axis.set_title("Mark rectangle", wrap=True)
 
-    axis.imshow(image)
+    axis.imshow(source_image)
     selector = RectangleSelector(axis, onselect, useblit=True, button=[1],
                                  minspanx=5, minspany=5, spancoords='pixels', interactive=True,
                                  props=dict(facecolor="yellowgreen", edgecolor="darkgreen", alpha=0.25,
@@ -81,19 +81,19 @@ def normalize_value(x):
     return ((min(max(x, min_value), max_value) - min_value) / (max_value - min_value)) * (255 - 0) + 0
 
 
-def process_reference_point(reference_point, p_old, p_new, radius):
+def process_reference_point(reference_point_, p_old_, p_new_):
     selected_ind = []
     c = 1
     while np.sum(selected_ind) < 6:
-        distances = np.linalg.norm(p_old - reference_point, axis=1)
+        distances = np.linalg.norm(p_old_ - reference_point_, axis=1)
         selected_ind = distances <= radius * c  # Výběr bodů vzdálených o distance
         c += 0.05
     # print("C:", c)
     """if c > 2.5:
         return"""
 
-    tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
-    def_roi_single = cv2.perspectiveTransform(np.float32(reference_point).reshape(-1, 1, 2), tran_mat)[0][0]
+    tran_mat = cv2.findHomography(p_old_[selected_ind], p_new_[selected_ind], cv2.RANSAC, 5.0)[0]
+    def_roi_single = cv2.perspectiveTransform(np.float32(reference_point_).reshape(-1, 1, 2), tran_mat)[0][0]
     return def_roi_single
 
 
@@ -212,6 +212,7 @@ roi = mark_rectangle_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB))
 points = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max(x_divider, 2), max(y_divider, 2))
 points = np.vstack([points[0].ravel(), points[1].ravel()]).T
 
+tri = None
 if triangulation_type == 'Mesh':
     # Delaunay triangulace
     tri = Delaunay(points)
@@ -297,6 +298,7 @@ cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
 cv2.resizeWindow('Image with Heatmap', window_width, window_height)
 
 # Cyklus pro vykreslení tepelné mapy na každý obrázek
+image = None
 while True:
     ttt = time.time()
     if source_type == 'webcam':
@@ -336,7 +338,7 @@ while True:
     p_old, p_new = np.array(p_old), np.array(p_new)
     # Use concurrent.futures to process reference_points in parallel
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = [executor.submit(process_reference_point, reference_point, p_old, p_new, radius)
+        results = [executor.submit(process_reference_point, reference_point, p_old, p_new)
                    for reference_point in tri.points]
 
         # Combine results
