@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 # from matplotlib.widgets import Button
 # from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import RectangleSelector
+import concurrent.futures
 
 
 def mark_rectangle_on_canvas(image):
@@ -60,31 +61,31 @@ def normalize_value(x):
     return ((min(max(x, min_value), max_value) - min_value) / (max_value - min_value)) * (255 - 0) + 0
 
 
-def make_eroded_mask(photo, average_area=25, threshold_value=6, dilate_area=50):
-    laplacian_kernel = np.float32([[0, 1, 0], [1, -4, 1], [0, 1, 0]])
-    detection_image = cv2.filter2D(photo.copy(), cv2.CV_8U, laplacian_kernel)  # Detekce hran ostré
+def process_reference_point(reference_point, p_old, p_new, radius):
+    selected_ind = []
+    c = 1
+    while np.sum(selected_ind) < 6:
+        distances = np.linalg.norm(p_old - reference_point, axis=1)
+        selected_ind = distances <= radius * c  # Výběr bodů vzdálených o distance
+        c += 0.05
+    # print("C:", c)
+    """if c > 2.5:
+        return"""
 
-    kernel = np.ones((average_area, average_area), dtype=np.float32) / (average_area ** 2)
-    blurred_image = cv2.filter2D(detection_image, -1, kernel)
-
-    _, binary_mask = cv2.threshold(blurred_image, threshold_value, 255, cv2.THRESH_BINARY)
-
-    # Morfologická operace dilatace pro spojení blízkých hran
-    kernel = np.ones((dilate_area, dilate_area), np.uint8)
-    dilated_mask2 = cv2.dilate(binary_mask, kernel, iterations=3)
-
-    # Morfologická operace eroze pro odstranění malých objektů a zúžení hran
-    mask2_eroded_lap = cv2.erode(dilated_mask2, kernel, iterations=2)
-    return mask2_eroded_lap
+    tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
+    def_roi_single = cv2.perspectiveTransform(np.float32(reference_point).reshape(-1, 1, 2), tran_mat)[0][0]
+    return def_roi_single
 
 
 # ROI
+triangulation_type = 'Mesh'  # Mesh // Delaunay
 num_subdivisions = 3  # Počet podrozdělení
-x_divider = 20
-y_divider = 4
+x_divider = 10
+y_divider = 3
+direction = 1  # 0 = x, 1 = y
 
 # Zdrojový typ
-webcam = 0
+webcam = 1
 source_type = 'photos'  # pohotos // webcam
 folder = r'foo'
 alpha = 0.5
@@ -98,30 +99,45 @@ num_ticks = 7
 # SIFT
 n_features = 0
 n_octave_layers = 3
-contrast_threshold = 0.08
+contrast_threshold = 0.015
 edge_threshold = 15
-sigma = 1.6
-precision = 0.65
-points_limit = 500
-radius = 50
-direction = 1
+sigma = 1.1
+radius = 150
 
 cv2.setUseOptimized(True)  # Zapnutí optimalizace (může využívat akceleraci)
 cv2.setNumThreads(cv2.getNumThreads())  # Přepnutí na použití CPU počet jader
 print("Počet využitých jader:", cv2.getNumThreads())
 
-# camera = cv2.VideoCapture(webcam, cv2.CAP_MSMF)  # cv2.CAP_ANY
+average_area = 25
+threshold_value = 6
+dilate_area = 50
+laplacian_kernel = np.float32([[0, 1, 0], [1, -4, 1], [0, 1, 0]])
+kernel1 = np.ones((average_area, average_area), dtype=np.float32) / (average_area ** 2)
+kernel2 = np.ones((dilate_area, dilate_area), np.uint8)
 
-# Seznam fotografií
-photos = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f)) and f.lower().endswith("jpg")]
-photos = sorted(photos, key=lambda filename: int(os.path.splitext(filename)[0].split("_")[-1]))
-photos = [photos[0], photos[11], photos[23], photos[35], photos[-1]]
+if source_type == 'webcam':
+    camera = cv2.VideoCapture(webcam, cv2.CAP_ANY)  # cv2.CAP_ANY // cv2.CAP_MSMF
+    # 4032×3040@10 fps; 3840×2160@20 fps; 2592×1944@30 fps; 2560×1440@30 fps; 1920×1080@60 fps; 1600×1200@50 fps;
+    # 1280×960@100 fps; 1280×760@100 fps; 640×480@80 fps
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+    camera.set(cv2.CAP_PROP_FPS, 10)
 
-photo = 0
-tot_photos = len(photos) - 1
-# images = [cv2.imread(os.path.join(folder, f)) for f in photos]
+    reference_image = None
+    for _ in range(2):
+        reference_image = camera.read()[1]
+        time.sleep(1)
 
-reference_image = cv2.imread(os.path.join(folder, photos[0]))
+elif source_type == 'photos':
+    # Seznam fotografií
+    photos = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f)) and f.lower().endswith("jpg")]
+    photos = sorted(photos, key=lambda filename: int(os.path.splitext(filename)[0].split("_")[-1]))
+    photos = [photos[0], photos[11], photos[23], photos[35], photos[-1]]
+
+    # images = [cv2.imread(os.path.join(folder, f)) for f in photos]
+    photo = 0
+    tot_photos = len(photos) - 1
+    reference_image = cv2.imread(os.path.join(folder, photos[0]))
 
 img_height, img_width = reference_image.shape[:2]
 
@@ -129,29 +145,27 @@ bar_width: int = round(max(100, min(img_width * 0.1, 200)))
 window_height = round(img_height / (img_width + 4 * bar_width) * window_width)
 
 # Označení oblasti
-# roi = mark_rectangle_on_canvas(cv2.cvtColor(images[0], cv2.COLOR_BGR2RGB))
-roi = np.array([[176, 256], [4150, 400]])
-
-"""# Definice hraničních bodů obdélníku
-points = np.array([roi[0], (roi[0, 0], roi[1, 1]), roi[1], (roi[1, 0], roi[0, 1])])"""
+roi = mark_rectangle_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB))
+# roi = np.array([[176, 256], [4150, 400]])
 
 X, Y = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max(x_divider, 2), max(y_divider, 2))
 points = np.vstack([X.ravel(), Y.ravel()]).T
 
-# Delaunay triangulace
-tri = Delaunay(points)
+if triangulation_type == 'Mesh':
+    # Delaunay triangulace
+    tri = Delaunay(points)
+elif triangulation_type == 'Delaunay':
+    # Podrozdělení triangulace
+    for _ in range(num_subdivisions):
+        tri = subdivide_triangulation(tri)
 
-"""# Podrozdělení triangulace
-for _ in range(num_subdivisions):
-    tri = subdivide_triangulation(tri)"""
-
-"""# Vykreslení trojúhelníků
+# Vykreslení trojúhelníků
 plt.figure()
 plt.gca().set_aspect('equal')
 plt.triplot(tri.points[:, 0], tri.points[:, 1], tri.simplices)
 plt.plot(tri.points[:, 0], tri.points[:, 1], 'o')
 plt.tight_layout()
-plt.show()"""
+plt.show()
 
 first_cmap_values = [np.mean(tri.points[triangle_indices], axis=0)[direction] for triangle_indices in tri.simplices]
 
@@ -172,8 +186,23 @@ mask = np.zeros(reference_image.shape[:2], dtype=np.uint8)
 mask[roi[0, 1]:roi[1, 1], roi[0, 0]:roi[1, 0]] = 255
 keypoints1, descriptors1 = sift.detectAndCompute(reference_image, mask)
 
-print("Colorbar making...")
+cv2.namedWindow('Image with keypoints', cv2.WINDOW_KEEPRATIO)
+cv2.resizeWindow('Image with keypoints', window_width, round(img_height / img_width * window_width))
+cv2.imshow('Image with keypoints',
+           cv2.drawKeypoints(reference_image, keypoints1, None, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS))
+cv2.waitKey(0)
+cv2.destroyAllWindows()
 
+# Detekce hran ostré
+detection_image = cv2.filter2D(cv2.cvtColor(reference_image, cv2.COLOR_BGR2GRAY), cv2.CV_8U, laplacian_kernel)
+blurred_image = cv2.filter2D(detection_image, -1, kernel1)
+binary_mask = cv2.threshold(blurred_image, threshold_value, 255, cv2.THRESH_BINARY)[1]
+# Morfologická operace dilatace pro spojení blízkých hran
+dilated_mask = cv2.dilate(binary_mask, kernel2, iterations=3)
+# Morfologická operace eroze pro odstranění malých objektů a zúžení hran
+mask = cv2.erode(dilated_mask, kernel2, iterations=2)
+
+print("Colorbar making...")
 color_bar = np.ones((img_height, 3 * bar_width, 3)) * 255
 color_bar[int(img_height * 0.05):int(img_height * 0.95), :bar_width, :] = cv2.resize(
     cv2.applyColorMap(np.arange(256, dtype=np.uint8)[::-1].reshape(1, 256).T, cv2.COLORMAP_JET),
@@ -202,30 +231,59 @@ cv2.resizeWindow('Image with Heatmap', window_width, window_height)
 key = None
 # Cyklus pro vykreslení tepelné mapy na každý obrázek
 while True:
-    if photo == tot_photos:
-        photo = 0
-    else:
-        photo += 1
-    image = cv2.imread(os.path.join(folder, photos[photo]))
+    ttt = time.time()
+    if source_type == 'webcam':
+        image = camera.read()[1]
+    elif source_type == 'photos':
+        if photo == tot_photos:
+            photo = 0
+        else:
+            photo += 1
+        image = cv2.imread(os.path.join(folder, photos[photo]))
 
-    # _, image = camera.read()
+    combined_image = np.ones((img_height, img_width + 4 * bar_width, 3), dtype=np.uint8) * 255
+    combined_image[:, img_width + bar_width:, :] = color_bar
 
-    keypoints2, descriptors2 = sift.detectAndCompute(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), None)
-    """im2 = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-    mask2 = make_eroded_mask(im2)
-    keypoints2, descriptors2 = sift.detectAndCompute(im2, mask2)"""
-    """im2 = cv2.cvtColor(images[i], cv2.COLOR_BGR2GRAY)
-    keypoints2 = fast.detect(im2, None)
-    keypoints2, descriptors2 = sift.compute(im2, keypoints2)"""
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+    tm = time.time()
+
+    detection_image = cv2.filter2D(gray_image, cv2.CV_8U, laplacian_kernel)  # Detekce hran ostré
+    blurred_image = cv2.filter2D(detection_image, -1, kernel1)
+    binary_mask = cv2.threshold(blurred_image, threshold_value, 255, cv2.THRESH_BINARY)[1]
+    # Morfologická operace dilatace pro spojení blízkých hran
+    dilated_mask = cv2.dilate(binary_mask, kernel2, iterations=3)
+    # Morfologická operace eroze pro odstranění malých objektů a zúžení hran
+    mask = cv2.erode(dilated_mask, kernel2, iterations=2)
+
+    keypoints2, descriptors2 = sift.detectAndCompute(gray_image, mask)
+
+    """keypoints2 = fast.detect(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), None)
+    keypoints2, descriptors2 = sift.compute(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), keypoints2)"""
+    print("\nSIFT time:", time.time() - tm)
+
+    tm = time.time()
     p_old, p_new = [], []
 
     for m in sorted(bf.match(descriptors1, descriptors2), key=lambda x: x.distance):
         p_old.extend([keypoints1[m.queryIdx].pt])
         p_new.extend([keypoints2[m.trainIdx].pt])
 
-    def_roi = np.empty((0, 2))
     p_old, p_new = np.array(p_old), np.array(p_new)
+    # Use concurrent.futures to process reference_points in parallel
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        results = [executor.submit(process_reference_point, reference_point, p_old, p_new, radius)
+                   for reference_point in tri.points]
+
+        # Combine results
+    def_roi = np.array([result.result() for result in results if result.result() is not None])
+
+    """
+    def_roi = np.array([process_reference_point(reference_point, p_old, p_new, radius) for reference_point in tri.points])
+    """
+
+    """# def_roi = []
+    def_roi = np.empty((0, 2))
     for reference_point in tri.points:
         selected_ind = []
         c = 1
@@ -236,9 +294,14 @@ while True:
             c += 0.05
 
         tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
+        # def_roi.extend([cv2.perspectiveTransform(np.float32(reference_point).reshape(-1, 1, 2), tran_mat)[0][0]])
         def_roi = np.vstack(
             [def_roi, cv2.perspectiveTransform(np.float32(reference_point).reshape(-1, 1, 2), tran_mat)[0][0]])
+    # def_roi = np.array(def_roi)"""
 
+    print("Homography time:", time.time() - tm)
+
+    tm = time.time()
     # Vytvoření kopie aktuálního obrázku pro aplikaci tepelné mapy
     cmap = np.zeros_like(reference_image, dtype=np.uint8)
     for j, triangle_indices in enumerate(tri.simplices):
@@ -250,9 +313,8 @@ while True:
         cv2.drawContours(cmap, [def_roi[triangle_indices].astype(int)], -1, color, -1)
 
     # Přidání colorbaru vedle obrázku s mezerou
-    combined_image = np.ones((img_height, img_width + 4 * bar_width, 3), dtype=np.uint8) * 255
     combined_image[:img_height, :img_width] = cv2.addWeighted(image, alpha, cmap, 1 - alpha, 0)
-    combined_image[:, img_width + bar_width:, :] = color_bar
+    print("Colorbar time:", time.time() - tm)
 
     if cv2.getWindowProperty('Image with Heatmap', cv2.WND_PROP_VISIBLE) < 1:
         cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
@@ -266,6 +328,9 @@ while True:
     if key == 27:  # Kód pro klávesu ESC
         break
 
+    print("Total time:", time.time() - ttt)
+
+camera.release()
 cv2.destroyAllWindows()
 
 if False:
