@@ -11,6 +11,26 @@ from matplotlib.widgets import RectangleSelector
 import concurrent.futures
 
 
+def bar_left(_):
+    global left
+    left = int(cv2.getTrackbarPos("LEFT", "Crop"))
+
+
+def bar_right(_):
+    global right
+    right = int(img_width - cv2.getTrackbarPos("RIGHT", "Crop"))
+
+
+def bar_top(_):
+    global top
+    top = int(cv2.getTrackbarPos("TOP", "Crop"))
+
+
+def bar_down(_):
+    global down
+    down = int(img_height - cv2.getTrackbarPos("DOWN", "Crop"))
+
+
 def mark_rectangle_on_canvas(image):
     def onselect(_, __):
         pass
@@ -85,8 +105,8 @@ y_divider = 3
 direction = 1  # 0 = x, 1 = y
 
 # Zdrojový typ
-webcam = 1
-source_type = 'photos'  # pohotos // webcam
+webcam = 0
+source_type = 'webcam'  # pohotos // webcam
 folder = r'foo'
 alpha = 0.5
 window_width = 1000
@@ -97,12 +117,12 @@ max_value = 130
 num_ticks = 7
 
 # SIFT
-n_features = 0
-n_octave_layers = 3
-contrast_threshold = 0.015
-edge_threshold = 15
-sigma = 1.1
-radius = 150
+n_features = 0  # 0 def = 0
+n_octave_layers = 1  # 3 def = 3
+contrast_threshold = 0.03  # 0.08 def = 0.04
+edge_threshold = 7  # 15 def = 10
+sigma = 1.6  # 1.6  def = 1.6
+radius = 200
 
 cv2.setUseOptimized(True)  # Zapnutí optimalizace (může využívat akceleraci)
 cv2.setNumThreads(cv2.getNumThreads())  # Přepnutí na použití CPU počet jader
@@ -138,7 +158,48 @@ elif source_type == 'photos':
     photo = 0
     tot_photos = len(photos) - 1
     reference_image = cv2.imread(os.path.join(folder, photos[0]))
+else:
+    raise ValueError("Neplatný zdroj dat!")  # Neplatný zdroj dat
 
+img_height, img_width = reference_image.shape[:2]
+left, right, top, down = 0, img_width, 0, img_height
+
+cv2.namedWindow('Reference Image', cv2.WINDOW_KEEPRATIO)
+cv2.resizeWindow('Reference Image', window_width, round(img_height / img_width * window_width))
+cv2.imshow('Reference Image', reference_image)
+
+cv2.namedWindow("Crop")
+cv2.resizeWindow("Crop", 700, 0)
+cv2.createTrackbar("LEFT", "Crop", int(left), int(img_width / 2) - 1, bar_left)
+cv2.createTrackbar("RIGHT", "Crop", img_width - right, int(img_width / 2) - 1, bar_right)
+cv2.createTrackbar("TOP", "Crop", int(top), int(img_height / 2) - 1, bar_top)
+cv2.createTrackbar("DOWN", "Crop", img_height - down, int(img_height / 2) - 1, bar_down)
+cv2.resizeWindow("Crop", 350, 85)
+
+key = None
+while True:
+    cv2.imshow('Reference Image', reference_image[top:down, left:right])
+
+    key = cv2.waitKey(1)  # Zpoždění 1 sekundy pro každý obrázek (1000 ms)
+    if key == 27:  # Kód pro klávesu ESC
+        break
+
+    if cv2.getWindowProperty('Reference Image', cv2.WND_PROP_VISIBLE) < 1:
+        cv2.namedWindow('Reference Image', cv2.WINDOW_KEEPRATIO)
+        cv2.resizeWindow('Reference Image', window_width, round(img_height / img_width * window_width))
+        cv2.imshow('Reference Image', reference_image[top:down, left:right])
+
+    if cv2.getWindowProperty("Crop", cv2.WND_PROP_VISIBLE) < 1:
+        cv2.namedWindow("Crop")
+        cv2.resizeWindow("Crop", 700, 0)
+        cv2.createTrackbar("LEFT:", "Crop", int(left), int(img_width / 2) - 1, bar_left)
+        cv2.createTrackbar("RIGHT:", "Crop", img_width - right, int(img_width / 2) - 1, bar_right)
+        cv2.createTrackbar("TOP:", "Crop", int(top), int(img_height / 2) - 1, bar_top)
+        cv2.createTrackbar("DOWN:", "Crop", img_height - down, int(img_height / 2) - 1, bar_down)
+        cv2.resizeWindow("Crop", 350, 85)
+cv2.destroyAllWindows()
+
+reference_image = reference_image[top:down, left:right]
 img_height, img_width = reference_image.shape[:2]
 
 bar_width: int = round(max(100, min(img_width * 0.1, 200)))
@@ -156,8 +217,10 @@ if triangulation_type == 'Mesh':
     tri = Delaunay(points)
 elif triangulation_type == 'Delaunay':
     # Podrozdělení triangulace
-    for _ in range(num_subdivisions):
+    for _ in range(max(num_subdivisions, 1)):
         tri = subdivide_triangulation(tri)
+else:
+    raise ValueError("Neplatný typ triangulace!")
 
 # Vykreslení trojúhelníků
 plt.figure()
@@ -224,25 +287,24 @@ for i, (label, y) in enumerate(zip(tick_labels, tick_positions)):
                 (0, 0, 0), round(font_size * 3), cv2.LINE_AA)
     cv2.line(color_bar, (bar_width, y), (int(bar_width * 1.15), y), (0, 0, 0), int(font_size * 2))
 
+combined_image = np.ones((img_height, img_width + 4 * bar_width, 3), dtype=np.uint8) * 255
+combined_image[:, img_width + bar_width:, :] = color_bar
+
 print("Window making...")
 cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
 cv2.resizeWindow('Image with Heatmap', window_width, window_height)
 
-key = None
 # Cyklus pro vykreslení tepelné mapy na každý obrázek
 while True:
     ttt = time.time()
     if source_type == 'webcam':
-        image = camera.read()[1]
+        image = camera.read()[1][down:top, left:right]
     elif source_type == 'photos':
         if photo == tot_photos:
             photo = 0
         else:
             photo += 1
-        image = cv2.imread(os.path.join(folder, photos[photo]))
-
-    combined_image = np.ones((img_height, img_width + 4 * bar_width, 3), dtype=np.uint8) * 255
-    combined_image[:, img_width + bar_width:, :] = color_bar
+        image = cv2.imread(os.path.join(folder, photos[photo]))[down:top, left:right]
 
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
