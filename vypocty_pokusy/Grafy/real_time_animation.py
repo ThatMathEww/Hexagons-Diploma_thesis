@@ -209,8 +209,8 @@ window_height = round(img_height / (img_width + 4 * bar_width) * window_width)
 roi = mark_rectangle_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB))
 # roi = np.array([[176, 256], [4150, 400]])
 
-X, Y = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max(x_divider, 2), max(y_divider, 2))
-points = np.vstack([X.ravel(), Y.ravel()]).T
+points = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max(x_divider, 2), max(y_divider, 2))
+points = np.vstack([points[0].ravel(), points[1].ravel()]).T
 
 if triangulation_type == 'Mesh':
     # Delaunay triangulace
@@ -289,6 +289,8 @@ for i, (label, y) in enumerate(zip(tick_labels, tick_positions)):
 
 combined_image = np.ones((img_height, img_width + 4 * bar_width, 3), dtype=np.uint8) * 255
 combined_image[:, img_width + bar_width:, :] = color_bar
+
+del color_bar, tick_labels, tick_positions, text_size, font_size, points, _, i, label, y, roi
 
 print("Window making...")
 cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
@@ -396,7 +398,6 @@ camera.release()
 cv2.destroyAllWindows()
 
 if False:
-
     # Funkce pro změnu proměnné
     def change_variable(_):
         global close_window
