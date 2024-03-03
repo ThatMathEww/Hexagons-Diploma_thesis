@@ -81,6 +81,12 @@ def normalize_value(x):
     return ((min(max(x, min_value), max_value) - min_value) / (max_value - min_value)) * (255 - 0) + 0
 
 
+@jit(nopython=True, fastmath=True, cache=True)
+def calc_strain(disp_points_, lenght_):
+    x1, y1 = (disp_points_[1] + disp_points_[2]) / 2
+    x2, y2 = (disp_points_[0] + disp_points_[3]) / 2
+    return 100 * (1 - (np.sqrt((x2 - x1)**2 + (y2 - y1)**2) / lenght_))
+
 def process_reference_point(reference_point_, p_old_, p_new_):
     selected_ind = []
     c = 1
@@ -103,8 +109,8 @@ cal_type = "Strain"  # Displacement // Strain
 # ROI
 triangulation_type = 'Mesh'  # Mesh // Delaunay
 num_subdivisions = 3  # Počet podrozdělení
-x_divider = 35
-y_divider = 12
+x_divider = 17
+y_divider = 5
 direction = 1  # 0 = x, 1 = y
 
 # Zdrojový typ
@@ -302,9 +308,10 @@ elif cal_type == 'Strain' or triangulation_type == 'Mesh':
     plt.tight_layout()
     plt.show()
 
-    del n
+    del n, roi_p
 
-    first_cmap_values = [np.mean(roi_points[indices], axis=0)[direction] for indices in roi_ind]
+    if cal_type != 'Strain':
+        first_cmap_values = [np.mean(roi_points[indices], axis=0)[direction] for indices in roi_ind]
 
 else:
     raise ValueError("Neplatný typ výpočtu!")
@@ -353,7 +360,7 @@ tick_labels[0] = f"{tick_labels[0]}   {'[%]' if cal_type == 'Strain' else '[mm]'
 # Rozmístění popisků podle výšky colorbaru
 tick_positions = np.linspace(int(img_height * 0.05), int(img_height * 0.95), num_ticks, endpoint=True).astype(int)
 
-text_size = np.max([cv2.getTextSize(l, cv2.FONT_HERSHEY_SIMPLEX, font_size, 10)[0] for l in tick_labels], axis=0)
+text_size = np.max([cv2.getTextSize(lab, cv2.FONT_HERSHEY_SIMPLEX, font_size, 10)[0] for lab in tick_labels], axis=0)
 
 if text_size[0] >= bar_width * 1.5:
     n = 2 + np.ceil(text_size[0] / bar_width)
@@ -375,6 +382,10 @@ combined_image = np.ones((img_height, int(img_width + n * bar_width), 3), dtype=
 combined_image[:, img_width + bar_width:, :] = color_bar
 
 del color_bar, tick_labels, tick_positions, text_size, font_size, label, y, roi, n, bar_width
+
+del contrast_threshold, edge_threshold, n_features, n_octave_layers, sigma, fast
+
+del plt, Delaunay, mark_rectangle_on_canvas, subdivide_triangulation, subdivide_roi, calc_strain
 
 print("Window making...")
 cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
@@ -466,15 +477,17 @@ while True:
                                                   np.mean((def_roi[i[0]], def_roi[i[-1]]), axis=0)) for i in
                                    roi_ind]) / original_length) * 100
 
+        # disp_diff = [calc_strain(def_roi[i], original_length) for i in roi_ind]
+
         """with concurrent.futures.ThreadPoolExecutor() as executor:
             results = [executor.submit(process_reference_point, reference_point, p_old, p_new)
                        for reference_point in roi_p]
 
             # Combine results
         disp_points = np.array(
-            [result.result() for result in results if result.result() is not None]).reshape(max_y, max_x, 2)"""
+            [result.result() for result in results if result.result() is not None]).reshape(max_y, max_x, 2)
 
-        """disp_diff = (1 - np.array([[np.linalg.norm(disp_points[_, i + 1] - disp_points[_, i]) for i in range(max_x - 1)]
+        disp_diff = (1 - np.array([[np.linalg.norm(disp_points[_, i + 1] - disp_points[_, i]) for i in range(max_x - 1)]
                                    for _ in range(max_y)]).ravel() / original_length) * 100"""
         # disp_diff = (1 - (np.diff(disp_points[:,:,0], axis=1) / original_length).ravel()) * 100
 
