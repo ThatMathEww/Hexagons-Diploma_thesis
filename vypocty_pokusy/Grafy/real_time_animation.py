@@ -67,7 +67,7 @@ def subdivide_triangulation(trin):
         [trin.points, np.array([[np.average([trin.points[triangle[0]], trin.points[triangle[1]]], axis=0),
                                  np.average([trin.points[triangle[1]], trin.points[triangle[2]]], axis=0),
                                  np.average([trin.points[triangle[2]], trin.points[triangle[0]]], axis=0)]
-                                for triangle in trin.simplices]).reshape(-1, 2)]))
+                                for triangle in trin.simplices], dtype=np.float32).reshape(-1, 2)]))
 
 
 def subdivide_roi(x_min, x_max, y_min, y_max, num_points_x, num_points_y):
@@ -85,17 +85,49 @@ def normalize_value(x):
 def calc_strain(disp_points_, lenght_):
     x1, y1 = (disp_points_[1] + disp_points_[2]) / 2
     x2, y2 = (disp_points_[0] + disp_points_[3]) / 2
-    return 100 * (1 - (np.sqrt((x2 - x1)**2 + (y2 - y1)**2) / lenght_))
+    return 100 * (1 - (np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) / lenght_))
 
-def process_reference_point(reference_point_, p_old_, p_new_):
-    selected_ind = []
-    c = 1
+
+# Funkce pro výpočet vzdálenosti mezi bodem a referenčním bodem
+def calculate_distances1(reference_point, p_old, radius):
+    c = 0.95
+    selected_ind = np.zeros(p_old.shape[0], dtype=bool)
+
+    # Výpočet vzdáleností
     while np.sum(selected_ind) < 6:
-        distances = np.linalg.norm(p_old_ - reference_point_, axis=1)
-        selected_ind = distances <= radius * c  # Výběr bodů vzdálených o distance
         c += 0.05
-    # print("C:", c)
-    """if c > 2.5:
+        distances = np.linalg.norm(p_old - reference_point, axis=1)
+        selected_ind = distances <= radius * c
+
+    return selected_ind
+
+
+@jit(nopython=True, fastmath=True, cache=True)
+def calculate_distances2(p_old, radius, c_min=0.95, c_step=0.05, min_points=6):
+    distances = np.sqrt((p_old[:, 0] ** 2) + (p_old[:, 1] ** 2))
+    selected_ind = np.zeros(p_old.shape[0], dtype=np.bool_)
+
+    for i in range(p_old.shape[0]):
+        c = c_min
+        while not np.any(selected_ind):
+            c += c_step
+            selected_ind = distances <= radius * c
+            if np.sum(selected_ind) >= min_points:
+                break
+
+    return selected_ind
+
+
+def process_reference_point(reference_point_, p_old_, p_new_, radius_):
+    selected_ind = []
+    c = 0.95
+    while np.sum(selected_ind) < 6:
+        c += 0.05
+        distances = np.linalg.norm(p_old_ - reference_point_, axis=1)
+        selected_ind = distances <= radius_ * c  # Výběr bodů vzdálených o distance
+    if c > 1:
+        print("C:", c)
+    """)if c > 2.5:
         return"""
 
     tran_mat = cv2.findHomography(p_old_[selected_ind], p_new_[selected_ind], cv2.RANSAC, 5.0)[0]
@@ -107,10 +139,10 @@ def process_reference_point(reference_point_, p_old_, p_new_):
 cal_type = "Strain"  # Displacement // Strain
 
 # ROI
-triangulation_type = 'Mesh'  # Mesh // Delaunay
+triangulation_type = 'Mesh'  # Mesh // TRI_Mesh // TRI_Delaunay
 num_subdivisions = 3  # Počet podrozdělení
-x_divider = 17
-y_divider = 5
+x_divider = 10  # 15
+y_divider = 6  # 5
 direction = 1  # 0 = x, 1 = y
 
 # Zdrojový typ
@@ -121,16 +153,16 @@ alpha = 0.5
 window_width = 1000
 
 # Definice hodnot popisků colorbaru
-min_value = -0.007 * 100  # -50 //  -0.027689934
-max_value = 0.007 * 100  # 130 // 0.33611658
+min_value = -0.7  # -20 //  -0.007 * 100
+max_value = 0.7  # 130 // 0.007 * 100
 num_ticks = 7
 
 # SIFT
 n_features = 0  # 0 def = 0
 n_octave_layers = 1  # 3 def = 3
 contrast_threshold = 0.03  # 0.08 def = 0.04
-edge_threshold = 7.5  # 15 def = 10
-sigma = 1.4  # 1.6  def = 1.6
+edge_threshold = 7.5  # 7, 15 def = 10
+sigma = 1.5  # 1.4  def = 1.6
 radius = 120  # 200
 
 cv2.setUseOptimized(True)  # Zapnutí optimalizace (může využívat akceleraci)
@@ -223,12 +255,14 @@ window_height = round(img_height / (img_width + 4 * bar_width) * window_width)
 
 # Označení oblasti
 # roi = mark_rectangle_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB))
-roi = np.array([[176, 256], [4150, 400]])
+roi = np.array([[170, 250], [4150, 420]])
 
 tri = None
 if cal_type == 'Displacement' or triangulation_type == 'TRI_Mesh' or triangulation_type == 'TRI_Delaunay':
     points = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max(x_divider, 2), max(y_divider, 2))
     points = np.vstack([points[0].ravel(), points[1].ravel()]).T
+
+    original_length = roi[1, 0] - roi[0, 0]
 
     if triangulation_type == 'TRI_Mesh':
         # Delaunay triangulace
@@ -248,8 +282,8 @@ if cal_type == 'Displacement' or triangulation_type == 'TRI_Mesh' or triangulati
     plt.figure()
     plt.gca().set_aspect('equal')
     plt.gca().invert_yaxis()
-    plt.triplot(roi_ind[:, 0], roi_ind[:, 1], roi_ind)
-    plt.plot(roi_ind[:, 0], roi_ind[:, 1], 'o')
+    plt.triplot(roi_points[:, 0], roi_points[:, 1], roi_ind)
+    plt.plot(roi_points[:, 0], roi_points[:, 1], 'o')
     plt.tight_layout()
     plt.show()
 
@@ -295,7 +329,7 @@ elif cal_type == 'Strain' or triangulation_type == 'Mesh':
 
     # Vykreslení trojúhelníků
     plt.figure()
-    # plt.gca().set_aspect('equal')
+    plt.gca().set_aspect('equal')
     plt.gca().invert_yaxis()
     plt.plot(roi_p[:, 0], roi_p[:, 1], 'o')
     plt.plot(roi_points[:, 0], roi_points[:, 1], 'o')
@@ -315,6 +349,8 @@ elif cal_type == 'Strain' or triangulation_type == 'Mesh':
 
 else:
     raise ValueError("Neplatný typ výpočtu!")
+
+len_roi = len(roi_points)
 
 sift = cv2.SIFT_create(
     nfeatures=n_features,  # __________________ Počet detekovaných rysů (0 = všechny dostupné) ______ def = 0
@@ -353,9 +389,12 @@ print("Colorbar making...")
 font_size = img_height * 0.9 / num_ticks / 65
 
 # Vytvoření popisků
-tick_labels = [str(int(value) if max_value.is_integer() and min_value.is_integer() else round(value, 3))
+condition = float(max_value).is_integer() and float(min_value).is_integer()
+tick_labels = [str(int(value) if condition else round(value, 3))
                for value in np.linspace(max_value, min_value, num_ticks)]
 tick_labels[0] = f"{tick_labels[0]}   {'[%]' if cal_type == 'Strain' else '[mm]'}"
+
+del condition
 
 # Rozmístění popisků podle výšky colorbaru
 tick_positions = np.linspace(int(img_height * 0.05), int(img_height * 0.95), num_ticks, endpoint=True).astype(int)
@@ -429,36 +468,64 @@ while True:
         p_old.extend([keypoints1[m.queryIdx].pt])
         p_new.extend([keypoints2[m.trainIdx].pt])
 
-    p_old, p_new = np.array(p_old), np.array(p_new)
+    p_old, p_new = np.array(p_old, dtype=np.float32), np.array(p_new, dtype=np.float32)
     # Use concurrent.futures to process reference_points in parallel
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = [executor.submit(process_reference_point, reference_point, p_old, p_new)
+    """with concurrent.futures.ThreadPoolExecutor() as executor:
+        results = [executor.submit(process_reference_point, reference_point, p_old, p_new, radius)
                    for reference_point in roi_points]
 
         # Combine results
-    def_roi = np.array([result.result() for result in results if result.result() is not None])
+    def_roi = np.array([result.result() for result in results if result.result() is not None], dtype=np.float32)"""
 
-    """
-    def_roi = np.array([process_reference_point(reference_point, p_old, p_new, radius) for reference_point in roi_points])
-    """
+    """def_roi = np.array([process_reference_point(reference_point, p_old, p_new, radius) for reference_point in roi_points], dtype=np.float32)"""
 
     """# def_roi = []
     def_roi = np.empty((0, 2))
-    for reference_point in roi_ind:
+    for reference_point in roi_points:
         selected_ind = []
-        c = 1
+        c = 0.95
         # Výpočet vzdálenosti mezi každým bodem a referenčním bodem
         while np.sum(selected_ind) < 6:
+            c += 0.05
             distances = np.linalg.norm(p_old - reference_point, axis=1)
             selected_ind = distances <= radius * c  # Výběr bodů vzdálených o distance
-            c += 0.05
 
         tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
         # def_roi.extend([cv2.perspectiveTransform(np.float32(reference_point).reshape(-1, 1, 2), tran_mat)[0][0]])
         def_roi = np.vstack(
             [def_roi, cv2.perspectiveTransform(np.float32(reference_point).reshape(-1, 1, 2), tran_mat)[0][0]])
-    # def_roi = np.array(def_roi)"""
+    # def_roi = np.array(def_roi, dtype=np.float32)"""
 
+    # def_roi = np.empty((0, 2), dtype=np.float32)
+
+    """for reference_point in roi_points:
+        selected_ind = calculate_distances2(p_old - reference_point, radius)
+        tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
+        transformed_point = cv2.perspectiveTransform(np.float32(reference_point).reshape(-1, 1, 2), tran_mat)[0][0]
+        def_roi = np.vstack([def_roi, transformed_point])"""
+
+    # Vektorizovaná verze funkce pro výpočet vzdáleností
+    vectorized_distances = np.vectorize(calculate_distances1, signature='(n),(m,n),()->(m)')
+
+    # Výpočet vzdáleností pro všechny referenční body
+    selected_indices = vectorized_distances(roi_points, p_old, radius)
+
+    def_roi = np.array([cv2.perspectiveTransform(
+        np.float32(reference_point).reshape(-1, 1, 2),
+        cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0])[0][0]
+                        for reference_point, selected_ind in zip(roi_points, selected_indices)], dtype=np.float32)
+    # def_roi = np.array(def_roi, dtype=np.float32)
+
+    """# Použití výsledků pro další výpočty nebo operace
+    for reference_point, selected_ind in zip(roi_points, selected_indices):
+        # tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
+        # transformed_point = cv2.perspectiveTransform(np.float32(reference_point).reshape(-1, 1, 2), tran_mat)[0][0]
+        # def_roi = np.vstack([def_roi, transformed_point])
+        def_roi = np.vstack([def_roi,
+                             cv2.perspectiveTransform(np.float32(reference_point).reshape(-1, 1, 2),
+                                                      cv2.findHomography(p_old[selected_ind], p_new[selected_ind],
+                                                                         cv2.RANSAC, 5.0)[0])[0][0]])"""
+    # def_roi[i] = transformed_point
     print("Homography time:", time.time() - tm)
 
     tm = time.time()
@@ -475,7 +542,7 @@ while True:
     elif cal_type == 'Strain':
         disp_diff = (1 - np.array([np.linalg.norm(np.mean((def_roi[i[1]], def_roi[i[2]]), axis=0) -
                                                   np.mean((def_roi[i[0]], def_roi[i[-1]]), axis=0)) for i in
-                                   roi_ind]) / original_length) * 100
+                                   roi_ind], dtype=np.float32) / original_length) * 100
 
         # disp_diff = [calc_strain(def_roi[i], original_length) for i in roi_ind]
 
@@ -485,10 +552,11 @@ while True:
 
             # Combine results
         disp_points = np.array(
-            [result.result() for result in results if result.result() is not None]).reshape(max_y, max_x, 2)
+            [result.result() for result in results if result.result() is not None], 
+            dtype=np.float32).reshape(max_y, max_x, 2)
 
         disp_diff = (1 - np.array([[np.linalg.norm(disp_points[_, i + 1] - disp_points[_, i]) for i in range(max_x - 1)]
-                                   for _ in range(max_y)]).ravel() / original_length) * 100"""
+                                   for _ in range(max_y)], dtype=np.float32).ravel() / original_length) * 100"""
         # disp_diff = (1 - (np.diff(disp_points[:,:,0], axis=1) / original_length).ravel()) * 100
 
         """# Vytvoření grafu
@@ -548,21 +616,21 @@ while True:
                 cv2.COLORMAP_JET)[0][0].tolist()
             cv2.drawContours(cmap, [def_roi[indices].astype(int)], -1, color, -1)
 
-        # Přidání colorbaru vedle obrázku s mezerou
-        combined_image[:img_height, :img_width] = cv2.addWeighted(image, alpha, cmap, 1 - alpha, 0)
-        print("Colorbar time:", time.time() - tm)
+    # Přidání colorbaru vedle obrázku s mezerou
+    combined_image[:img_height, :img_width] = cv2.addWeighted(image, alpha, cmap, 1 - alpha, 0)
+    print("Colorbar time:", time.time() - tm)
 
-        if cv2.getWindowProperty('Image with Heatmap', cv2.WND_PROP_VISIBLE) < 1:
-            cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
+    if cv2.getWindowProperty('Image with Heatmap', cv2.WND_PROP_VISIBLE) < 1:
+        cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
         cv2.resizeWindow('Image with Heatmap', window_width, window_height)
 
-        # Zobrazení obrázku s tepelnou mapou
-        cv2.imshow('Image with Heatmap', combined_image)
-        key = cv2.waitKey(1)  # Zpoždění 1 sekundy pro každý obrázek (1000 ms)
+    # Zobrazení obrázku s tepelnou mapou
+    cv2.imshow('Image with Heatmap', combined_image)
+    key = cv2.waitKey(1)  # Zpoždění 1 sekundy pro každý obrázek (1000 ms)
 
-        # Kontrola stisknutí klávesy ESC
-        if key == 27:  # Kód pro klávesu ESC
-            break
+    # Kontrola stisknutí klávesy ESC
+    if key == 27:  # Kód pro klávesu ESC
+        break
 
     print("Total time:", time.time() - ttt)
 
