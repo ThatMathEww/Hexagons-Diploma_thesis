@@ -7,7 +7,7 @@ from scipy.spatial import Delaunay
 import matplotlib.pyplot as plt
 # from matplotlib.widgets import Button
 # from matplotlib.animation import FuncAnimation
-from matplotlib.widgets import RectangleSelector
+from matplotlib.widgets import RectangleSelector, PolygonSelector
 import concurrent.futures
 
 
@@ -31,31 +31,77 @@ def bar_down(_):
     down = int(img_height - cv2.getTrackbarPos("DOWN", "Crop"))
 
 
-def mark_rectangle_on_canvas(source_image, name="Mark rectangle", face_color="yellowgreen", edge_color="darkgreen"):
-    def onselect(_, __):
+def grid_polygon(points_input, num_points_x, num_points_y):
+    if len(points_input) < 3:
+        return points_input
+
+    points_input = np.float64(points_input)
+    # Vypočítání středu bodů
+    center = np.mean(points_input, axis=0)
+
+    # Výpočet úhlů bodů od středu
+    angles = np.arctan2(points_input[:, 1] - center[1], points_input[:, 0] - center[0])
+
+    # Seřazení bodů podle úhlů
+    sorted_indices = np.argsort(angles)
+
+    # Přeuspořádání bodů
+    sorted_points = points_input[sorted_indices]
+
+    # Přesunutí prvního bodu na začátek
+    first_index = np.where(sorted_indices == 0)[0][0]
+    sorted_points = np.roll(sorted_points, -first_index, axis=0).reshape((-1, 2))
+
+    def divide(p1, p2, div):
+        x_p = np.linspace(p1[0], p2[0], div)
+        y_p = np.linspace(p1[1], p2[1], div)
+        return np.vstack([x_p, y_p]).T
+
+    grid_points = np.array([divide(d1, d2, num_points_y) for d1, d2 in
+                            zip(divide(sorted_points[0], sorted_points[1], num_points_x),
+                                divide(sorted_points[3], sorted_points[2], num_points_x))],
+                           dtype=np.float32).reshape(-1, 2)
+
+    return grid_points
+
+
+def mark_area_on_canvas(source_image, name="Mark rectangle", face_color="yellowgreen", edge_color="darkgreen",
+                        selecting_function="rectangle"):
+    def onselect(*__):
         pass
 
     figure, axis = plt.subplots(num=name)
     axis.set_title(name, wrap=True)
 
     axis.imshow(source_image)
-    selector = RectangleSelector(axis, onselect, useblit=True, button=[1],
-                                 minspanx=5, minspany=5, spancoords='pixels', interactive=True,
-                                 props=dict(facecolor=face_color, edgecolor=edge_color, alpha=0.25,
-                                            linestyle='dashed', linewidth=1.5))
+    if selecting_function == "rectangle":
+        selector = RectangleSelector(axis, onselect, useblit=True, button=[1],
+                                     minspanx=5, minspany=5, spancoords='pixels', interactive=True,
+                                     props=dict(facecolor=face_color, edgecolor=edge_color, alpha=0.25,
+                                                linestyle='dashed', linewidth=1.5))
+    elif selecting_function == "polygon":
+        selector = PolygonSelector(axis, onselect,
+                                   props=dict(color=edge_color, alpha=0.7, linestyle='dashed', linewidth=1.5),
+                                   useblit=True, draw_bounding_box=False,
+                                   box_props=dict(facecolor=face_color, edgecolor=edge_color, alpha=0.25,
+                                                  linewidth=1))
 
     axis.set_aspect('equal', adjustable='box')
     figure.tight_layout()
     axis.autoscale(True)
     plt.show()
 
-    rectangle = np.float64(selector.extents).reshape(2, 2).T
+    if selecting_function == "rectangle":
+        area = np.float64(selector.extents).reshape(2, 2).T
+    elif selecting_function == "polygon":
+        area = np.float64(selector.verts)
 
     # Procházení sloupců a nastavení horní hodnoty
-    for column, limit in enumerate((source_image.shape[1], source_image.shape[0])):
-        rectangle[:, column] = np.clip(rectangle[:, column], a_min=0, a_max=limit)
+    if len(area) > 0:
+        for column, limit in enumerate((source_image.shape[1], source_image.shape[0])):
+            area[:, column] = np.clip(area[:, column], a_min=0, a_max=limit)
 
-    return np.round(rectangle).astype(int)
+    return np.round(area).astype(int)
 
 
 def subdivide_triangulation(trin):
@@ -240,7 +286,7 @@ while True:
         cv2.resizeWindow("Crop", 350, 85)
 cv2.destroyAllWindows()"""
 
-"""left, top, right, down = mark_rectangle_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB), name="Crop photo",
+"""left, top, right, down = mark_area_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB), name="Crop photo",
                                                   face_color="pink", edge_color="firebrick").ravel()"""
 left, top, right, down = (0, 0, 0, 1)
 
@@ -254,15 +300,15 @@ bar_width: int = round(max(100, min(img_width * 0.1, 200)))
 window_height = round(img_height / (img_width + 4 * bar_width) * window_width)
 
 # Označení oblasti
-# roi = mark_rectangle_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB))
-roi = np.array([[170, 250], [4150, 420]])
+roi = mark_area_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB), selecting_function="rectangle")
+# roi = np.array([[170, 250], [4150, 420]])
 
 tri = None
-if cal_type == 'Displacement' or triangulation_type == 'TRI_Mesh' or triangulation_type == 'TRI_Delaunay':
+if cal_type == 'Displacement' and (triangulation_type == 'TRI_Mesh' or triangulation_type == 'TRI_Delaunay'):
     points = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max(x_divider, 2), max(y_divider, 2))
     points = np.vstack([points[0].ravel(), points[1].ravel()]).T
 
-    original_length = roi[1, 0] - roi[0, 0]
+    # points = grid_polygon(roi, max(x_divider, 2), max(y_divider, 2))
 
     if triangulation_type == 'TRI_Mesh':
         # Delaunay triangulace
@@ -297,6 +343,9 @@ elif cal_type == 'Strain' or triangulation_type == 'Mesh':
 
     roi_p = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max_x, max_y)
     roi_p = np.vstack([roi_p[0].ravel(), roi_p[1].ravel()]).T
+
+    # roi_p= grid_polygon(roi, max_x, max_y)
+
 
     original_length = roi_p[1, 0] - roi_p[0, 0]
 
@@ -424,7 +473,7 @@ del color_bar, tick_labels, tick_positions, text_size, font_size, label, y, roi,
 
 del contrast_threshold, edge_threshold, n_features, n_octave_layers, sigma, fast
 
-del plt, Delaunay, mark_rectangle_on_canvas, subdivide_triangulation, subdivide_roi, calc_strain
+del plt, Delaunay, mark_area_on_canvas, subdivide_triangulation, subdivide_roi, calc_strain
 
 print("Window making...")
 cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
