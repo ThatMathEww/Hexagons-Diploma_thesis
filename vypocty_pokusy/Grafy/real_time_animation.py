@@ -31,17 +31,17 @@ def bar_down(_):
     down = int(img_height - cv2.getTrackbarPos("DOWN", "Crop"))
 
 
-def mark_rectangle_on_canvas(source_image):
+def mark_rectangle_on_canvas(source_image, name="Mark rectangle", face_color="yellowgreen", edge_color="darkgreen"):
     def onselect(_, __):
         pass
 
-    figure, axis = plt.subplots(num="Mark rectangle")
-    axis.set_title("Mark rectangle", wrap=True)
+    figure, axis = plt.subplots(num=name)
+    axis.set_title(name, wrap=True)
 
     axis.imshow(source_image)
     selector = RectangleSelector(axis, onselect, useblit=True, button=[1],
                                  minspanx=5, minspany=5, spancoords='pixels', interactive=True,
-                                 props=dict(facecolor="yellowgreen", edgecolor="darkgreen", alpha=0.25,
+                                 props=dict(facecolor=face_color, edgecolor=edge_color, alpha=0.25,
                                             linestyle='dashed', linewidth=1.5))
 
     axis.set_aspect('equal', adjustable='box')
@@ -52,7 +52,7 @@ def mark_rectangle_on_canvas(source_image):
     rectangle = np.float64(selector.extents).reshape(2, 2).T
 
     # Procházení sloupců a nastavení horní hodnoty
-    for column, limit in enumerate((image.shape[1], image.shape[0])):
+    for column, limit in enumerate((source_image.shape[1], source_image.shape[0])):
         rectangle[:, column] = np.clip(rectangle[:, column], a_min=0, a_max=limit)
 
     return np.round(rectangle).astype(int)
@@ -97,32 +97,35 @@ def process_reference_point(reference_point_, p_old_, p_new_):
     return def_roi_single
 
 
+# Calculation
+cal_type = "Strain"  # Displacement // Strain
+
 # ROI
 triangulation_type = 'Mesh'  # Mesh // Delaunay
 num_subdivisions = 3  # Počet podrozdělení
-x_divider = 10
-y_divider = 3
+x_divider = 35
+y_divider = 12
 direction = 1  # 0 = x, 1 = y
 
 # Zdrojový typ
 webcam = 0
-source_type = 'webcam'  # pohotos // webcam
+source_type = 'photos'  # photos // webcam
 folder = r'foo'
 alpha = 0.5
 window_width = 1000
 
 # Definice hodnot popisků colorbaru
-min_value = -50
-max_value = 130
+min_value = -0.007 * 100  # -50 //  -0.027689934
+max_value = 0.007 * 100  # 130 // 0.33611658
 num_ticks = 7
 
 # SIFT
 n_features = 0  # 0 def = 0
 n_octave_layers = 1  # 3 def = 3
 contrast_threshold = 0.03  # 0.08 def = 0.04
-edge_threshold = 7  # 15 def = 10
-sigma = 1.6  # 1.6  def = 1.6
-radius = 200
+edge_threshold = 7.5  # 15 def = 10
+sigma = 1.4  # 1.6  def = 1.6
+radius = 120  # 200
 
 cv2.setUseOptimized(True)  # Zapnutí optimalizace (může využívat akceleraci)
 cv2.setNumThreads(cv2.getNumThreads())  # Přepnutí na použití CPU počet jader
@@ -161,7 +164,7 @@ elif source_type == 'photos':
 else:
     raise ValueError("Neplatný zdroj dat!")  # Neplatný zdroj dat
 
-img_height, img_width = reference_image.shape[:2]
+"""img_height, img_width = reference_image.shape[:2]
 left, right, top, down = 0, img_width, 0, img_height
 
 cv2.namedWindow('Reference Image', cv2.WINDOW_KEEPRATIO)
@@ -197,7 +200,14 @@ while True:
         cv2.createTrackbar("TOP:", "Crop", int(top), int(img_height / 2) - 1, bar_top)
         cv2.createTrackbar("DOWN:", "Crop", img_height - down, int(img_height / 2) - 1, bar_down)
         cv2.resizeWindow("Crop", 350, 85)
-cv2.destroyAllWindows()
+cv2.destroyAllWindows()"""
+
+"""left, top, right, down = mark_rectangle_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB), name="Crop photo",
+                                                  face_color="pink", edge_color="firebrick").ravel()"""
+left, top, right, down = (0, 0, 0, 1)
+
+if (left, top, right, down) == (0, 0, 0, 1):
+    left, top, right, down = 0, 0, reference_image.shape[1], reference_image.shape[0]
 
 reference_image = reference_image[top:down, left:right]
 img_height, img_width = reference_image.shape[:2]
@@ -206,32 +216,98 @@ bar_width: int = round(max(100, min(img_width * 0.1, 200)))
 window_height = round(img_height / (img_width + 4 * bar_width) * window_width)
 
 # Označení oblasti
-roi = mark_rectangle_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB))
-# roi = np.array([[176, 256], [4150, 400]])
-
-points = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max(x_divider, 2), max(y_divider, 2))
-points = np.vstack([points[0].ravel(), points[1].ravel()]).T
+# roi = mark_rectangle_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB))
+roi = np.array([[176, 256], [4150, 400]])
 
 tri = None
-if triangulation_type == 'Mesh':
-    # Delaunay triangulace
-    tri = Delaunay(points)
-elif triangulation_type == 'Delaunay':
-    # Podrozdělení triangulace
-    for _ in range(max(num_subdivisions, 1)):
-        tri = subdivide_triangulation(tri)
+if cal_type == 'Displacement' or triangulation_type == 'TRI_Mesh' or triangulation_type == 'TRI_Delaunay':
+    points = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max(x_divider, 2), max(y_divider, 2))
+    points = np.vstack([points[0].ravel(), points[1].ravel()]).T
+
+    if triangulation_type == 'TRI_Mesh':
+        # Delaunay triangulace
+        tri = Delaunay(points)
+    elif triangulation_type == 'TRI_Delaunay':
+        tri = Delaunay(points)
+        # Podrozdělení triangulace
+        for _ in range(max(num_subdivisions, 0)):
+            tri = subdivide_triangulation(tri)
+    else:
+        raise ValueError("Neplatný typ triangulace!")
+
+    roi_points = tri.points
+    roi_ind = tri.simplices
+
+    # Vykreslení trojúhelníků
+    plt.figure()
+    plt.gca().set_aspect('equal')
+    plt.gca().invert_yaxis()
+    plt.triplot(roi_ind[:, 0], roi_ind[:, 1], roi_ind)
+    plt.plot(roi_ind[:, 0], roi_ind[:, 1], 'o')
+    plt.tight_layout()
+    plt.show()
+
+    first_cmap_values = [np.mean(roi_points[indices], axis=0)[direction] for indices in roi_ind]
+
+    del points, tri
+
+elif cal_type == 'Strain' or triangulation_type == 'Mesh':
+    max_x = max(x_divider, 4)
+    max_y = max(y_divider, 4)
+
+    roi_p = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max_x, max_y)
+    roi_p = np.vstack([roi_p[0].ravel(), roi_p[1].ravel()]).T
+
+    original_length = roi_p[1, 0] - roi_p[0, 0]
+
+    if direction == 1:
+        roi_points = subdivide_roi(roi[0, 0], roi[1, 0],
+                                   np.average((roi_p[0, 1], roi_p[max_x, 1])),
+                                   np.average((roi_p[-max_x - 1, 1], roi_p[-1, 1])),
+                                   max_x, max_y - 1)
+        roi_points = np.vstack(
+            [np.concatenate([roi_p[:max_x, 0], roi_points[0].ravel(), roi_p[-max_x:, 0]]),
+             np.concatenate([roi_p[:max_x, 1], roi_points[1].ravel(), roi_p[-max_x:, 1]])]).T
+    elif direction == 0:
+        roi_points = subdivide_roi(np.average((roi_p[0, 0], roi_p[1, 0])),
+                                   np.average((roi_p[-2, 0], roi_p[-1, 0])),
+                                   np.average((roi_p[0, 1], roi_p[1, 1])),
+                                   np.average((roi_p[-2, 1], roi_p[-1, 1])),
+                                   max_x - 1, max_y)
+        roi_points = np.vstack([np.concatenate(
+            [roi_p[np.arange(0, len(roi_p), max_x, dtype=int), 0], roi_points[0].ravel(),
+             roi_p[np.arange(max_x - 1, len(roi_p), max_x, dtype=int), 0]]),
+            np.concatenate(
+                [roi_p[np.arange(0, len(roi_p), max_x, dtype=int), 1], roi_points[1].ravel(),
+                 roi_p[np.arange(max_x - 1, len(roi_p), max_x, dtype=int), 1]])]).T
+        roi_points = roi_points[np.lexsort((roi_points[:, 0], roi_points[:, 1]))]
+
+    roi_ind = []
+    n = 0 if direction == 1 else 1
+    [[roi_ind.append([i + j, i + 1 + j, i + 1 + n + max_x + j, i + n + max_x + j]) for i in range(max_x - direction)]
+     for j in range(0, (max_x * (max_y - n)), max_x + n)]
+
+    # Vykreslení trojúhelníků
+    plt.figure()
+    # plt.gca().set_aspect('equal')
+    plt.gca().invert_yaxis()
+    plt.plot(roi_p[:, 0], roi_p[:, 1], 'o')
+    plt.plot(roi_points[:, 0], roi_points[:, 1], 'o')
+    """for _ in range(len(disp_points)):
+        plt.text(disp_points[_, 0], disp_points[_, 1], f"{_}", fontsize=8)"""
+    # Vykreslení čtverců
+    for i in roi_ind:
+        plt.gca().add_patch(
+            plt.Polygon(roi_points[i], closed=True, facecolor=np.random.rand(1, 3), edgecolor='black', alpha=0.3))
+    plt.tight_layout()
+    plt.show()
+
+    del n
+
+    first_cmap_values = [np.mean(roi_points[indices], axis=0)[direction] for indices in roi_ind]
+
 else:
-    raise ValueError("Neplatný typ triangulace!")
-
-# Vykreslení trojúhelníků
-plt.figure()
-plt.gca().set_aspect('equal')
-plt.triplot(tri.points[:, 0], tri.points[:, 1], tri.simplices)
-plt.plot(tri.points[:, 0], tri.points[:, 1], 'o')
-plt.tight_layout()
-plt.show()
-
-first_cmap_values = [np.mean(tri.points[triangle_indices], axis=0)[direction] for triangle_indices in tri.simplices]
+    raise ValueError("Neplatný typ výpočtu!")
 
 sift = cv2.SIFT_create(
     nfeatures=n_features,  # __________________ Počet detekovaných rysů (0 = všechny dostupné) ______ def = 0
@@ -267,20 +343,27 @@ dilated_mask = cv2.dilate(binary_mask, kernel2, iterations=3)
 mask = cv2.erode(dilated_mask, kernel2, iterations=2)
 
 print("Colorbar making...")
-color_bar = np.ones((img_height, 3 * bar_width, 3)) * 255
-color_bar[int(img_height * 0.05):int(img_height * 0.95), :bar_width, :] = cv2.resize(
-    cv2.applyColorMap(np.arange(256, dtype=np.uint8)[::-1].reshape(1, 256).T, cv2.COLORMAP_JET),
-    (1, int(img_height * 0.9)))
-
 font_size = img_height * 0.9 / num_ticks / 65
 
 # Vytvoření popisků
-tick_labels = [str(int(value)) for value in np.linspace(max_value, min_value, num_ticks)]
+tick_labels = [str(int(value) if max_value.is_integer() and min_value.is_integer() else round(value, 3))
+               for value in np.linspace(max_value, min_value, num_ticks)]
+tick_labels[0] = f"{tick_labels[0]}   {'[%]' if cal_type == 'Strain' else '[mm]'}"
 
 # Rozmístění popisků podle výšky colorbaru
 tick_positions = np.linspace(int(img_height * 0.05), int(img_height * 0.95), num_ticks, endpoint=True).astype(int)
 
-text_size, _ = cv2.getTextSize(tick_labels[0], cv2.FONT_HERSHEY_SIMPLEX, font_size, 10)
+text_size = np.max([cv2.getTextSize(l, cv2.FONT_HERSHEY_SIMPLEX, font_size, 10)[0] for l in tick_labels], axis=0)
+
+if text_size[0] >= bar_width * 1.5:
+    n = 2 + np.ceil(text_size[0] / bar_width)
+else:
+    n = 4
+
+color_bar = np.ones((img_height, int((n - 1) * bar_width), 3)) * 255
+color_bar[int(img_height * 0.05):int(img_height * 0.95), :bar_width, :] = cv2.resize(
+    cv2.applyColorMap(np.arange(256, dtype=np.uint8)[::-1].reshape(1, 256).T, cv2.COLORMAP_JET),
+    (1, int(img_height * 0.9)))
 
 # Vykreslení popisků
 for i, (label, y) in enumerate(zip(tick_labels, tick_positions)):
@@ -288,10 +371,10 @@ for i, (label, y) in enumerate(zip(tick_labels, tick_positions)):
                 (0, 0, 0), round(font_size * 3), cv2.LINE_AA)
     cv2.line(color_bar, (bar_width, y), (int(bar_width * 1.15), y), (0, 0, 0), int(font_size * 2))
 
-combined_image = np.ones((img_height, img_width + 4 * bar_width, 3), dtype=np.uint8) * 255
+combined_image = np.ones((img_height, int(img_width + n * bar_width), 3), dtype=np.uint8) * 255
 combined_image[:, img_width + bar_width:, :] = color_bar
 
-del color_bar, tick_labels, tick_positions, text_size, font_size, points, _, label, y, roi
+del color_bar, tick_labels, tick_positions, text_size, font_size, label, y, roi, n, bar_width
 
 print("Window making...")
 cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
@@ -302,13 +385,13 @@ image = None
 while True:
     ttt = time.time()
     if source_type == 'webcam':
-        image = camera.read()[1][down:top, left:right]
+        image = camera.read()[1][top:down, left:right]
     elif source_type == 'photos':
         if photo == tot_photos:
             photo = 0
         else:
             photo += 1
-        image = cv2.imread(os.path.join(folder, photos[photo]))[down:top, left:right]
+        image = cv2.imread(os.path.join(folder, photos[photo]))[top:down, left:right]
 
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -339,18 +422,18 @@ while True:
     # Use concurrent.futures to process reference_points in parallel
     with concurrent.futures.ThreadPoolExecutor() as executor:
         results = [executor.submit(process_reference_point, reference_point, p_old, p_new)
-                   for reference_point in tri.points]
+                   for reference_point in roi_points]
 
         # Combine results
     def_roi = np.array([result.result() for result in results if result.result() is not None])
 
     """
-    def_roi = np.array([process_reference_point(reference_point, p_old, p_new, radius) for reference_point in tri.points])
+    def_roi = np.array([process_reference_point(reference_point, p_old, p_new, radius) for reference_point in roi_points])
     """
 
     """# def_roi = []
     def_roi = np.empty((0, 2))
-    for reference_point in tri.points:
+    for reference_point in roi_ind:
         selected_ind = []
         c = 1
         # Výpočet vzdálenosti mezi každým bodem a referenčním bodem
@@ -370,33 +453,108 @@ while True:
     tm = time.time()
     # Vytvoření kopie aktuálního obrázku pro aplikaci tepelné mapy
     cmap = np.zeros_like(reference_image, dtype=np.uint8)
-    for i, triangle_indices in enumerate(tri.simplices):
-        color = cv2.applyColorMap(
-            np.uint8(normalize_value(
-                np.mean(def_roi[triangle_indices], axis=0)[direction] - first_cmap_values[i])).reshape(
-                (1, 1)),
-            cv2.COLORMAP_JET)[0][0].tolist()
-        cv2.drawContours(cmap, [def_roi[triangle_indices].astype(int)], -1, color, -1)
+    if cal_type == 'Displacement':
+        for i, indices in enumerate(roi_ind):
+            color = cv2.applyColorMap(
+                np.uint8(normalize_value(
+                    np.mean(def_roi[indices], axis=0)[direction] - first_cmap_values[i])).reshape(
+                    (1, 1)),
+                cv2.COLORMAP_JET)[0][0].tolist()
+            cv2.drawContours(cmap, [def_roi[indices].astype(int)], -1, color, -1)
+    elif cal_type == 'Strain':
+        disp_diff = (1 - np.array([np.linalg.norm(np.mean((def_roi[i[1]], def_roi[i[2]]), axis=0) -
+                                                  np.mean((def_roi[i[0]], def_roi[i[-1]]), axis=0)) for i in
+                                   roi_ind]) / original_length) * 100
 
-    # Přidání colorbaru vedle obrázku s mezerou
-    combined_image[:img_height, :img_width] = cv2.addWeighted(image, alpha, cmap, 1 - alpha, 0)
-    print("Colorbar time:", time.time() - tm)
+        """with concurrent.futures.ThreadPoolExecutor() as executor:
+            results = [executor.submit(process_reference_point, reference_point, p_old, p_new)
+                       for reference_point in roi_p]
 
-    if cv2.getWindowProperty('Image with Heatmap', cv2.WND_PROP_VISIBLE) < 1:
-        cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
+            # Combine results
+        disp_points = np.array(
+            [result.result() for result in results if result.result() is not None]).reshape(max_y, max_x, 2)"""
+
+        """disp_diff = (1 - np.array([[np.linalg.norm(disp_points[_, i + 1] - disp_points[_, i]) for i in range(max_x - 1)]
+                                   for _ in range(max_y)]).ravel() / original_length) * 100"""
+        # disp_diff = (1 - (np.diff(disp_points[:,:,0], axis=1) / original_length).ravel()) * 100
+
+        """# Vytvoření grafu
+        fig, ax = plt.subplots()
+
+        # Vykreslení dat po řádcích
+        disp = np.array(
+            [result.result() for result in results if result.result() is not None]).reshape(max_y, max_x, 2)
+
+        scalar_map = plt.cm.ScalarMappable(cmap=str('jet'))
+        scalar_map.set_clim(vmin=min_value, vmax=max_value)
+        cbar = plt.colorbar(scalar_map, ax=ax)
+
+        n = 0
+        m = 0
+        l = 0
+        dd = []
+        for i in range(disp.shape[0]):
+            for j in range(disp.shape[1] - 1):
+                ax.plot(disp[i, j, 0], disp[i, j, 1], 'o')
+                dd.append(disp[i, j + 1, 0] - disp[i, j, 0])
+                # ax.text(disp[i, j, 0], disp[i, j, 1], f"{n}", fontsize=8)
+                n += 1
+        n = 0
+        for i in roi_ind:
+            # b = np.mean((def_roi[i[1]], def_roi[i[2]]), axis=0) - np.mean((def_roi[i[0]], def_roi[i[-1]]), axis=0)
+            d = 1 - (dd[n] / original_length)
+            plt.gca().add_patch(
+                plt.Polygon(def_roi[i], closed=True, facecolor=scalar_map.to_rgba(d), edgecolor='black',
+                            alpha=0.3))
+            ax.text(*np.mean(def_roi[i], axis=0), f"{n}", fontsize=8)
+            n += 1
+
+            m, l = m + 1, l + 1
+            if l == max_x - 1:
+                l = 0
+            if m == max_y - 1:
+                m = 0
+
+        # Zobrazení grafu
+        ax.invert_yaxis()
+        plt.show()"""
+
+        for i, indices in enumerate(roi_ind):
+            """d = (1 - ((np.mean((def_roi[indices[1]], def_roi[indices[2]]), axis=0) -
+                       np.mean((def_roi[indices[0]], def_roi[indices[-1]]), axis=0))[0] / original_length)) * 100"""
+
+            """d = (1 - (np.linalg.norm(np.mean((def_roi[indices[1]], def_roi[indices[2]]), axis=0) -
+                       np.mean((def_roi[indices[0]], def_roi[indices[-1]]), axis=0)) / original_length)) * 100
+
+            color = cv2.applyColorMap(
+                np.uint8(normalize_value(d)).reshape((1, 1)),
+                cv2.COLORMAP_JET)[0][0].tolist()"""
+
+            color = cv2.applyColorMap(
+                np.uint8(normalize_value(disp_diff[i])).reshape((1, 1)),
+                cv2.COLORMAP_JET)[0][0].tolist()
+            cv2.drawContours(cmap, [def_roi[indices].astype(int)], -1, color, -1)
+
+        # Přidání colorbaru vedle obrázku s mezerou
+        combined_image[:img_height, :img_width] = cv2.addWeighted(image, alpha, cmap, 1 - alpha, 0)
+        print("Colorbar time:", time.time() - tm)
+
+        if cv2.getWindowProperty('Image with Heatmap', cv2.WND_PROP_VISIBLE) < 1:
+            cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
         cv2.resizeWindow('Image with Heatmap', window_width, window_height)
 
-    # Zobrazení obrázku s tepelnou mapou
-    cv2.imshow('Image with Heatmap', combined_image)
-    key = cv2.waitKey(1)  # Zpoždění 1 sekundy pro každý obrázek (1000 ms)
+        # Zobrazení obrázku s tepelnou mapou
+        cv2.imshow('Image with Heatmap', combined_image)
+        key = cv2.waitKey(1)  # Zpoždění 1 sekundy pro každý obrázek (1000 ms)
 
-    # Kontrola stisknutí klávesy ESC
-    if key == 27:  # Kód pro klávesu ESC
-        break
+        # Kontrola stisknutí klávesy ESC
+        if key == 27:  # Kód pro klávesu ESC
+            break
 
     print("Total time:", time.time() - ttt)
 
-camera.release()
+if source_type == 'webcam':
+    camera.release()
 cv2.destroyAllWindows()
 
 if False:
