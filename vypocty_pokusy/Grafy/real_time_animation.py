@@ -362,11 +362,12 @@ elif cal_type == 'Strain' or triangulation_type == 'Mesh':
     roi_p = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max_x, max_y)
     roi_p = np.vstack([roi_p[0].ravel(), roi_p[1].ravel()]).T
 
-    roi_pp = grid_polygon(roi, max_x, max_y)
+    # roi_pp = grid_polygon(roi, max_x, max_y)
 
-    original_length = roi_p[1, 0] - roi_p[0, 0]
+    if direction == 0:
+        original_length = roi_p[1, 0] - roi_p[0, 0]
+        p1, p2, p3, p4 = 1, 2, 0, 3
 
-    if direction == 1:
         roi_points = subdivide_roi(roi[0, 0], roi[1, 0],
                                    np.average((roi_p[0, 1], roi_p[max_x, 1])),
                                    np.average((roi_p[-max_x - 1, 1], roi_p[-1, 1])),
@@ -374,7 +375,10 @@ elif cal_type == 'Strain' or triangulation_type == 'Mesh':
         roi_points = np.vstack(
             [np.concatenate([roi_p[:max_x, 0], roi_points[0].ravel(), roi_p[-max_x:, 0]]),
              np.concatenate([roi_p[:max_x, 1], roi_points[1].ravel(), roi_p[-max_x:, 1]])]).T
-    elif direction == 0:
+    elif direction == 1:
+        original_length = roi_p[1, 1] - roi_p[0, 1]
+        p1, p2, p3, p4 = 0, 1, 2, 3
+
         roi_points = subdivide_roi(np.average((roi_p[0, 0], roi_p[1, 0])),
                                    np.average((roi_p[-2, 0], roi_p[-1, 0])),
                                    np.average((roi_p[0, 1], roi_p[1, 1])),
@@ -389,9 +393,8 @@ elif cal_type == 'Strain' or triangulation_type == 'Mesh':
         roi_points = roi_points[np.lexsort((roi_points[:, 0], roi_points[:, 1]))]
 
     roi_ind = []
-    n = 0 if direction == 1 else 1
-    [[roi_ind.append([i + j, i + 1 + j, i + 1 + n + max_x + j, i + n + max_x + j]) for i in range(max_x - direction)]
-     for j in range(0, (max_x * (max_y - n)), max_x + n)]
+    [[roi_ind.append([i + j, i + 1 + j, i + 1 + direction + max_x + j, i + direction + max_x + j]) for i in
+      range(max_x - 0 if direction == 1 else 1)] for j in range(0, (max_x * (max_y - direction)), max_x + direction)]
 
     # Vykreslení trojúhelníků
     plt.figure()
@@ -485,11 +488,16 @@ for i, (label, y) in enumerate(zip(tick_labels, tick_positions)):
 combined_image = np.ones((img_height, int(img_width + n * bar_width), 3), dtype=np.uint8) * 255
 combined_image[:, img_width + bar_width:, :] = color_bar
 
+s = 100
+arrow_points = [[0, s], [s, s], [2 * s, s], [1.5 * s, s], [1.5 * s, s], [0.5 * s, s], [0.5 * s, s], [0, s]]
+d = 300
+arrow_points[4][1] = arrow_points[5][1] = d
+
+qr_codes = cv2.QRCodeEncoder()
+
 del color_bar, tick_labels, tick_positions, text_size, font_size, label, y, roi, n
 del bar_width, condition, bar_start, bar_end
-
 del contrast_threshold, edge_threshold, n_features, n_octave_layers, sigma, fast
-
 del plt, Delaunay, mark_area_on_canvas, subdivide_triangulation, subdivide_roi, calc_strain
 
 print("Window making...")
@@ -609,8 +617,8 @@ while True:
                 cv2.COLORMAP_JET)[0][0].tolist()
             cv2.drawContours(cmap, [def_roi[indices].astype(int)], -1, color, -1)
     elif cal_type == 'Strain':
-        disp_diff = (1 - np.array([np.linalg.norm(np.mean((def_roi[i[1]], def_roi[i[2]]), axis=0) -
-                                                  np.mean((def_roi[i[0]], def_roi[i[-1]]), axis=0)) for i in
+        disp_diff = (1 - np.array([np.linalg.norm(np.mean((def_roi[i[p1]], def_roi[i[p2]]), axis=0) -
+                                                  np.mean((def_roi[i[p3]], def_roi[i[p4]]), axis=0)) for i in
                                    roi_ind], dtype=np.float32) / original_length) * 100
 
         # disp_diff = [calc_strain(def_roi[i], original_length) for i in roi_ind]
