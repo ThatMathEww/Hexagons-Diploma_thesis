@@ -11,6 +11,17 @@ from matplotlib.widgets import RectangleSelector, PolygonSelector
 import concurrent.futures
 
 
+@jit(nopython=True, fastmath=True, cache=True)
+def rotate_points_180_degrees(input_points):
+    # Spočítání středu polygonu
+    center_point = np.array([np.sum(input_points[:, 0]) / len(input_points),
+                             np.sum(input_points[:, 1]) / len(input_points)], dtype=np.float32)
+
+    # Posun všech bodů tak, aby střed byl v počátku souřadnic
+    # Otočení bodů o 180 stupňů
+    # Posun všech bodů zpět na původní místo
+    return np.dot(input_points - center_point, np.array([[-1, 0], [0, -1]], dtype=np.float32)) + center_point
+
 def bar_left(_):
     global left
     left = int(cv2.getTrackbarPos("LEFT", "Crop"))
@@ -192,15 +203,17 @@ triangulation_type = 'Mesh'  # Mesh // TRI_Mesh // TRI_Delaunay
 num_subdivisions = 3  # Počet podrozdělení
 x_divider = 10  # 15
 y_divider = 6  # 5
-direction = 1  # 0 = x, 1 = y
+direction = 0  # 0 = x, 1 = y
 
 # Zdrojový typ
 webcam = 1
-source_type = 'webcam'  # photos // webcam
+source_type = 'photos'  # photos // webcam
 folder = r'foo'
+load_forces = True  # True // False
 forces_file = 'stock.txt'
 alpha = 0.5
 window_width = 1000
+scale_qr_ratio = 12 * 210 / 270  # mm * px-x / px-y
 
 # Definice hodnot popisků colorbaru
 min_value = -0.7  # -20 //  -0.007 * 100
@@ -287,10 +300,11 @@ while True:
         cv2.resizeWindow("Crop", 350, 85)
 cv2.destroyAllWindows()"""
 
-cv2.namedWindow('Reference Image', cv2.WINDOW_KEEPRATIO)
-cv2.resizeWindow('Reference Image', window_width, round(img_height / img_width * window_width))
-cv2.imshow('Reference Image', reference_image)
 if source_type == 'webcam':
+    cv2.namedWindow('Reference Image', cv2.WINDOW_KEEPRATIO)
+    cv2.resizeWindow('Reference Image', window_width, round(img_height / img_width * window_width))
+    cv2.imshow('Reference Image', reference_image)
+
     while True:
         reference_image = camera.read()[1]
         cv2.imshow('Reference Image', reference_image)
@@ -305,9 +319,9 @@ if source_type == 'webcam':
             cv2.imshow('Reference Image', reference_image)
     cv2.destroyAllWindows()
 
-left, top, right, down = mark_area_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB), name="Crop photo",
-                                             face_color="pink", edge_color="firebrick").ravel()
-# left, top, right, down = (0, 0, 0, 1)
+left, top, right, down = (0, 0, 0, 1)
+"""left, top, right, down = mark_area_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB), name="Crop photo",
+                                             face_color="pink", edge_color="firebrick").ravel()"""
 
 if (left, top, right, down) == (0, 0, 0, 1):
     left, top, right, down = 0, 0, reference_image.shape[1], reference_image.shape[0]
@@ -319,8 +333,8 @@ bar_width: int = round(max(100, min(img_width * 0.1, 200)))
 window_height = round(img_height / (img_width + 4 * bar_width) * window_width)
 
 # Označení oblasti
-roi = mark_area_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB), selecting_function="rectangle")
-# roi = np.array([[170, 250], [4150, 420]])
+roi = np.array([[170, 250], [4150, 420]])
+# roi = mark_area_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB), selecting_function="rectangle")
 
 tri = None
 if cal_type == 'Displacement' and (triangulation_type == 'TRI_Mesh' or triangulation_type == 'TRI_Delaunay'):
@@ -395,7 +409,7 @@ elif cal_type == 'Strain' or triangulation_type == 'Mesh':
 
     roi_ind = []
     [[roi_ind.append([i + j, i + 1 + j, i + 1 + direction + max_x + j, i + direction + max_x + j]) for i in
-      range(max_x - 0 if direction == 1 else 1)] for j in range(0, (max_x * (max_y - direction)), max_x + direction)]
+      range(max_x - (1 if direction == 0 else 0))] for j in range(0, (max_x * (max_y - direction)), max_x + direction)]
 
     # Vykreslení trojúhelníků
     plt.figure()
@@ -489,36 +503,55 @@ for i, (label, y) in enumerate(zip(tick_labels, tick_positions)):
 combined_image = np.ones((img_height, int(img_width + n * bar_width), 3), dtype=np.uint8) * 255
 combined_image[:, img_width + bar_width:, :] = color_bar
 
-s = 100
-arrow_points = [[0, s], [s, s], [2 * s, s], [1.5 * s, s], [1.5 * s, s], [0.5 * s, s], [0.5 * s, s], [0, s]]
-d = 300
-arrow_points[4][1] = arrow_points[5][1] = d
+print("QR detection making...")
+s = int(round(max(70, min(img_width * 0.025, 200))))
+arrow_cor = []
+arrow_colors = [(30, 144, 255)[::-1], (255, 165, 0)[::-1]]
+arrow_points = np.array(
+    [[-s, s], [0, 0], [s, s], [0.5 * s, s], [0.5 * s, s], [-0.5 * s, s], [-0.5 * s, s]], dtype=int)
+
+# TODO: Šipky
+# Přidání nových dat do souboru
+# open("stock.txt", "w").close()  # Vymazání obsahu souboru
+frame = 0
 
 scale = 1
-
 qr_decoder = cv2.QRCodeDetector()
 qr_decoder.setEpsX(0.2)  # Tolerance na nepřesnost v horizontálním směru
 qr_decoder.setEpsY(0.2)  # Tolerance na nepřesnost ve vertikálním směru
 
 # Najděte QR kódy v obraze
 success, decoded_info, points, _ = qr_decoder.detectAndDecodeMulti(cv2.cvtColor(reference_image, cv2.COLOR_BGR2GRAY))
+
 # Pokud byl QR kód nalezen
 if success:
+    points, decoded_info = zip(*sorted(zip(points, decoded_info), key=lambda x: int(x[1].split('#')[1])))
+    qr_size = []
     for i in range(len(decoded_info)):
-        print(f"QR codes {i + 1}: {decoded_info[i]}")
-        # Nakreslete obdelník kolem QR kódu
-        rect_points = points[i].astype(int)
-        cv2.polylines(reference_image, [rect_points], isClosed=True, color=(0, 255, 0), thickness=2)
+        print(f"\tQR codes {i + 1}: {decoded_info[i]}")
+        if ".*SP*." in decoded_info[i]:
+            qr_size.append(np.mean(np.abs(np.diff(np.mean(np.vstack([points[i], points[i][0]]), axis=1)))))
+            arrow_cor.append(arrow_points.copy() + np.mean(points[i], axis=0, dtype=int))
+            # Nakreslete polygon kolem QR kódu
+            cv2.polylines(reference_image, [points[i].astype(int)], isClosed=True, color=(0, 255, 0), thickness=5)
 
+    scale = scale_qr_ratio / np.mean(qr_size)
+    del qr_size, scale_qr_ratio
     # Zobrazte obrázek s označenými QR kódy
+    cv2.namedWindow('QR codes', cv2.WINDOW_KEEPRATIO)
+    cv2.resizeWindow('QR codes', window_width, round(img_height / img_width * window_width))
     cv2.imshow('QR codes', reference_image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-del color_bar, tick_labels, tick_positions, text_size, font_size, label, y, roi, n
+del color_bar, tick_labels, tick_positions, text_size, font_size, label, y, roi, n, s, arrow_points
 del bar_width, condition, bar_start, bar_end, qr_decoder, success, decoded_info, points, _
 del contrast_threshold, edge_threshold, n_features, n_octave_layers, sigma, fast, reference_image
-del plt, Delaunay, mark_area_on_canvas, subdivide_triangulation, subdivide_roi, calc_strain
+del mark_area_on_canvas, subdivide_triangulation, subdivide_roi, calc_strain
+del PolygonSelector, RectangleSelector, Delaunay
+if cal_type == 'Strain':
+    del scale
+del plt
 
 print("Window making...")
 cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
@@ -718,6 +751,22 @@ while True:
     print("Colorbar time:", time.time() - tm)
     err = 0
 
+    if load_forces:
+        # Načtení nových dat ze souboru
+        with open(forces_file, "r") as file:
+            forces = np.float64(file.readlines()[-1].strip().split(","))
+        for i, arrow in enumerate(arrow_cor, start=0):
+            arrow = arrow.copy()
+            arrow[4, 1] = arrow[5, 1] = arrow[4, 1] + abs(forces[i + 1]) * 0.5
+            if 0 > forces[i + 1]:
+                # arrow = rotate_points_180_degrees(arrow).astype(int)
+                # Spočítání středu polygonu
+                center = np.mean(arrow, axis=0)
+                arrow = arrow - center
+                # Posun všech bodů zpět na původní místo
+                arrow = np.int32(np.dot(arrow, np.array([[-1, 0], [0, -1]])) + center)
+            cv2.drawContours(combined_image, [arrow], -1, arrow_colors[i], -1)
+
     """except (cv2.error, Exception) as e:
         err += 1
         if err > 20:
@@ -740,6 +789,8 @@ while True:
 
 if source_type == 'webcam':
     camera.release()
+# plt.ioff()  # Vypnutí interaktivního režimu Matplotlib
+# plt.show()  # Zobrazení grafu (neblokující)
 cv2.destroyAllWindows()
 
 if False:
