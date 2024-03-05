@@ -32,7 +32,7 @@ def bar_down(_):
 
 
 def grid_polygon(points_input, num_points_x, num_points_y):
-    if len(points_input) < 3:
+    if len(points_input) != 4:
         return points_input
 
     points_input = np.float64(points_input)
@@ -57,10 +57,13 @@ def grid_polygon(points_input, num_points_x, num_points_y):
         y_p = np.linspace(p1[1], p2[1], div)
         return np.vstack([x_p, y_p]).T
 
-    grid_points = np.array([divide(d1, d2, num_points_y) for d1, d2 in
-                            zip(divide(sorted_points[0], sorted_points[1], num_points_x),
-                                divide(sorted_points[3], sorted_points[2], num_points_x))],
+    grid_points = np.array([divide(d1, d2, num_points_x) for d1, d2 in
+                            zip(divide(sorted_points[0], sorted_points[3], num_points_y),
+                                divide(sorted_points[1], sorted_points[2], num_points_y))],
                            dtype=np.float32).reshape(-1, 2)
+
+    """plt.scatter(grid_points[:, 0], grid_points[:, 1])
+    plt.show()"""
 
     return grid_points
 
@@ -192,8 +195,8 @@ y_divider = 6  # 5
 direction = 1  # 0 = x, 1 = y
 
 # Zdrojový typ
-webcam = 0
-source_type = 'photos'  # photos // webcam
+webcam = 1
+source_type = 'webcam'  # photos // webcam
 folder = r'foo'
 alpha = 0.5
 window_width = 1000
@@ -206,9 +209,9 @@ num_ticks = 7
 # SIFT
 n_features = 0  # 0 def = 0
 n_octave_layers = 1  # 3 def = 3
-contrast_threshold = 0.03  # 0.08 def = 0.04
-edge_threshold = 7.5  # 7, 15 def = 10
-sigma = 1.5  # 1.4  def = 1.6
+contrast_threshold = 0.02  # 0.08 def = 0.04
+edge_threshold = 6  # 7, 15 def = 10
+sigma = 1.15  # 1.4  def = 1.6
 radius = 120  # 200
 
 cv2.setUseOptimized(True)  # Zapnutí optimalizace (může využívat akceleraci)
@@ -230,10 +233,7 @@ if source_type == 'webcam':
     camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     camera.set(cv2.CAP_PROP_FPS, 10)
 
-    reference_image = None
-    for _ in range(2):
-        reference_image = camera.read()[1]
-        time.sleep(1)
+    reference_image = camera.read()[1]
 
 elif source_type == 'photos':
     # Seznam fotografií
@@ -248,8 +248,8 @@ elif source_type == 'photos':
 else:
     raise ValueError("Neplatný zdroj dat!")  # Neplatný zdroj dat
 
-"""img_height, img_width = reference_image.shape[:2]
-left, right, top, down = 0, img_width, 0, img_height
+img_height, img_width = reference_image.shape[:2]
+"""left, right, top, down = 0, img_width, 0, img_height
 
 cv2.namedWindow('Reference Image', cv2.WINDOW_KEEPRATIO)
 cv2.resizeWindow('Reference Image', window_width, round(img_height / img_width * window_width))
@@ -286,9 +286,27 @@ while True:
         cv2.resizeWindow("Crop", 350, 85)
 cv2.destroyAllWindows()"""
 
-"""left, top, right, down = mark_area_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB), name="Crop photo",
-                                                  face_color="pink", edge_color="firebrick").ravel()"""
-left, top, right, down = (0, 0, 0, 1)
+cv2.namedWindow('Reference Image', cv2.WINDOW_KEEPRATIO)
+cv2.resizeWindow('Reference Image', window_width, round(img_height / img_width * window_width))
+cv2.imshow('Reference Image', reference_image)
+if source_type == 'webcam':
+    while True:
+        reference_image = camera.read()[1]
+        cv2.imshow('Reference Image', reference_image)
+
+        key = cv2.waitKey(1)  # Zpoždění 1 sekundy pro každý obrázek (1000 ms)
+        if key == 27:  # Kód pro klávesu ESC
+            break
+
+        if cv2.getWindowProperty('Reference Image', cv2.WND_PROP_VISIBLE) < 1:
+            cv2.namedWindow('Reference Image', cv2.WINDOW_KEEPRATIO)
+            cv2.resizeWindow('Reference Image', window_width, round(img_height / img_width * window_width))
+            cv2.imshow('Reference Image', reference_image)
+    cv2.destroyAllWindows()
+
+left, top, right, down = mark_area_on_canvas(cv2.cvtColor(reference_image, cv2.COLOR_BGR2RGB), name="Crop photo",
+                                             face_color="pink", edge_color="firebrick").ravel()
+# left, top, right, down = (0, 0, 0, 1)
 
 if (left, top, right, down) == (0, 0, 0, 1):
     left, top, right, down = 0, 0, reference_image.shape[1], reference_image.shape[0]
@@ -344,8 +362,7 @@ elif cal_type == 'Strain' or triangulation_type == 'Mesh':
     roi_p = subdivide_roi(roi[0, 0], roi[1, 0], roi[0, 1], roi[1, 1], max_x, max_y)
     roi_p = np.vstack([roi_p[0].ravel(), roi_p[1].ravel()]).T
 
-    # roi_p= grid_polygon(roi, max_x, max_y)
-
+    roi_pp = grid_polygon(roi, max_x, max_y)
 
     original_length = roi_p[1, 0] - roi_p[0, 0]
 
@@ -391,7 +408,7 @@ elif cal_type == 'Strain' or triangulation_type == 'Mesh':
     plt.tight_layout()
     plt.show()
 
-    del n, roi_p
+    del roi_p
 
     if cal_type != 'Strain':
         first_cmap_values = [np.mean(roi_points[indices], axis=0)[direction] for indices in roi_ind]
@@ -443,9 +460,8 @@ tick_labels = [str(int(value) if condition else round(value, 3))
                for value in np.linspace(max_value, min_value, num_ticks)]
 tick_labels[0] = f"{tick_labels[0]}   {'[%]' if cal_type == 'Strain' else '[mm]'}"
 
-del condition
-
 # Rozmístění popisků podle výšky colorbaru
+bar_start, bar_end = int(img_height * 0.05), int(img_height * 0.95)
 tick_positions = np.linspace(int(img_height * 0.05), int(img_height * 0.95), num_ticks, endpoint=True).astype(int)
 
 text_size = np.max([cv2.getTextSize(lab, cv2.FONT_HERSHEY_SIMPLEX, font_size, 10)[0] for lab in tick_labels], axis=0)
@@ -458,7 +474,7 @@ else:
 color_bar = np.ones((img_height, int((n - 1) * bar_width), 3)) * 255
 color_bar[int(img_height * 0.05):int(img_height * 0.95), :bar_width, :] = cv2.resize(
     cv2.applyColorMap(np.arange(256, dtype=np.uint8)[::-1].reshape(1, 256).T, cv2.COLORMAP_JET),
-    (1, int(img_height * 0.9)))
+    (1, bar_end - bar_start))
 
 # Vykreslení popisků
 for i, (label, y) in enumerate(zip(tick_labels, tick_positions)):
@@ -469,7 +485,8 @@ for i, (label, y) in enumerate(zip(tick_labels, tick_positions)):
 combined_image = np.ones((img_height, int(img_width + n * bar_width), 3), dtype=np.uint8) * 255
 combined_image[:, img_width + bar_width:, :] = color_bar
 
-del color_bar, tick_labels, tick_positions, text_size, font_size, label, y, roi, n, bar_width
+del color_bar, tick_labels, tick_positions, text_size, font_size, label, y, roi, n
+del bar_width, condition, bar_start, bar_end
 
 del contrast_threshold, edge_threshold, n_features, n_octave_layers, sigma, fast
 
@@ -481,7 +498,9 @@ cv2.resizeWindow('Image with Heatmap', window_width, window_height)
 
 # Cyklus pro vykreslení tepelné mapy na každý obrázek
 image = None
+err = 0
 while True:
+    # try:
     ttt = time.time()
     if source_type == 'webcam':
         image = camera.read()[1][top:down, left:right]
@@ -526,7 +545,8 @@ while True:
         # Combine results
     def_roi = np.array([result.result() for result in results if result.result() is not None], dtype=np.float32)"""
 
-    """def_roi = np.array([process_reference_point(reference_point, p_old, p_new, radius) for reference_point in roi_points], dtype=np.float32)"""
+    """def_roi = np.array([process_reference_point(reference_point, p_old, p_new, radius) 
+    for reference_point in roi_points], dtype=np.float32)"""
 
     """# def_roi = []
     def_roi = np.empty((0, 2))
@@ -668,6 +688,13 @@ while True:
     # Přidání colorbaru vedle obrázku s mezerou
     combined_image[:img_height, :img_width] = cv2.addWeighted(image, alpha, cmap, 1 - alpha, 0)
     print("Colorbar time:", time.time() - tm)
+    err = 0
+
+    """except (cv2.error, Exception) as e:
+        err += 1
+        if err > 20:
+            raise e
+        pass"""
 
     if cv2.getWindowProperty('Image with Heatmap', cv2.WND_PROP_VISIBLE) < 1:
         cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
