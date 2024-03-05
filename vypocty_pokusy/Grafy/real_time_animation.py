@@ -198,6 +198,7 @@ direction = 1  # 0 = x, 1 = y
 webcam = 1
 source_type = 'webcam'  # photos // webcam
 folder = r'foo'
+forces_file = 'stock.txt'
 alpha = 0.5
 window_width = 1000
 
@@ -493,11 +494,30 @@ arrow_points = [[0, s], [s, s], [2 * s, s], [1.5 * s, s], [1.5 * s, s], [0.5 * s
 d = 300
 arrow_points[4][1] = arrow_points[5][1] = d
 
-qr_codes = cv2.QRCodeEncoder()
+scale = 1
+
+qr_decoder = cv2.QRCodeDetector()
+qr_decoder.setEpsX(0.2)  # Tolerance na nepřesnost v horizontálním směru
+qr_decoder.setEpsY(0.2)  # Tolerance na nepřesnost ve vertikálním směru
+
+# Najděte QR kódy v obraze
+success, decoded_info, points, _ = qr_decoder.detectAndDecodeMulti(cv2.cvtColor(reference_image, cv2.COLOR_BGR2GRAY))
+# Pokud byl QR kód nalezen
+if success:
+    for i in range(len(decoded_info)):
+        print(f"QR codes {i + 1}: {decoded_info[i]}")
+        # Nakreslete obdelník kolem QR kódu
+        rect_points = points[i].astype(int)
+        cv2.polylines(reference_image, [rect_points], isClosed=True, color=(0, 255, 0), thickness=2)
+
+    # Zobrazte obrázek s označenými QR kódy
+    cv2.imshow('QR codes', reference_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 del color_bar, tick_labels, tick_positions, text_size, font_size, label, y, roi, n
-del bar_width, condition, bar_start, bar_end
-del contrast_threshold, edge_threshold, n_features, n_octave_layers, sigma, fast
+del bar_width, condition, bar_start, bar_end, qr_decoder, success, decoded_info, points, _
+del contrast_threshold, edge_threshold, n_features, n_octave_layers, sigma, fast, reference_image
 del plt, Delaunay, mark_area_on_canvas, subdivide_triangulation, subdivide_roi, calc_strain
 
 print("Window making...")
@@ -607,12 +627,12 @@ while True:
 
     tm = time.time()
     # Vytvoření kopie aktuálního obrázku pro aplikaci tepelné mapy
-    cmap = np.zeros_like(reference_image, dtype=np.uint8)
+    cmap = np.zeros((img_height, img_width, 3), dtype=np.uint8)
     if cal_type == 'Displacement':
         for i, indices in enumerate(roi_ind):
             color = cv2.applyColorMap(
                 np.uint8(normalize_value(
-                    np.mean(def_roi[indices], axis=0)[direction] - first_cmap_values[i])).reshape(
+                    np.mean(def_roi[indices], axis=0)[direction] - first_cmap_values[i]) * scale).reshape(
                     (1, 1)),
                 cv2.COLORMAP_JET)[0][0].tolist()
             cv2.drawContours(cmap, [def_roi[indices].astype(int)], -1, color, -1)
