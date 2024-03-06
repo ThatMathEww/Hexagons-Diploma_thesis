@@ -6,7 +6,7 @@ import yaml
 
 # Defining the dimensions of checkerboard
 CHECKERBOARD = (6, 9)
-n = "1280x960"   # "1280x960" # "1920x1080" # "2560x1440" # "canon"
+n = "DIC"   # "1280x960" # "1920x1080" # "2560x1440" # "canon"
 
 output_file = f"calibration_{n}.yaml"
 images = glob.glob(f'./{n}/*.jpg')
@@ -45,14 +45,13 @@ for frame in images:
 
         img_points.append(corners2)
 
-        im = cv2.cvtColor(cv2.cvtColor(img.copy(), cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)
+        """im = cv2.cvtColor(cv2.cvtColor(img.copy(), cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR)        
+        
         # Nastavte tloušťku čáry
         line_thickness = 3
-
         # Nastavte velikost a tloušťku markeru
         marker_size = 20
         marker_thickness = 2
-
         # Nastavte velikost a tloušťku kolečka
         circle_radius = 10
         circle_thickness = 2
@@ -72,7 +71,7 @@ for frame in images:
         cv2.drawMarker(im, end_point, (30, 144, 255), markerType=cv2.CALIB_CB_MARKER, markerSize=marker_size,
                        thickness=marker_thickness)
 
-        cv2.circle(im, end_point, circle_radius, (30, 144, 255), thickness=circle_thickness)
+        cv2.circle(im, end_point, circle_radius, (30, 144, 255), thickness=circle_thickness)"""
         # cv2.imwrite(f"chess_.png", im)
         # Zobrazte výsledek
         # cv2.imshow('Vykreslené rohy', im)
@@ -83,9 +82,9 @@ for frame in images:
         img = cv2.drawChessboardCorners(img, CHECKERBOARD, corners2, ret)
 
     cv2.namedWindow('img', cv2.WINDOW_NORMAL)
-    cv2.namedWindow('corners', cv2.WINDOW_NORMAL)
+    # cv2.namedWindow('corners', cv2.WINDOW_NORMAL)
     cv2.imshow('img', img)
-    cv2.imshow('corners', im)
+    # cv2.imshow('corners', im)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -105,11 +104,11 @@ data = {'camera_matrix': np.asarray(mtx).tolist(), 'dist_coeff': np.asarray(dist
 
 i = 1
 while os.path.exists(output_file):
-    output_file = f"calibration_{i}.yaml"
+    output_file = output_file.split(".")[0] + f"_{i}.yaml"
     i += 1
 
 with open(output_file, "w") as f:
-    # yaml.dump(data, f)
+    yaml.dump(data, f)
     pass
 
 print("Camera matrix : \n")

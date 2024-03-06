@@ -8,8 +8,10 @@ def update(frame):
     global x_data, y_data1, y_data2
 
     with open("stock.txt", "a") as file:
-        new_data_point1 = np.random.uniform(-10, 10) * np.sin(frame / 10) + np.sqrt(frame)
-        new_data_point2 = np.random.uniform(-10, 10) * np.sin(frame / 10) + np.sqrt(frame)
+        new_data_point1 = np.random.uniform(-10, 10) * np.sin(frame / 10) + np.sqrt(frame) + (
+                    np.random.random() * -200) + 100
+        new_data_point2 = np.random.uniform(-10, 10) * np.sin(frame / 10) + np.sqrt(frame) + (
+                    np.random.random() * -200) + 100
         file.write(f"{frame},{new_data_point1},{new_data_point2}\n")
 
     # Načtení nových dat ze souboru
@@ -30,8 +32,8 @@ def update(frame):
     line1.set_data(x_data, y_data1)
     line2.set_data(x_data, y_data2)
     # Pokud je aktuální hodnota větší než maximální hodnota na ose y, aktualizuj rozsah osy y
-    if not (ax.get_ylim()[0] < input_data[1]+5 < ax.get_ylim()[1] or
-            ax.get_ylim()[0] < input_data[2]+5 < ax.get_ylim()[1]):
+    if not (ax.get_ylim()[0] < input_data[1] + 5 < ax.get_ylim()[1] or
+            ax.get_ylim()[0] < input_data[2] + 5 < ax.get_ylim()[1]):
         ax.set_ylim(np.min(np.vstack((y_data1, y_data2))) - 5, np.max(np.vstack((y_data1, y_data2))) + 5)
     # Pokud je aktuální hodnota větší než maximální hodnota na ose x, aktualizuj rozsah osy x
     if not ax.get_xlim()[0] < input_data[0] < ax.get_xlim()[1]:

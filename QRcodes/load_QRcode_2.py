@@ -6,7 +6,7 @@ import yaml
 import re
 
 # Název souboru s fotografií obsahující QR kód
-image_path = "photo.png"
+image_path = "photo.jpg"
 
 # Načtení obrázku
 image = cv2.imread(image_path)

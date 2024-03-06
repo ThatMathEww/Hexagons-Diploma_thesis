@@ -147,12 +147,13 @@ def main():
                     cam_fps=camera_fps)
 
         _, frame = capture.read()
-        # cv2.imwrite(f"1920x1080/WebCam_{i:03d}.jpg", frame)
+        cv2.imwrite(f"{folder}/WebCam_{i:03d}.jpg", frame)
         print("Uložení fotky číslo:", i)
         i += 1
 
 
 if __name__ == "__main__":
+    import os
     import cv2
     import numpy as np
 
@@ -160,7 +161,12 @@ if __name__ == "__main__":
     camera_height = 1080  # cam_height = 2160
     camera_fps = 60  # 100
 
-    speed_mode = True
+    speed_mode = False
+
+    folder = "DIC"
+
+    if not os.path.exists(folder):
+        os.makedirs(folder)
 
     # 4032×3040@10 fps; 3840×2160@20 fps; 2592×1944@30 fps; 2560×1440@30 fps; 1920×1080@60 fps; 1600×1200@50 fps;
     # 1280×960@100 fps; 1280×760@100 fps; 640×480@80 fps
