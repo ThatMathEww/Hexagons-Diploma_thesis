@@ -572,11 +572,6 @@ arrow_colors = [(30, 144, 255)[::-1], (255, 165, 0)[::-1]]
 arrow_points = np.array(
     [[-s, s], [0, 0], [s, s], [0.5 * s, s], [0.5 * s, s], [-0.5 * s, s], [-0.5 * s, s]], dtype=int)
 
-# TODO: Šipky
-# Přidání nových dat do souboru
-# open("stock.txt", "w").close()  # Vymazání obsahu souboru
-frame = 0
-
 scale = 1
 """qr_decoder = cv2.QRCodeDetector()
 qr_decoder.setEpsX(0.2)  # Tolerance na nepřesnost v horizontálním směru
@@ -887,11 +882,11 @@ while True:
     cv2.imshow('Image with Heatmap', combined_image)
     key = cv2.waitKey(1)  # Zpoždění 1 sekundy pro každý obrázek (1000 ms)
 
+    print("Total time:", time.time() - ttt)
+
     # Kontrola stisknutí klávesy ESC
     if key == 27:  # Kód pro klávesu ESC
         break
-
-    print("Total time:", time.time() - ttt)
 
 if source_type == 'webcam':
     camera.release()
