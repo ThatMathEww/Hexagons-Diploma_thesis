@@ -621,7 +621,7 @@ else:
 
 del color_bar, tick_labels, tick_positions, text_size, font_size, label, y, roi, n, s, arrow_points
 del bar_width, condition, bar_start, bar_end, decoded_object
-del contrast_threshold, edge_threshold, n_features, n_octave_layers, sigma, fast, reference_image
+del contrast_threshold, edge_threshold, n_features, n_octave_layers, sigma, reference_image
 del mark_area_on_canvas, subdivide_triangulation, subdivide_roi, calc_strain
 del PolygonSelector, RectangleSelector, Delaunay
 if cal_type == 'Strain':
@@ -634,7 +634,6 @@ cv2.resizeWindow('Image with Heatmap', window_width, window_height)
 
 # Cyklus pro vykreslení tepelné mapy na každý obrázek
 image = None
-# err = 0
 
 vectorized_distances = np.vectorize(calculate_distances1, signature='(n),(m,n),()->(m)')
 vectorized_homography = np.vectorize(calculate_def_roi, signature='(n,2),(n,2),(m,2),(),()->(m,2)')
@@ -642,206 +641,205 @@ vectorized_homography = np.vectorize(calculate_def_roi, signature='(n,2),(n,2),(
 
 while True:
     ttt = time.time()
-    # try:
-    if source_type == 'webcam':
-        image = cv2.undistort(camera.read()[1], mtx_loaded, dist_loaded, None, mtx_loaded)[top:down, left:right]
-    elif source_type == 'photos':
-        if photo == tot_photos:
-            photo = 0
-        else:
-            photo += 1
-        image = cv2.imread(os.path.join(folder, photos[photo]))[top:down, left:right]
+    try:
+        if source_type == 'webcam':
+            image = cv2.undistort(camera.read()[1], mtx_loaded, dist_loaded, None, mtx_loaded)[top:down, left:right]
+        elif source_type == 'photos':
+            if photo == tot_photos:
+                photo = 0
+            else:
+                photo += 1
+            image = cv2.imread(os.path.join(folder, photos[photo]))[top:down, left:right]
 
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    tm = time.time()
+        tm = time.time()
 
-    detection_image = cv2.filter2D(gray_image, cv2.CV_8U, laplacian_kernel)  # Detekce hran ostré
-    blurred_image = cv2.filter2D(detection_image, -1, kernel1)
-    binary_mask = cv2.threshold(blurred_image, threshold_value, 255, cv2.THRESH_BINARY)[1]
-    # Morfologická operace dilatace pro spojení blízkých hran
-    dilated_mask = cv2.dilate(binary_mask, kernel2, iterations=3)
-    # Morfologická operace eroze pro odstranění malých objektů a zúžení hran
-    mask = cv2.erode(dilated_mask, kernel2, iterations=2)
+        detection_image = cv2.filter2D(gray_image, cv2.CV_8U, laplacian_kernel)  # Detekce hran ostré
+        blurred_image = cv2.filter2D(detection_image, -1, kernel1)
+        binary_mask = cv2.threshold(blurred_image, threshold_value, 255, cv2.THRESH_BINARY)[1]
+        # Morfologická operace dilatace pro spojení blízkých hran
+        dilated_mask = cv2.dilate(binary_mask, kernel2, iterations=3)
+        # Morfologická operace eroze pro odstranění malých objektů a zúžení hran
+        mask = cv2.erode(dilated_mask, kernel2, iterations=2)
 
-    keypoints2, descriptors2 = sift.detectAndCompute(gray_image, mask)
+        keypoints2, descriptors2 = sift.detectAndCompute(gray_image, mask)
 
-    """keypoints2 = fast.detect(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), None)
-    keypoints2, descriptors2 = sift.compute(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), keypoints2)"""
-    print("\nSIFT time:", time.time() - tm)
+        """keypoints2 = fast.detect(gray_image, mask)
+        keypoints2, descriptors2 = sift.compute(gray_image, keypoints2)"""
 
-    tm = time.time()
-    p_old, p_new = [], []
+        print("\nSIFT time:", time.time() - tm)
 
-    for m in sorted(bf.match(descriptors1, descriptors2), key=lambda x: x.distance):
-        p_old.extend([keypoints1[m.queryIdx].pt])
-        p_new.extend([keypoints2[m.trainIdx].pt])
+        tm = time.time()
+        p_old, p_new = [], []
 
-    p_old, p_new = np.array(p_old, dtype=np.float32), np.array(p_new, dtype=np.float32)
-    # Use concurrent.futures to process reference_points in parallel
-    """# with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = [executor.submit(process_reference_point, reference_point, p_old, p_new, radius)
-                   for reference_point in roi_points]
+        for m in sorted(bf.match(descriptors1, descriptors2), key=lambda x: x.distance):
+            p_old.extend([keypoints1[m.queryIdx].pt])
+            p_new.extend([keypoints2[m.trainIdx].pt])
 
-        # Combine results
-    def_roi = np.array([result.result() for result in results if result.result() is not None], dtype=np.float32)
-    """
-
-    """def_roi = np.array([process_reference_point(reference_point, p_old, p_new, radius) 
-    for reference_point in roi_points], dtype=np.float32)"""
-
-    """# def_roi = []
-    def_roi = np.empty((0, 2))
-    for reference_point in roi_points:
-        selected_ind = []
-        c = 0.95
-        # Výpočet vzdálenosti mezi každým bodem a referenčním bodem
-        while np.sum(selected_ind) < 6:
-            c += 0.05
-            distances = np.linalg.norm(p_old - reference_point, axis=1)
-            selected_ind = distances <= radius * c  # Výběr bodů vzdálených o distance
-
-        tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
-        # def_roi.extend([cv2.perspectiveTransform(reference_point.reshape(-1, 1, 2), 
-        tran_mat)[0][0]])
-        def_roi = np.vstack(
-            [def_roi, cv2.perspectiveTransform(reference_point.reshape(-1, 1, 2), 
-            tran_mat)[0][0]])
-    # def_roi = np.array(def_roi, dtype=np.float32)"""
-
-    # def_roi = np.empty((0, 2), dtype=np.float32)
-
-    """for reference_point in roi_points:
-        selected_ind = calculate_distances2(p_old - reference_point, radius)
-        tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
-        transformed_point = cv2.perspectiveTransform(reference_point.reshape(-1, 1, 2), 
-        tran_mat)[0][0]
-        def_roi = np.vstack([def_roi, transformed_point])"""
-
-    # def_roi = calculate_def_roi(p_old, p_new, roi_points, radius, num_cores)
-    def_roi = vectorized_homography(p_old, p_new, roi_points, radius, num_cores)
-
-    # Vektorizovaná verze funkce pro výpočet vzdáleností
-    """selected_indices = vectorized_distances(roi_points, p_old, radius)
-
-    def_roi = np.array([cv2.perspectiveTransform(
-        reference_point.reshape(-1, 1, 2),
-        cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0])[0][0]
-                        for reference_point, selected_ind in zip(roi_points, selected_indices)],
-                       dtype=np.float32)"""
-    # def_roi = np.array(def_roi, dtype=np.float32)
-
-    """# Použití výsledků pro další výpočty nebo operace
-    for reference_point, selected_ind in zip(roi_points, selected_indices):
-        # tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
-        # transformed_point = cv2.perspectiveTransform(reference_point.reshape(-1, 1, 2),
-         tran_mat)[0][0]
-        # def_roi = np.vstack([def_roi, transformed_point])
-        def_roi = np.vstack([def_roi,
-                             cv2.perspectiveTransform(
-                             reference_point.reshape(-1, 1, 2),
-                              cv2.findHomography(p_old[selected_ind], p_new[selected_ind],                                                                                 
-                              cv2.RANSAC, 5.0)[0])[0][0]])"""
-    # def_roi[i] = transformed_point
-    print("Homography time:", time.time() - tm)
-
-    tm = time.time()
-    # Vytvoření kopie aktuálního obrázku pro aplikaci tepelné mapy
-    cmap = np.zeros((img_height, img_width, 3), dtype=np.uint8)
-    if cal_type == 'Displacement':
-        for i, indices in enumerate(roi_ind):
-            color = cv2.applyColorMap(
-                np.uint8(normalize_value(
-                    np.mean(def_roi[indices], axis=0)[direction] - first_cmap_values[i]) * scale).reshape(
-                    (1, 1)),
-                cv2.COLORMAP_JET)[0][0].tolist()
-            cv2.drawContours(cmap, [def_roi[indices].astype(int)], -1, color, -1)
-    elif cal_type == 'Strain':
-        disp_diff = (1 - np.array([np.linalg.norm(np.mean((def_roi[i[p1]], def_roi[i[p2]]), axis=0) -
-                                                  np.mean((def_roi[i[p3]], def_roi[i[p4]]), axis=0)) for i in
-                                   roi_ind], dtype=np.float32) / original_length) * 100
-
-        # disp_diff = [calc_strain(def_roi[i], original_length) for i in roi_ind]
-
+        p_old, p_new = np.array(p_old, dtype=np.float32), np.array(p_new, dtype=np.float32)
+        # Use concurrent.futures to process reference_points in parallel
         """# with concurrent.futures.ThreadPoolExecutor() as executor:
-            results = [executor.submit(process_reference_point, reference_point, p_old, p_new)
-                       for reference_point in roi_p]
-
+            results = [executor.submit(process_reference_point, reference_point, p_old, p_new, radius)
+                       for reference_point in roi_points]
+        
             # Combine results
-        disp_points = np.array(
-            [result.result() for result in results if result.result() is not None], 
-            dtype=np.float32).reshape(max_y, max_x, 2)
+        def_roi = np.array([result.result() for result in results if result.result() is not None], dtype=np.float32)
+        """
 
-        disp_diff = (1 - np.array([[np.linalg.norm(disp_points[_, i + 1] - disp_points[_, i]) 
-        for i in range(max_x - 1)] for _ in range(max_y)], dtype=np.float32).ravel() / original_length) * 100"""
-        # disp_diff = (1 - (np.diff(disp_points[:,:,0], axis=1) / original_length).ravel()) * 100
+        """def_roi = np.array([process_reference_point(reference_point, p_old, p_new, radius) 
+        for reference_point in roi_points], dtype=np.float32)"""
 
-        """# Vytvoření grafu
-        fig, ax = plt.subplots()
+        """# def_roi = []
+        def_roi = np.empty((0, 2))
+        for reference_point in roi_points:
+            selected_ind = []
+            c = 0.95
+            # Výpočet vzdálenosti mezi každým bodem a referenčním bodem
+            while np.sum(selected_ind) < 6:
+                c += 0.05
+                distances = np.linalg.norm(p_old - reference_point, axis=1)
+                selected_ind = distances <= radius * c  # Výběr bodů vzdálených o distance
+        
+            tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
+            # def_roi.extend([cv2.perspectiveTransform(reference_point.reshape(-1, 1, 2), 
+            tran_mat)[0][0]])
+            def_roi = np.vstack(
+                [def_roi, cv2.perspectiveTransform(reference_point.reshape(-1, 1, 2), 
+                tran_mat)[0][0]])
+        # def_roi = np.array(def_roi, dtype=np.float32)"""
 
-        # Vykreslení dat po řádcích
-        disp = np.array(
-            [result.result() for result in results if result.result() is not None]).reshape(max_y, max_x, 2)
+        # def_roi = np.empty((0, 2), dtype=np.float32)
 
-        scalar_map = plt.cm.ScalarMappable(cmap=str('jet'))
-        scalar_map.set_clim(vmin=min_value, vmax=max_value)
-        cbar = plt.colorbar(scalar_map, ax=ax)
+        """for reference_point in roi_points:
+            selected_ind = calculate_distances2(p_old - reference_point, radius)
+            tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
+            transformed_point = cv2.perspectiveTransform(reference_point.reshape(-1, 1, 2), 
+            tran_mat)[0][0]
+            def_roi = np.vstack([def_roi, transformed_point])"""
 
-        n = 0
-        m = 0
-        l = 0
-        dd = []
-        for i in range(disp.shape[0]):
-            for j in range(disp.shape[1] - 1):
-                ax.plot(disp[i, j, 0], disp[i, j, 1], 'o')
-                dd.append(disp[i, j + 1, 0] - disp[i, j, 0])
-                # ax.text(disp[i, j, 0], disp[i, j, 1], f"{n}", fontsize=8)
+        # def_roi = calculate_def_roi(p_old, p_new, roi_points, radius, num_cores)
+        def_roi = vectorized_homography(p_old, p_new, roi_points, radius, num_cores)
+
+        # Vektorizovaná verze funkce pro výpočet vzdáleností
+        """selected_indices = vectorized_distances(roi_points, p_old, radius)
+        
+        def_roi = np.array([cv2.perspectiveTransform(
+            reference_point.reshape(-1, 1, 2),
+            cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0])[0][0]
+                            for reference_point, selected_ind in zip(roi_points, selected_indices)],
+                           dtype=np.float32)"""
+        # def_roi = np.array(def_roi, dtype=np.float32)
+
+        """# Použití výsledků pro další výpočty nebo operace
+        for reference_point, selected_ind in zip(roi_points, selected_indices):
+            # tran_mat = cv2.findHomography(p_old[selected_ind], p_new[selected_ind], cv2.RANSAC, 5.0)[0]
+            # transformed_point = cv2.perspectiveTransform(reference_point.reshape(-1, 1, 2),
+             tran_mat)[0][0]
+            # def_roi = np.vstack([def_roi, transformed_point])
+            def_roi = np.vstack([def_roi,
+                                 cv2.perspectiveTransform(
+                                 reference_point.reshape(-1, 1, 2),
+                                  cv2.findHomography(p_old[selected_ind], p_new[selected_ind],                                                                                 
+                                  cv2.RANSAC, 5.0)[0])[0][0]])"""
+        # def_roi[i] = transformed_point
+        print("Homography time:", time.time() - tm)
+
+        tm = time.time()
+        # Vytvoření kopie aktuálního obrázku pro aplikaci tepelné mapy
+        cmap = np.zeros((img_height, img_width, 3), dtype=np.uint8)
+        if cal_type == 'Displacement':
+            for i, indices in enumerate(roi_ind):
+                color = cv2.applyColorMap(
+                    np.uint8(normalize_value(
+                        np.mean(def_roi[indices], axis=0)[direction] - first_cmap_values[i]) * scale).reshape(
+                        (1, 1)),
+                    cv2.COLORMAP_JET)[0][0].tolist()
+                cv2.drawContours(cmap, [def_roi[indices].astype(int)], -1, color, -1)
+        elif cal_type == 'Strain':
+            disp_diff = (1 - np.array([np.linalg.norm(np.mean((def_roi[i[p1]], def_roi[i[p2]]), axis=0) -
+                                                      np.mean((def_roi[i[p3]], def_roi[i[p4]]), axis=0)) for i in
+                                       roi_ind], dtype=np.float32) / original_length) * 100
+
+            # disp_diff = [calc_strain(def_roi[i], original_length) for i in roi_ind]
+
+            """# with concurrent.futures.ThreadPoolExecutor() as executor:
+                results = [executor.submit(process_reference_point, reference_point, p_old, p_new)
+                           for reference_point in roi_p]
+        
+                # Combine results
+            disp_points = np.array(
+                [result.result() for result in results if result.result() is not None], 
+                dtype=np.float32).reshape(max_y, max_x, 2)
+        
+            disp_diff = (1 - np.array([[np.linalg.norm(disp_points[_, i + 1] - disp_points[_, i]) 
+            for i in range(max_x - 1)] for _ in range(max_y)], dtype=np.float32).ravel() / original_length) * 100"""
+            # disp_diff = (1 - (np.diff(disp_points[:,:,0], axis=1) / original_length).ravel()) * 100
+
+            """# Vytvoření grafu
+            fig, ax = plt.subplots()
+        
+            # Vykreslení dat po řádcích
+            disp = np.array(
+                [result.result() for result in results if result.result() is not None]).reshape(max_y, max_x, 2)
+        
+            scalar_map = plt.cm.ScalarMappable(cmap=str('jet'))
+            scalar_map.set_clim(vmin=min_value, vmax=max_value)
+            cbar = plt.colorbar(scalar_map, ax=ax)
+        
+            n = 0
+            m = 0
+            l = 0
+            dd = []
+            for i in range(disp.shape[0]):
+                for j in range(disp.shape[1] - 1):
+                    ax.plot(disp[i, j, 0], disp[i, j, 1], 'o')
+                    dd.append(disp[i, j + 1, 0] - disp[i, j, 0])
+                    # ax.text(disp[i, j, 0], disp[i, j, 1], f"{n}", fontsize=8)
+                    n += 1
+            n = 0
+            for i in roi_ind:
+                # b = np.mean((def_roi[i[1]], def_roi[i[2]]), axis=0) - 
+                np.mean((def_roi[i[0]], def_roi[i[-1]]), axis=0)
+                d = 1 - (dd[n] / original_length)
+                plt.gca().add_patch(
+                    plt.Polygon(def_roi[i], closed=True, facecolor=scalar_map.to_rgba(d), edgecolor='black',
+                                alpha=0.3))
+                ax.text(*np.mean(def_roi[i], axis=0), f"{n}", fontsize=8)
                 n += 1
-        n = 0
-        for i in roi_ind:
-            # b = np.mean((def_roi[i[1]], def_roi[i[2]]), axis=0) - 
-            np.mean((def_roi[i[0]], def_roi[i[-1]]), axis=0)
-            d = 1 - (dd[n] / original_length)
-            plt.gca().add_patch(
-                plt.Polygon(def_roi[i], closed=True, facecolor=scalar_map.to_rgba(d), edgecolor='black',
-                            alpha=0.3))
-            ax.text(*np.mean(def_roi[i], axis=0), f"{n}", fontsize=8)
-            n += 1
+        
+                m, l = m + 1, l + 1
+                if l == max_x - 1:
+                    l = 0
+                if m == max_y - 1:
+                    m = 0
+        
+            # Zobrazení grafu
+            ax.invert_yaxis()
+            plt.show()"""
 
-            m, l = m + 1, l + 1
-            if l == max_x - 1:
-                l = 0
-            if m == max_y - 1:
-                m = 0
+            for i, indices in enumerate(roi_ind):
+                """d = (1 - ((np.mean((def_roi[indices[1]], def_roi[indices[2]]), axis=0) -
+                           np.mean((def_roi[indices[0]], def_roi[indices[-1]]), axis=0))[0] / 
+                           original_length)) * 100"""
 
-        # Zobrazení grafu
-        ax.invert_yaxis()
-        plt.show()"""
+                """d = (1 - (np.linalg.norm(np.mean((def_roi[indices[1]], def_roi[indices[2]]), axis=0) -
+                           np.mean((def_roi[indices[0]], def_roi[indices[-1]]), axis=0)) / original_length)) * 100
+        
+                color = cv2.applyColorMap(
+                    np.uint8(normalize_value(d)).reshape((1, 1)),
+                    cv2.COLORMAP_JET)[0][0].tolist()"""
 
-        for i, indices in enumerate(roi_ind):
-            """d = (1 - ((np.mean((def_roi[indices[1]], def_roi[indices[2]]), axis=0) -
-                       np.mean((def_roi[indices[0]], def_roi[indices[-1]]), axis=0))[0] / 
-                       original_length)) * 100"""
+                color = cv2.applyColorMap(
+                    np.uint8(normalize_value(disp_diff[i])).reshape((1, 1)),
+                    cv2.COLORMAP_JET)[0][0].tolist()
+                cv2.drawContours(cmap, [def_roi[indices].astype(int)], -1, color, -1)
 
-            """d = (1 - (np.linalg.norm(np.mean((def_roi[indices[1]], def_roi[indices[2]]), axis=0) -
-                       np.mean((def_roi[indices[0]], def_roi[indices[-1]]), axis=0)) / original_length)) * 100
+        # Přidání colorbaru vedle obrázku s mezerou
+        combined_image[:img_height, :img_width] = cv2.addWeighted(image, alpha, cmap, 1 - alpha, 0)
+        print("Colorbar time:", time.time() - tm)
 
-            color = cv2.applyColorMap(
-                np.uint8(normalize_value(d)).reshape((1, 1)),
-                cv2.COLORMAP_JET)[0][0].tolist()"""
-
-            color = cv2.applyColorMap(
-                np.uint8(normalize_value(disp_diff[i])).reshape((1, 1)),
-                cv2.COLORMAP_JET)[0][0].tolist()
-            cv2.drawContours(cmap, [def_roi[indices].astype(int)], -1, color, -1)
-
-    # Přidání colorbaru vedle obrázku s mezerou
-    combined_image[:img_height, :img_width] = cv2.addWeighted(image, alpha, cmap, 1 - alpha, 0)
-    print("Colorbar time:", time.time() - tm)
-
-    err = 0
-
-    """except (cv2.error, Exception) as e:
+    except (cv2.error, Exception) as e:
         if source_type == 'webcam':
             image = cv2.undistort(camera.read()[1], mtx_loaded, dist_loaded, None, mtx_loaded)[top:down, left:right]
         elif source_type == 'photos':
@@ -853,7 +851,7 @@ while True:
 
         combined_image[:img_height, :img_width] = cv2.addWeighted(
             image, alpha, np.zeros((img_height, img_width, 3), dtype=np.uint8), 1 - alpha, 0)
-        pass"""
+        pass
 
     try:
         tm = time.time()
