@@ -201,6 +201,7 @@ def process_reference_point(reference_point_, p_old_, p_new_, radius_):
     def_roi_single = cv2.perspectiveTransform(reference_point_.reshape(-1, 1, 2), tran_mat)[0][0]
     return def_roi_single
 
+
 """
 def main():
     global left, top, right, down, img_width, img_height"""
@@ -240,12 +241,12 @@ contrast_threshold = 0.02  # 0.08 def = 0.04
 edge_threshold = 6  # 7, 15 def = 10
 sigma = 1.15  # 1.4  def = 1.6
 radius = 100  # 200
+num_cores = cv2.getNumThreads()
 
 # Nastavení parametrů
 cv2.setUseOptimized(True)  # Zapnutí optimalizace (může využívat akceleraci)
-cv2.setNumThreads(cv2.getNumThreads())  # Přepnutí na použití CPU počet jader
-print("Počet využitých jader:", cv2.getNumThreads())
-
+cv2.setNumThreads(max(min(cv2.getNumThreads(), num_cores), 0))  # Přepnutí na použití CPU počet jader
+print("Počet využitých jader:", num_cores)
 
 radius = float(radius)
 average_area = 25
@@ -636,7 +637,8 @@ image = None
 # err = 0
 
 vectorized_distances = np.vectorize(calculate_distances1, signature='(n),(m,n),()->(m)')
-vectorized_homography = np.vectorize(calculate_def_roi, signature='(n,2),(n,2),(m,2),()->(m,2)')
+vectorized_homography = np.vectorize(calculate_def_roi, signature='(n,2),(n,2),(m,2),(),()->(m,2)')
+#                                    excluded=['roi_points', 'radius', 'num_cores'], otypes=[np.float32])
 
 while True:
     ttt = time.time()
@@ -716,8 +718,8 @@ while True:
         tran_mat)[0][0]
         def_roi = np.vstack([def_roi, transformed_point])"""
 
-    # def_roi = calculate_def_roi(p_old, p_new, roi_points, radius)
-    def_roi = vectorized_homography(p_old, p_new, roi_points, radius)
+    # def_roi = calculate_def_roi(p_old, p_new, roi_points, radius, num_cores)
+    def_roi = vectorized_homography(p_old, p_new, roi_points, radius, num_cores)
 
     # Vektorizovaná verze funkce pro výpočet vzdáleností
     """selected_indices = vectorized_distances(roi_points, p_old, radius)
@@ -891,7 +893,6 @@ while True:
 if source_type == 'webcam':
     camera.release()
 cv2.destroyAllWindows()
-
 
 """if __name__ == "__main__":
     global left, top, right, down, img_width, img_height
