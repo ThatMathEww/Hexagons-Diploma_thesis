@@ -43,6 +43,12 @@ def update(frame):
 
 # Nastavení grafu
 fig, ax = plt.subplots()
+
+# plt.style.context('seaborn')  # fivethirtyeight # https://www.dunderdata.com/blog/view-all-available-matplotlib-styles
+# plt.style.use('fast')  # cyberpunk # dark_background # seaborn
+# print(plt.style.available)
+# print(plt.style.library)
+
 x_data = []
 y_data1 = []
 y_data2 = []
@@ -57,6 +63,7 @@ ax.set_xlim(0, x_max_lim)
 ax.set_ylim(y_min_lim, y_max_lim)
 ax.set_xlabel('Čas [s]')
 ax.set_ylabel('Síla [N]')
+ax.grid()
 ax.legend(loc='center', bbox_to_anchor=(0.5, 1.075), ncol=2)
 
 # Přidání nových dat do souboru

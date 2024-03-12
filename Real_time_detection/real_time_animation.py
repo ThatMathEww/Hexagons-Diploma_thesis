@@ -853,9 +853,9 @@ while True:
             image, alpha, np.zeros((img_height, img_width, 3), dtype=np.uint8), 1 - alpha, 0)
         pass
 
-    try:
+    if load_forces:
         tm = time.time()
-        if load_forces:
+        try:
             # Načtení nových dat ze souboru
             with open(forces_file, "r") as file:
                 forces = np.float64(file.readlines()[-1].strip().split(","))
@@ -870,9 +870,9 @@ while True:
                     # Posun všech bodů zpět na původní místo
                     arrow = np.int32(np.dot(arrow, np.array([[-1, 0], [0, -1]])) + center)
                 cv2.drawContours(combined_image, [arrow], -1, arrow_colors[i], -1)
+        except (IndexError, Exception):
+            pass
         print("Forces time:", time.time() - tm)
-    except (IndexError, Exception):
-        pass
 
     if cv2.getWindowProperty('Image with Heatmap', cv2.WND_PROP_VISIBLE) < 1:
         cv2.namedWindow('Image with Heatmap', cv2.WINDOW_KEEPRATIO)
