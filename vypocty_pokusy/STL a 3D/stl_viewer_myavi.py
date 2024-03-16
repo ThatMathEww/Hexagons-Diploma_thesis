@@ -73,7 +73,7 @@ mlab.savefig(f'./3D outputs/output_object_{photo_filename.split(".")[0]}.obj', f
 # Uložení scény v nejvyšší kvalitě
 #  mlab.savefig('output.png', magnification=2)  # Upravte podle potřeby
 
-imgmap = mlab.screenshot(figure=fig, mode='rgba', antialiased=True)
+img_map = mlab.screenshot(figure=fig, mode='rgba', antialiased=True)
 
 # mlab.close(fig)
 # do the matplotlib plot
