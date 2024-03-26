@@ -566,14 +566,15 @@ for i, (label, y) in enumerate(zip(tick_labels, tick_positions)):
 combined_image = np.ones((img_height, int(img_width + n * bar_width), 3), dtype=np.uint8) * 255
 combined_image[:, img_width + bar_width:, :] = color_bar
 
-print("QR detection making...")
+print("TAGs detection making...")
+scale = 1
+
 s = int(round(max(50, min(img_width * 0.025, 250))))
 arrow_cor = []
 arrow_colors = [(30, 144, 255)[::-1], (255, 165, 0)[::-1]]
 arrow_points = np.array(
     [[-s, s], [0, 0], [s, s], [0.5 * s, s], [0.5 * s, s], [-0.5 * s, s], [-0.5 * s, s]], dtype=int)
 
-scale = 1
 """qr_decoder = cv2.QRCodeDetector()
 qr_decoder.setEpsX(0.2)  # Tolerance na nepřesnost v horizontálním směru
 qr_decoder.setEpsY(0.2)  # Tolerance na nepřesnost ve vertikálním směru

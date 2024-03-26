@@ -5,7 +5,8 @@ import cv2
 from numpy cimport float32_t
 
 # Deklarace typů pro vstup a výstup
-ctypedef np.float32_t DTYPE_t
+ctypedef float32_t DTYPE_t
+ctypedef np.int32_t DTYPE_INT_t
 
 # Deklarace funkce
 cpdef np.ndarray[DTYPE_t, ndim=2] calculate_def_roi(np.ndarray[DTYPE_t, ndim=2] p_old,
@@ -27,9 +28,9 @@ cpdef np.ndarray[DTYPE_t, ndim=2] calculate_def_roi(np.ndarray[DTYPE_t, ndim=2] 
     # Proměnné pro výpočet
     cdef int i
     cdef float c
-    cdef np.ndarray[np.int32_t, ndim=2] selected_indices = np.empty((length_1,length_2), dtype=np.int32)
+    cdef np.ndarray[DTYPE_INT_t, ndim=2] selected_indices = np.empty((length_1,length_2), dtype=np.int32)
     cdef np.ndarray[DTYPE_t, ndim=1] distances
-    cdef np.ndarray[np.int32_t, ndim=1] selected_ind
+    cdef np.ndarray[DTYPE_INT_t, ndim=1] selected_ind
 
     # Pro každý referenční bod
     for i in range(length_1):
