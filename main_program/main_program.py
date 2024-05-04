@@ -809,7 +809,7 @@ def mark_ellipse_on_canvas(window_name="Adding points", graph_title="Mark points
     return center, edge, selector.extents
 
 
-def reorder(points):
+def reorder(points): # sort by angle
     if len(points) < 3:
         return points
 
