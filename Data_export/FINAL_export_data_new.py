@@ -12,7 +12,6 @@ import os
 def swap_lists(list1, list2):
     return list2, list1
 
-
 """
 ratio:
 mean = 24.392700425124065
@@ -36,6 +35,10 @@ out_dpi = 600
 
 cut_spikes = True
 data_type = "S01"  # "H01" # "H02"  # "S01"  # "M01"
+
+# Název Excel souboru
+excel_file = f'Values_bending.xlsx'
+
 scale_m01 = True
 
 mark_linear_part = True
@@ -139,7 +142,7 @@ elif data_type == "S01":
     data_indexes__II_max, data_indexes__III_max = swap_lists(data_indexes__II_max, data_indexes__III_max)
 
     data_indexes__I_O = np.array([i for i in range(len(images_folders)) if "-I-" in images_folders[i] and
-                                  "MAX" not in images_folders[i] and "_O" not in images_folders[i]])
+                                  "MAX" not in images_folders[i] and "_O" in images_folders[i]])
     data_indexes__II_O = np.array([i for i in range(len(images_folders)) if "-II-" in images_folders[i] and
                                    "MAX" not in images_folders[i] and "_O" in images_folders[i]])
     data_indexes__III_O = np.array([i for i in range(len(images_folders)) if "-III-" in images_folders[i] and
@@ -709,8 +712,7 @@ fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbo
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 if save_figures:
-    plt.savefig(f"{out_put_folder}/{data_type}_multipleplot.{file_type}", format=file_type, dpi=out_dpi,
-                bbox_inches='tight')
+    plt.savefig(f"{out_put_folder}/{data_type}_multipleplot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
 
 # plt.tight_layout()
 
@@ -985,10 +987,60 @@ fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspac
 # fig2.tight_layout()
 
 if save_figures:
-    fig.savefig(f"{out_put_folder}/{data_type}_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi,
-                bbox_inches='tight')
+    fig.savefig(f"{out_put_folder}/{data_type}_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
     fig2.savefig(f"{out_put_folder}/{data_type}_finalplot_singleline.{file_type}", format=file_type, dpi=out_dpi,
                  bbox_inches='tight')
+
+if data_type == "S01":
+    if not os.path.exists(out_put_folder):
+        os.makedirs(out_put_folder, exist_ok=True)
+
+
+
+    try:
+        excel_writer = pd.ExcelWriter(os.path.join(out_put_folder, excel_file), engine='xlsxwriter')
+    except PermissionError as e:
+        print(f'\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze upravovat, pravděpodobně je otevřen.'
+              f'\n\tPOPIS: {e}')
+        exit(10)
+    except (KeyError, Exception) as e:
+        print(f'\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze uložit.\n\tPOPIS: {e}')
+        exit(11)
+
+    # Zápis dat do listů
+    for i, data in enumerate([all_datas[j] for j in
+                              np.hstack([data_indexes__I_O, data_indexes__III_O, data_indexes__II_O,
+                                         data_indexes__I_max_O, data_indexes__III_max_O, data_indexes__II_max_O])]):
+        sheet_name = data[0]
+
+        # TODO
+        # Změna názvů typu infillu dle stran hexagonů
+        if "-II-" in sheet_name:
+            sheet_name = sheet_name.replace("-II-", "-III-")
+        elif "-III-" in sheet_name:
+            sheet_name = sheet_name.replace("-III-", "-II-")
+
+        sheet_name = sheet_name.replace("S01_", "").replace("-10S", "").replace("_O", "")
+
+        # Přepsání názvů sloupců pro třetí DataFrame
+        # df3.columns = ['New_M', 'New_N']
+
+        # Ukládání jednotlivých DataFrame na různá místa
+        start_row = 0
+        col_start = 0
+        data[4].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
+        col_start += len(data[4].columns)
+        data[2].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
+        col_start += len(data[2].columns)
+        data[1].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
+        col_start += len(data[1].columns)
+        data[3].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
+
+
+    # Zavření Excel souboru
+    excel_writer.close()
+    print(f"Soubor byl úspěšně uložen do: [ {os.path.join(out_put_folder, excel_file)} ]")
+
 
 ########################################################################################################################
 if data_type == "H02":
@@ -1063,3 +1115,4 @@ if data_type == "H02":
         fig2.savefig(f"{out_put_folder}/hex_corner2.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
 
 plt.show()
+
