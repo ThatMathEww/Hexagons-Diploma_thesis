@@ -4,9 +4,16 @@ import pandas as pd
 import numpy as np
 import os
 
+
+def swap_lists(list1, list2):
+    return list2, list1
+
+
 out_put_folder = ".outputs"
 
 do_tex = False
+
+save_plot = False
 
 file_type = "jpg"
 out_dpi = 600
@@ -51,6 +58,10 @@ type_2_la = [name for name in range(len(folders)) if
              "-II_" in folders[name] and int(folders[name].split("-")[0].split("_")[1]) > 10]
 type_3_la = [name for name in range(len(folders)) if
              "-III_" in folders[name] and int(folders[name].split("-")[0].split("_")[1]) > 10]
+
+# Testy II a III musí být vůči testům hexagonů prohozeny
+type_2_sm, type_3_sm = swap_lists(type_2_sm, type_3_sm)
+type_2_la, type_3_la = swap_lists(type_2_la, type_3_la)
 
 found_strains, found_stresses = [], []
 modules = []
@@ -129,8 +140,26 @@ indexes = [type_1_sm, type_2_sm, type_3_sm]
 # Vytvoření subplots
 colors = ("dodgerblue", "red", "limegreen", "orange", "purple", "cyan", "pink", "black", "yellow", "magenta")
 
-fig, axs = plt.subplots(2, 2, figsize=(12, 6)) if 5 > len(indexes) >= 3 else plt.subplots(1, 2, figsize=(12, 4)) \
-    if len(indexes) == 2 else plt.subplots(1, 1, figsize=(6, 4))
+if len(indexes) == 0:
+    print("No data to plot.")
+    exit(1)
+elif len(indexes) == 1:
+    fig, axs = plt.subplots(1, 1, figsize=(6, 4))
+elif len(indexes) == 2:
+    fig, axs = plt.subplots(1, 2, figsize=(12, 4))
+elif len(indexes) <= 4:
+    fig, axs = plt.subplots(2, 2, figsize=(12, 6))
+elif len(indexes) <= 6:
+    fig, axs = plt.subplots(2, 3, figsize=(12, 5))
+else:
+    fig, axs = plt.subplots(3, np.ceil(len(indexes) / 3), figsize=(12, 8))
+    i = int(len(indexes) - (3 * np.ceil(len(indexes) / 3)))
+    if i < 0:
+        axs[i:].remove()
+    elif i > 0:
+        print("Error in creating subplots.")
+        exit(2)
+
 try:
     axs = axs.flatten()
 except AttributeError:
@@ -180,7 +209,8 @@ labels = [f"T-{l}" for l in range(len(labels))]
 fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbox_to_anchor=(0.5, 0.05), ncol=10)
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-plt.savefig(f"./{out_put_folder}/tension_all.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+if save_plot:
+    plt.savefig(f"./{out_put_folder}/tension_all.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
 plt.figure()
 [plt.plot(s * 100, f, zorder=3, label=l) for s, f, l in zip(found_strains, found_stresses, folders) if s is not None]
 plt.gca().set_xlabel(r"Strain [\%]" if do_tex else "Strain [%]")
@@ -264,7 +294,11 @@ fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace
 fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 # fig.tight_layout()
 # fig2.tight_layout()
-fig.savefig(f"./{out_put_folder}/tension_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
-fig2.savefig(f"./{out_put_folder}/tension_finalplot_single.{file_type}", format=file_type, dpi=out_dpi,
-             bbox_inches='tight')
+
+if save_plot:
+    fig.savefig(f"./{out_put_folder}/tension_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi,
+                bbox_inches='tight')
+    fig2.savefig(f"./{out_put_folder}/tension_finalplot_single.{file_type}", format=file_type, dpi=out_dpi,
+                 bbox_inches='tight')
+
 plt.show()

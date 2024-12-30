@@ -12,6 +12,7 @@ file_type = "jpg"
 out_dpi = 600
 
 do_tex = False
+save_plot = False
 
 file_names = np.array([p for p in os.listdir(path) if os.path.isfile(os.path.join(path, p))
                        and p.lower().endswith(".csv") and p.lower().startswith(t)])
@@ -189,5 +190,7 @@ plt.gca().set_aspect(((x_range_end - x_range_start) / (y_range_end - y_range_sta
 plt.gca().autoscale(True)
 plt.tight_layout(pad=3)
 
-plt.savefig(f".outputs/{t}_plot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+if save_plot:
+    plt.savefig(f".outputs/{t}_plot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+
 plt.show()
