@@ -12,6 +12,7 @@ import os
 def swap_lists(list1, list2):
     return list2, list1
 
+
 """
 ratio:
 mean = 24.392700425124065
@@ -560,9 +561,21 @@ for exp, current_image_folder in enumerate(images_folders):
         continue"""
 
     try:
-        data_frames = [current_image_folder]
 
-        photos = np.arange(beginning, len(photo_indexes), 1)  # int(np.nanmax(df['Photos'].values)) + 1
+        experiment_name = current_image_folder
+
+        # TODO
+        # Změna názvů typu infillu dle stran hexagonů
+        if data_type == "S01" or data_type == "T01":
+            if "-II-" in experiment_name:
+                experiment_name = experiment_name.replace("-II-", "-III-")
+            elif "-III-" in experiment_name:
+                experiment_name = experiment_name.replace("-III-", "-II-")
+
+        data_frames = [experiment_name]
+
+        photos = np.arange(1, len(photo_indexes) - max(beginning - 1, 0), 1)  # int(np.nanmax(df['Photos'].values)) + 1
+
         time_values = time_stamps[photo_indexes - start_index][beginning:]
 
         data_frames.append(pd.DataFrame({'Photo': photos,
@@ -712,7 +725,8 @@ fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbo
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 if save_figures:
-    plt.savefig(f"{out_put_folder}/{data_type}_multipleplot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+    plt.savefig(f"{out_put_folder}/{data_type}_multipleplot.{file_type}", format=file_type, dpi=out_dpi,
+                bbox_inches='tight')
 
 # plt.tight_layout()
 
@@ -987,15 +1001,14 @@ fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspac
 # fig2.tight_layout()
 
 if save_figures:
-    fig.savefig(f"{out_put_folder}/{data_type}_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+    fig.savefig(f"{out_put_folder}/{data_type}_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi,
+                bbox_inches='tight')
     fig2.savefig(f"{out_put_folder}/{data_type}_finalplot_singleline.{file_type}", format=file_type, dpi=out_dpi,
                  bbox_inches='tight')
 
 if data_type == "S01":
     if not os.path.exists(out_put_folder):
         os.makedirs(out_put_folder, exist_ok=True)
-
-
 
     try:
         excel_writer = pd.ExcelWriter(os.path.join(out_put_folder, excel_file), engine='xlsxwriter')
@@ -1013,14 +1026,7 @@ if data_type == "S01":
                                          data_indexes__I_max_O, data_indexes__III_max_O, data_indexes__II_max_O])]):
         sheet_name = data[0]
 
-        # TODO
-        # Změna názvů typu infillu dle stran hexagonů
-        if "-II-" in sheet_name:
-            sheet_name = sheet_name.replace("-II-", "-III-")
-        elif "-III-" in sheet_name:
-            sheet_name = sheet_name.replace("-III-", "-II-")
-
-        sheet_name = sheet_name.replace("S01_", "").replace("-10S", "").replace("_O", "")
+        sheet_name = sheet_name.replace(f"{data_type}_", "").replace("-10S", "").replace("_O", "")
 
         # Přepsání názvů sloupců pro třetí DataFrame
         # df3.columns = ['New_M', 'New_N']
@@ -1036,11 +1042,9 @@ if data_type == "S01":
         col_start += len(data[1].columns)
         data[3].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
 
-
     # Zavření Excel souboru
     excel_writer.close()
     print(f"Soubor byl úspěšně uložen do: [ {os.path.join(out_put_folder, excel_file)} ]")
-
 
 ########################################################################################################################
 if data_type == "H02":
@@ -1115,4 +1119,3 @@ if data_type == "H02":
         fig2.savefig(f"{out_put_folder}/hex_corner2.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
 
 plt.show()
-

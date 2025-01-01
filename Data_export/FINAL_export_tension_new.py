@@ -14,6 +14,10 @@ out_put_folder = ".outputs"
 # Název Excel souboru
 excel_file = f'Values_tension.xlsx'
 
+data_type = "T01"
+
+pair_by_displacement = False
+
 do_tex = False
 
 save_plot = True
@@ -22,8 +26,8 @@ file_type = "jpg"
 out_dpi = 600
 
 # Testy II a III musí být vůči testům hexagonů prohozeny
-special_additional_information = {
-    'T01_01-I_1s': 3}  # posunuté meření až u čtvté fotografie z důvodu opožděného zatěžování
+special_additional_information = {'T01_01-I_1s': 3}
+# posunuté meření až u čtvté fotografie z důvodu opožděného zatěžování
 
 main_image_folder = r'C:\Users\matej\PycharmProjects\pythonProject\Python_projects\HEXAGONS\photos'
 folder_n_corr = r'C:\Programy\Ncorr\Ncorr_post_v2e\export'
@@ -72,71 +76,140 @@ type_2_la, type_3_la = swap_lists(type_2_la, type_3_la)
 
 found_strains, found_stresses = [], []
 modules = []
+all_datas = []
 
-for folder in folders:
-    path_strain = os.path.join(folder_n_corr, folder, "virtualExtensometer_2", f"{folder}-virtExt_2_strain-y.txt")
-    path_force = os.path.join(folder_measurements, "data_csv", f"{folder}.csv")
+indexes = [type_1_sm + type_2_sm + type_3_sm, type_1_la + type_2_la + type_3_la]
 
-    if not os.path.isfile(path_strain):
-        print("Strain file not found:", folder)
-        found_strains.append(None)
-        found_stresses.append(None)
-        continue
-    if not os.path.isfile(path_force):
-        print("Force file not found:", folder)
-        found_strains.append(None)
-        found_stresses.append(None)
-        continue
+for inds in indexes:
 
-    data_strain = np.loadtxt(path_strain)[:-1]
-    photo_times = np.arange(0, len(data_strain))
-    data_tension = pd.read_csv(path_force)
+    for ind in inds:
 
-    data_distances = data_tension.iloc[:, 0].values
-    data_distances -= data_distances[0]
-    data_force = data_tension.iloc[:, 1].values
-    data_force -= data_force[0]
-    data_time = data_tension.iloc[:, 2].values
-    data_time -= data_time[0]
+        folder = folders[ind]
 
-    # Index nejbližší nižší hodnoty
-    index_max_strain = np.where(data_strain < 0.01, data_strain, np.inf).argmax()
-    index_max_strain = len(data_time)
+        path_displacement = os.path.join(folder_n_corr, folder, "virtualExtensometer_1",
+                                         f"{folder}-virtExt_1_extension-tot (meters).txt")
+        path_strain = os.path.join(folder_n_corr, folder, "virtualExtensometer_2", f"{folder}-virtExt_2_strain-total.txt")
+        path_force = os.path.join(folder_measurements, "data_csv", f"{folder}.csv")
 
-    # Získání indexů, které jsou nejblíže hodnotám v druhém vektoru
-    index_at_photo = np.abs(data_time[:, np.newaxis] - photo_times).argmin(axis=0)
-    found_times = data_time[index_at_photo][:index_max_strain + 1]
-    found_force = data_force[index_at_photo][:index_max_strain + 1]
-    found_force -= found_force[0]
+        experiment_name = folder
 
-    found_strain = data_strain[:index_max_strain + 1]
+        # TODO
+        # Změna názvů typu infillu dle stran hexagonů
+        if data_type == "S01" or data_type == "T01":
+            if "-II-" in experiment_name:
+                experiment_name = experiment_name.replace("-II-", "-III-")
+            elif "-III-" in experiment_name:
+                experiment_name = experiment_name.replace("-III-", "-II-")
 
-    found_stress = found_force / (2.64 * 15.13)
+        data_frames = [experiment_name]
 
-    # if not found_strain[3] > 1.555600e-05:
-    #     print(folder)
-    #     found_strains.append(None)
-    #     found_stresses.append(None)
-    #     continue
+        if not os.path.isfile(path_strain):
+            print("Strain file not found:", folder)
+            found_strains.append(None)
+            found_stresses.append(None)
+            continue
+        if not os.path.isfile(path_displacement):
+            print("Displacement file not found:", folder)
+            found_strains.append(None)
+            found_stresses.append(None)
+            continue
+        if not os.path.isfile(path_force):
+            print("Force file not found:", folder)
+            found_strains.append(None)
+            found_stresses.append(None)
+            continue
 
-    if folder in special_additional_information:
-        moved_data = special_additional_information.get(folder, 0)
+        data_strain = np.loadtxt(path_strain)
+        data_displacement = np.loadtxt(path_displacement) * 1000
+        photo_times = np.arange(0, len(data_strain))
+        photos = np.arange(1, len(data_strain) + 1)
+        data_tension = pd.read_csv(path_force)
 
-        found_strain = found_strain[moved_data:]
+        data_distances = data_tension.iloc[:, 0].values
+        # data_distances -= data_distances[0]
+        data_force = data_tension.iloc[:, 1].values
+        data_force -= data_force[0]
+        data_time = data_tension.iloc[:, 2].values
+        # data_time -= data_time[0]
 
-    m = np.where(found_strain < 0.03, found_strain, np.inf).argmax()
+        data_distances = np.hstack((0, data_distances))
+        data_force = np.hstack((0, data_force))
+        data_time = np.hstack((0, data_time))
 
-    found_strain = found_strain[:m]
-    found_stress = found_stress[:m]
+        # data_frames.append(pd.DataFrame({'Photo': photos,
+        #                                  'Time [s]': time_values}))
+        #
+        # data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_index:len(distances)],
+        #                                  'Time [s]': time_stamps,
+        #                                  'Distance [mm]': distances[start_index:],
+        #                                  'Force [N]': forces[start_index:]}))
 
-    found_strains.append(found_strain)
-    found_stresses.append(found_stress)
+        # Index nejbližší nižší hodnoty
+        index_max_strain = np.where(data_strain < 0.01, data_strain, np.inf).argmax()
+        index_max_strain = len(data_time)
 
-    index_max_strain = np.where(data_strain < 0.01, data_strain, np.inf).argmax()
+        # Získání indexů, které jsou nejblíže hodnotám v druhém vektoru
+        if pair_by_displacement:
+            index_at_photo = np.abs(data_distances[:, np.newaxis] - data_displacement).argmin(axis=0)
+            interp_forces = np.interp(photo_times, data_time, data_force)
+        else:
+            index_at_photo = np.abs(data_time[:, np.newaxis] - photo_times).argmin(axis=0)
+            interp_forces = np.interp(data_displacement, data_distances, data_force)
+        # v ideálním případě by měly být indexy 'index_at_photo' a 'index_at_displacement' stejné
 
-    module = (found_stress[index_max_strain] - found_stress[1]) / (found_strain[index_max_strain] - found_strain[1])
+        differences = np.diff(index_at_photo)
 
-    modules.append(module)
+
+
+        # Tolerance
+        tolerance = round(np.mean(differences[:len(differences) // 4]) * 0.2)
+
+        # Zjistit index, do kterého jsou mezery stejné v rámci tolerance
+        same_until = np.where(~np.isclose(differences, differences[0], atol=tolerance))[0]
+        if same_until.size > 0:
+            breakpoint_index = same_until[0]  # První index, kde se mezery liší
+        else:
+            breakpoint_index = len(differences)  # Všechny mezery jsou stejné
+
+        same_index_at_photo = index_at_photo[:breakpoint_index + 1]  # Indexy fotek od bodu zlomu
+
+        found_times = data_time[same_index_at_photo][:index_max_strain + 1]
+        found_force = data_force[same_index_at_photo][:index_max_strain + 1]
+
+        # found_force -= found_force[0]
+
+        found_strain = data_strain[:index_max_strain + 1]
+
+        found_stress = found_force / (2.64 * 15.13)
+
+        end_index = np.where(np.abs(np.diff(found_stress)) > np.max(found_stress) * 0.5)[0]
+        if len(end_index) == 0:
+            end_index = len(found_stress)
+        else:
+            end_index = end_index[0] + 2
+
+        found_stress = found_stress[:end_index]
+        found_strain = found_strain[:end_index]
+
+        if folder in special_additional_information:
+            moved_data = special_additional_information.get(folder, 0)
+
+            found_strain = found_strain[moved_data:]
+
+        m = min(np.where(found_strain < 100 / 100, found_strain, np.inf).argmax(),
+                np.where(np.abs(np.diff(found_strain)) < 0.02)[0].argmax())
+
+        found_strain = found_strain[:m]
+        found_stress = found_stress[:m]
+
+        found_strains.append(found_strain)
+        found_stresses.append(found_stress)
+
+        index_max_strain = np.where(data_strain < 0.01, data_strain, np.inf).argmax()
+
+        module = (found_stress[index_max_strain] - found_stress[1]) / (found_strain[index_max_strain] - found_strain[1])
+
+        modules.append(module)
 
 mean_module = np.mean(modules)
 std_module = np.std(modules)
@@ -334,10 +407,7 @@ if save_plot:
 #                           np.hstack([data_indexes__I_O, data_indexes__II_O, data_indexes__III_O,
 #                                      data_indexes__I_max_O, data_indexes__II_max_O, data_indexes__II_max_O])]):
 #     sheet_name = data[0]
-#     sheet_name = sheet_name.replace("T01_", "").replace("_1s", "")
-#
-#     # Přepsání názvů sloupců pro třetí DataFrame
-#     # df3.columns = ['New_M', 'New_N']
+#     sheet_name = sheet_name.replace(f"{data_type}_", "").replace("_1s", "")
 #
 #     # Ukládání jednotlivých DataFrame na různá místa
 #     start_row = 0
@@ -349,7 +419,6 @@ if save_plot:
 #     data[1].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
 #     col_start += len(data[1].columns)
 #     data[3].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
-#
 #
 # # Zavření Excel souboru
 # excel_writer.close()

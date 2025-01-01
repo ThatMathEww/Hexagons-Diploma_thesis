@@ -375,7 +375,7 @@ for exp, inds in enumerate(indexes):
             data_frames = []
             data_frames_names = []
 
-            photos = np.arange(beginning, len(photo_indexes), 1)  # int(np.nanmax(df['Photos'].values)) + 1
+            photos = np.arange(1, len(photo_indexes) - max(beginning - 1, 0), 1)  # int(np.nanmax(df['Photos'].values)) + 1
             time_values = time_stamps[photo_indexes - start_index][beginning:]
 
             if datasets['Correlation']:
