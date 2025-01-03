@@ -1028,8 +1028,26 @@ if data_type == "S01":
 
         sheet_name = sheet_name.replace(f"{data_type}_", "").replace("-10S", "").replace("_O", "")
 
-        # Přepsání názvů sloupců pro třetí DataFrame
-        # df3.columns = ['New_M', 'New_N']
+        # TODO #########################################################################################################
+        # ##############################################################################################################
+        # TODO #########################################################################################################
+        # Uložení textu v listu
+        text1 = f"Typ měření: {str(excel_file).replace('.xlsx', '')}"
+        text2 = f"(Měření: {sheet_name})"
+        description = "Obsah jednotlivých listů:"
+
+        # Vytvoření listu pro popis
+        df_description = pd.DataFrame({'Popis': [description]})
+
+        # Zápis popisu na zvláštní list
+        df_description.to_excel(excel_writer, sheet_name='Popis', index=False, startrow=5)
+
+        worksheet = excel_writer.sheets['Popis']
+        worksheet.write(0, 0, text1)
+        worksheet.write(1, 0, text2)
+        # TODO #########################################################################################################
+        # ##############################################################################################################
+        # TODO #########################################################################################################
 
         # Ukládání jednotlivých DataFrame na různá místa
         start_row = 0
