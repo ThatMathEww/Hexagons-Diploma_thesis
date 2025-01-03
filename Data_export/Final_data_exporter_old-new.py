@@ -67,8 +67,8 @@ for exp, inds in enumerate(indexes):
 
         add_state_name = "plast" if "max" in current_image_folder else "elast"
 
-
-        print(f"\n\tNačítání uložených dat: ' \033[94;1m{current_image_folder}\033[0m ' -  [ {count + l} / {tot_folders}]")
+        print(
+            f"\n\tNačítání uložených dat: ' \033[94;1m{current_image_folder}\033[0m ' -  [ {count + l} / {tot_folders}]")
 
         # Název Excel souboru
         excel_file = f'Hexagon_Values_{count:02d}_{types[exp]}_{add_state_name}.xlsx'
@@ -126,7 +126,8 @@ for exp, inds in enumerate(indexes):
                     [np.mean(forces[s - z2:s + z2]) for s in range(z2, d_len // 3)])[zr:] - np.median(
                     forces[1:zr * 2 + 1])) >= np.mean(
                     np.array([np.std(forces[s - z2:s + z2]) for s in range(z2, d_len // 300)])[zr:]
-                    * 1.5), 1, 0), np.ones(int(np.ceil(d_len * 0.1))), mode='valid') == np.ceil(d_len * 0.1))[0][0]) - zr,
+                    * 1.5), 1, 0), np.ones(int(np.ceil(d_len * 0.1))), mode='valid') == np.ceil(d_len * 0.1))[0][
+                                                                      0]) - zr,
                                                               d_len), 0) + 1] <= 0)[0])
 
                 # Najdi indexy, kde je rozdíl menší než -5
@@ -207,8 +208,9 @@ for exp, inds in enumerate(indexes):
                     sd_ = np.array([scaled_vector2[i + 1] - scaled_vector2[i] for i in range(len(scaled_vector2) - 1)])"""
 
                     if all(v is not None for v in (distances, forces, photo_indexes)):
-                        distances = (distances * (np.linalg.norm(correlation_points[0][0, 1] - correlation_points[-1][0, 1])
-                                                  / np.linalg.norm(distances[0] - distances[-1])))
+                        distances = (distances * (
+                                    np.linalg.norm(correlation_points[0][0, 1] - correlation_points[-1][0, 1])
+                                    / np.linalg.norm(distances[0] - distances[-1])))
                         distances = (distances - distances[0]) * scale
                         start_value = distances[start_index]
                         distances = distances - start_value  # Stanovení 0 pozice zatěžovnání
@@ -292,7 +294,8 @@ for exp, inds in enumerate(indexes):
                         function += f"{coefficients[i]:.5e}*x + " if -0.00001 < coefficients[i] < 0.00001 \
                             else f"{coefficients[i]:.5f}*x + "
                     else:
-                        function += f"{coefficients[i]:.5e}*x^{len_c - i - 1} + " if -0.00001 < coefficients[i] < 0.00001 \
+                        function += f"{coefficients[i]:.5e}*x^{len_c - i - 1} + " if -0.00001 < coefficients[
+                            i] < 0.00001 \
                             else f"{coefficients[i]:.5f}*x^{len_c - i - 1} + "
                 if function.endswith("+ "):
                     function = function[:-2]
@@ -375,7 +378,8 @@ for exp, inds in enumerate(indexes):
             data_frames = []
             data_frames_names = []
 
-            photos = np.arange(1, len(photo_indexes) - max(beginning - 1, 0), 1)  # int(np.nanmax(df['Photos'].values)) + 1
+            photos = np.arange(1, len(photo_indexes) - max(beginning - 1, 0),
+                               1)  # int(np.nanmax(df['Photos'].values)) + 1
             time_values = time_stamps[photo_indexes - start_index][beginning:]
 
             if datasets['Correlation']:
@@ -453,9 +457,6 @@ for exp, inds in enumerate(indexes):
                 print(f'\033[31;1;21mERROR\033[0m\n\tSoubor [{excel_file}] nelze uložit.\n\tPOPIS: {e}')
                 continue
 
-            # TODO #####################################################################################################
-            # ##########################################################################################################
-            # TODO #####################################################################################################
             # Uložení textu v listu
             text1 = f"Typ měření: {str(excel_file).replace('.xlsx', '')}"
             text2 = f"(Měření: {current_image_folder})"
@@ -470,9 +471,6 @@ for exp, inds in enumerate(indexes):
             worksheet = excel_writer.sheets['Popis']
             worksheet.write(0, 0, text1)
             worksheet.write(1, 0, text2)
-            # TODO #####################################################################################################
-            # ##########################################################################################################
-            # TODO #####################################################################################################
 
             # Zápis dat do listů
             for i, data_frame in enumerate(data_frames[:3]):
@@ -480,8 +478,8 @@ for exp, inds in enumerate(indexes):
                 worksheet.write(i + 7, 1, f'List_{i}:')
                 worksheet.write(i + 7, 2, f'{data_frames_names[i]}')
             for i, data_frame in enumerate(data_frames[3:]):
-                data_frame.to_excel(excel_writer, sheet_name=f'Point_{i+1}', index=False)
-                worksheet.write((i + 3) + 7, 1, f'Point_{i+1}:')
+                data_frame.to_excel(excel_writer, sheet_name=f'Point_{i + 1}', index=False)
+                worksheet.write((i + 3) + 7, 1, f'Point_{i + 1}:')
                 worksheet.write((i + 3) + 7, 2, f'{data_frames_names[i + 3]}')
 
             # Zápis popisu na zvláštní list
