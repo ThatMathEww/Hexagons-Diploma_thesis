@@ -1,5 +1,6 @@
 from matplotlib.ticker import AutoMinorLocator
 import matplotlib.pyplot as plt
+from numba.scripts.generate_lower_listing import description
 from scipy.stats import linregress
 import pandas as pd
 import numpy as np
@@ -98,8 +99,8 @@ excel_file = f'Values_tension.xlsx'
 data_type = "T01"
 sample_cross_section_area = (2.64 * 15.13)  # [mm2]
 
-pair_by_displacement = False  # False - podle času // True - podle posunů
-data_by_index = False  # False - interpolace podle času nebo posunů // True - podle indexu času nebo posunů
+pair_data_by_displacement = False  # False - podle času // True - podle posunů
+pair_data_by_index = False  # False - interpolace podle času nebo posunů // True - podle indexu času nebo posunů
 swap_II_and_III = True
 
 do_tex = False
@@ -110,17 +111,20 @@ file_type = "jpg"
 out_dpi = 600
 
 # Najít nejlepší lineární úsek
-linear_method = 1  # 1 - klouzavé okno, 2 - multicriteriální okno
-quality_threshold = 0.99999
+linear_method = 2  # 1 - multicriteriální okno, 2 - klouzavé okno
+quality_threshold = 0.8  # TODO 1 - 1e-20
 con1 = 1
 con2 = 0.98
-step = 0.9999999
+threshold_step = 0.9999999
 
-min_x_strain = 0
-max_x_strain = 0.012
+min_linear_window = 4
 
-max_data_stain_limiter = 3  # [%] np.inf
-max_linear_strain = 0.01
+min_x_strain = -np.inf
+max_x_strain = 0.01
+
+max_data_stain_limiter = np.inf  # [%] np.inf , 3
+
+total_mean_curve = False
 
 # Testy II a III musí být vůči testům hexagonů prohozeny
 special_additional_information = {'T01_01-I_1s': 3}
@@ -146,25 +150,27 @@ folders_nc = [name for name in [os.path.splitext(file)[0] for file in os.listdir
 
 folders = [name for name in folders_im if name in folders_nc]
 
+folders_length = len(folders)
+
 # folders = [folders[i] for i in (15, 16, 17, 21, 22, 23, 45, 46, 47, 48, 49, 50)]
 
 # m = 2  # I - 2 , II - 1    III - 0
-# n = [i + m for i in range(0, len(folders) - 1, 3)]
+# n = [i + m for i in range(0, folders_length - 1, 3)]
 # folders = [folders[i] for i in n]  # I - (2, 5, 8, 11) , II - (1, 4, 7, 10)    III - (0, 3, 6, 9)
 
 
-type_1_sm = [name for name in range(len(folders)) if
+type_1_sm = [name for name in range(folders_length) if
              "-I_" in folders[name] and int(folders[name].split("-")[0].split("_")[1]) < 11]
-type_2_sm = [name for name in range(len(folders)) if
+type_2_sm = [name for name in range(folders_length) if
              "-II_" in folders[name] and int(folders[name].split("-")[0].split("_")[1]) < 11]
-type_3_sm = [name for name in range(len(folders)) if
+type_3_sm = [name for name in range(folders_length) if
              "-III_" in folders[name] and int(folders[name].split("-")[0].split("_")[1]) < 11]
 
-type_1_la = [name for name in range(len(folders)) if
+type_1_la = [name for name in range(folders_length) if
              "-I_" in folders[name] and int(folders[name].split("-")[0].split("_")[1]) > 10]
-type_2_la = [name for name in range(len(folders)) if
+type_2_la = [name for name in range(folders_length) if
              "-II_" in folders[name] and int(folders[name].split("-")[0].split("_")[1]) > 10]
-type_3_la = [name for name in range(len(folders)) if
+type_3_la = [name for name in range(folders_length) if
              "-III_" in folders[name] and int(folders[name].split("-")[0].split("_")[1]) > 10]
 
 # Testy II a III musí být vůči testům hexagonů prohozeny
@@ -172,9 +178,8 @@ if swap_II_and_III:
     type_2_sm, type_3_sm = swap_lists(type_2_sm, type_3_sm)
     type_2_la, type_3_la = swap_lists(type_2_la, type_3_la)
 
-found_strains, found_stresses = [None] * len(folders), [None] * len(folders)
-modules = []
-all_datas = [None] * len(folders)
+found_strains, found_stresses, modules = [None] * folders_length, [None] * folders_length, [np.nan] * folders_length
+all_datas = [None] * folders_length
 
 indexes = [type_1_sm, type_2_sm, type_3_sm, type_1_la, type_2_la, type_3_la]
 
@@ -192,7 +197,6 @@ for inds in indexes:
 
         experiment_name = folder
 
-        # TODO
         # Změna názvů typu infillu dle stran hexagonů
         if swap_II_and_III:
             if data_type == "S01" or data_type == "T01":
@@ -249,7 +253,7 @@ for inds in indexes:
         data_strain_long = np.full(len(data_time), np.nan)
 
         # Získání indexů, které jsou nejblíže hodnotám v druhém vektoru
-        if pair_by_displacement:
+        if pair_data_by_displacement:
             index_at_photo = np.abs(data_distances[:, np.newaxis] - data_displacement).argmin(axis=0)
         else:
             index_at_photo = np.abs(data_time[:, np.newaxis] - photo_times).argmin(axis=0)
@@ -258,12 +262,18 @@ for inds in indexes:
         differences = np.diff(index_at_photo)
 
         # Tolerance
-        tolerance = round(np.mean(differences[:len(differences) // 4]) * 0.2)
+        tolerance = round(np.mean(differences[:len(differences) // 4]) * 0.35 if pair_data_by_displacement else 0.25)
 
         # Zjistit index, do kterého jsou mezery stejné v rámci tolerance
-        same_until = np.where(~np.isclose(differences, differences[0], atol=tolerance))[0]
+        same_until = \
+        np.where(~np.isclose(differences, round(np.mean(differences[:len(differences) // 4])), atol=tolerance))[0]
         if same_until.size > 0:
-            breakpoint_index = same_until[0]  # První index, kde se mezery liší
+            if same_until[0] == 0 and same_until.size > 1:
+                breakpoint_index = same_until[1]
+            elif same_until[0] == 0:
+                breakpoint_index = len(differences)
+            else:
+                breakpoint_index = same_until[0]  # První index, kde se mezery liší
         else:
             breakpoint_index = len(differences)  # Všechny mezery jsou stejné
 
@@ -272,77 +282,107 @@ for inds in indexes:
         data_photos[same_index_at_photo] = photos[:breakpoint_index + 1]
         data_strain_long[same_index_at_photo] = data_strain[:breakpoint_index + 1]
 
-        if data_by_index:
+        if pair_data_by_index:
             found_times = data_time[same_index_at_photo]
             found_force = data_force[same_index_at_photo]
             found_distances = data_distances[same_index_at_photo]
             # found_force -= found_force[0]
         else:
-            found_times = photo_times
+            found_times = photo_times[:breakpoint_index + 1]
 
             # Získání hodnot, které jsou interpolovány z druhého vektoru na základě prvního
-            if pair_by_displacement:
-                found_force = np.interp(data_displacement, data_distances, data_force)
-                found_distances = np.interp(data_displacement, data_distances, data_distances)
+            if pair_data_by_displacement:
+                found_force = np.interp(data_displacement, data_distances, data_force)[:breakpoint_index + 1]
+                found_distances = np.interp(data_displacement, data_distances, data_distances)[:breakpoint_index + 1]
 
             else:
-                found_force = np.interp(photo_times, data_time, data_force)
-                found_distances = np.interp(photo_times, data_time, data_distances)
+                found_force = np.interp(photo_times, data_time, data_force)[:breakpoint_index + 1]
+                found_distances = np.interp(photo_times, data_time, data_distances)[:breakpoint_index + 1]
 
         data_stress = data_force / sample_cross_section_area
 
         found_stress = found_force / sample_cross_section_area
 
         end_index = np.where(np.abs(np.diff(found_stress)) > np.max(found_stress) * 0.5)[0]
-        if len(end_index) == 0:
-            end_index = len(found_stress)
-        else:
-            end_index = end_index[0]
+        end_index = len(found_stress) if len(end_index) == 0 else end_index[0]
 
-        index_max_strain = min(np.where(data_strain <= max_data_stain_limiter / 100, data_strain, np.inf).argmax(),
-                               np.where(np.abs(np.diff(data_strain)) <= 0.02)[0].argmax(), end_index) + 1
+        snap_index = np.where(np.abs(np.diff(data_strain)) > 0.0075)[0]
+        snap_index = snap_index[0] if snap_index.size > 0 else len(data_strain)
+
+        index_max_strain = 1 + min(np.where(data_strain <= max_data_stain_limiter / 100, data_strain, np.inf).argmax(),
+                                   snap_index,
+                                   end_index)
 
         # Index nejbližší nižší hodnoty
 
-        found_photos = photos[:index_max_strain]
+        found_photos = photos[:index_max_strain][:breakpoint_index + 1]
         found_times = found_times[:index_max_strain]
         found_distances = found_distances[:index_max_strain]
         found_force = found_force[:index_max_strain]
-        found_strain = data_strain[:index_max_strain]
+        found_strain = data_strain[:index_max_strain][:breakpoint_index + 1]
         found_stress = found_stress[:index_max_strain]
 
-        found_strains[ind] = found_strain
-        found_stresses[ind] = found_stress
-
-        index_max_strain = np.where(found_strain <= max_linear_strain, found_strain, np.inf).argmax()
-
-        module = (found_stress[index_max_strain] - found_stress[1]) / (found_strain[index_max_strain] - found_strain[1])
-
-        modules.append(module)
+        if len(found_strain) < min_linear_window:
+            print(f"\033[91mSample {experiment_name} [{folder}] is too short for linear regression.\033[0m")
+            continue
 
         # Celá data - DLOUHÁ
-        data_frames.append(pd.DataFrame({'Indicative Photo': data_photos,
+        description = "" if pair_data_by_index else "Interpolated "
+        data_frames.append(pd.DataFrame({description + 'Photo': data_photos,
                                          'Time [s]': data_time,
                                          'Distance [mm]': data_distances,
                                          'Force [N]': data_force,
-                                         'Indicative Strain [-]': data_strain_long,
+                                         description + 'Strain [-]': data_strain_long,
                                          'Stress [MPa]': data_stress}))
 
+        description = "" if pair_data_by_index else "Interpolated "
         # Hodnoty ve chvíli fotek - KRÁTKÁ
         data_frames.append(pd.DataFrame({'Photo': found_photos,
                                          'Time [s]': found_times,
-                                         'Distance [mm]': found_distances,
-                                         'Force [N]': found_force,
-                                         'Strain [-]': found_strain,
-                                         'Stress [MPa]': found_stress}))
+                                         description + 'Distance [mm]': found_distances,
+                                         description + 'Force [N]': found_force,
+                                         description + 'Strain [-]': found_strain,
+                                         description + 'Stress [MPa]': found_stress}))
 
+        min_x_val = max(min_x_strain, np.min(found_strain))
+        max_x_val = max(min(max_x_strain, np.max(found_strain)), min_x_val)
+
+        threshold = quality_threshold
+        step = threshold_step
+        linear_sections = ()
+        coefs = None
+        iter_count = 0
+        abs_inter_count = 0
+
+        while not linear_sections:
+            linear_sections, coefs = find_linear_section(linear_method, found_strain, found_stress,
+                                                         min_x_val, max_x_val, threshold, con1, con2, min_linear_window)
+            threshold *= step
+            iter_count += 1
+            abs_inter_count += 1
+
+            if iter_count > 500:
+                step *= 0.99999
+                iter_count = 0
+        start, end = linear_sections
+
+        module = (found_stress[end] - found_stress[start]) / (found_strain[end] - found_strain[start])
+
+        data_frames.append([module, (start, end), coefs[1] if isinstance(coefs, list) else coefs])
+
+        print(f"{experiment_name} [{folder}]\tModule:\t{module:.3f}, Iterations: {abs_inter_count}")
+        print(f"\tStart: {start:03d},\tEnd: {end:03d},\tR: {coefs[1] if isinstance(coefs, list) else coefs: .6f}")
+
+        found_strains[ind] = found_strain
+        found_stresses[ind] = found_stress
+        modules[ind] = module
         all_datas[ind] = data_frames
 
-mean_module = np.mean(modules)
-std_module = np.std(modules)
+mean_module = np.nanmean(modules)
+std_module = np.nanstd(modules)
 
-print(mean_module)
-print(std_module)
+print(f"Mean module:\t{mean_module:.6f}")
+print(f"\tStd module:\t{std_module:.6f}")
 
 # indexes = [type_1_sm, type_2_sm, type_3_sm, type_1_la, type_2_la, type_3_la]
 indexes = [type_1_sm, type_2_sm, type_3_sm, type_1_la, type_2_la, type_3_la]
@@ -432,7 +472,8 @@ fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbo
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 if save_plot:
-    plt.savefig(f"./{out_put_folder}/tension_all.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+    fig.savefig(f"./{out_put_folder}/tension_all.{file_type}", format=file_type, dpi=out_dpi, bbox_inches='tight')
+
 plt.figure()
 [plt.plot(s * 100, f, zorder=3, label=l) for s, f, l in zip(found_strains, found_stresses, folders) if s is not None]
 plt.gca().set_xlabel(r"Strain [\%]" if do_tex else "Strain [%]")
@@ -445,21 +486,37 @@ fig, ax1 = plt.subplots(figsize=(5.2, 3))
 fig2, ax2 = plt.subplots(figsize=(5.2, 3))
 
 indexes = [type_1_sm, type_3_sm, type_2_sm, type_1_la, type_3_la, type_2_la]
-datas_pack = zip(("T01-I-S", "T01-II-S", "T01-III-S", "T01-I-L", "T01-II-L", "T01-III-L"),
+index_names = ["T01-I-S", "T01-II-S", "T01-III-S", "T01-I-L", "T01-II-L", "T01-III-L"]
+datas_pack = zip(index_names,
                  [*indexes],
                  [*colors])
 
+pack_mean_modules = [None] * len(indexes)
+pack_std_modules = [None] * len(indexes)
+
+print("\n")
 for n, (name, curve_index, color) in enumerate(datas_pack):
-    min_len = np.min([len(found_strains[j]) for j in curve_index if found_strains[j] is not None])
-    data_plot_x = [found_strains[j][:min_len] for j in curve_index if found_strains[j] is not None]
-    data_plot_y = [found_stresses[j][:min_len] for j in curve_index if found_stresses[j] is not None]
+    data_plot_x = [found_strains[j] for j in curve_index if found_strains[j] is not None]
+    data_plot_y = [found_stresses[j] for j in curve_index if found_stresses[j] is not None]
+    data_plot_modules = [all_datas[j][3][0] for j in curve_index if all_datas[j] is not None]
+    data_plot_intercepts = [all_datas[j][3][1] for j in curve_index if all_datas[j] is not None]
+    data_plot_coefs = [all_datas[j][3][2][0] if isinstance(all_datas[j][3][2], list)
+                       else all_datas[j][3][2] for j in curve_index if all_datas[j] is not None]
 
-    data_mean_x = np.mean(data_plot_x, axis=0)
-    data_mean_y = np.mean(data_plot_y, axis=0)
-    data_max = np.max(data_plot_y, axis=0)
-    data_min = np.min(data_plot_y, axis=0)
-    data_std = np.std(data_plot_y, axis=0)
+    # Vytvoření společné osy x
+    data_mean_x = np.linspace(0, max([x.max() for x in data_plot_x]) if total_mean_curve else min(
+        [x.max() for x in data_plot_x]),
+                              round(np.max([len(s) for s in found_strains if s is not None]) * 1.5))
 
+    data_plot_interp_y = [np.interp(data_mean_x, data_plot_x[j], data_plot_y[j], left=np.nan, right=np.nan) for j in
+                          range(len(data_plot_y))]
+
+    data_mean_y = np.nanmean(data_plot_interp_y, axis=0)
+    data_max = np.nanmax(data_plot_interp_y, axis=0)
+    data_min = np.nanmin(data_plot_interp_y, axis=0)
+    data_std = np.nanstd(data_plot_interp_y, axis=0)
+
+    # Vizualizace
     ax2.plot(data_mean_x * 100 if "strain" in path_strain else 1, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
 
     ax1.plot(data_mean_x * 100 if "strain" in path_strain else 1, data_mean_y, label=name, lw=2, c=color, zorder=20 + n)
@@ -470,86 +527,78 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     ax1.plot(data_mean_x * 100 if "strain" in path_strain else 1, data_min, ls="--", lw=1, c=color, zorder=30 + n,
              alpha=0.7)
 
-    modules = []
-
-    threshold = quality_threshold
-    linear_sections = ()
-
-    # Vizualizace
-
+    # Modul pružnosti a lineární část
     for j in range(len(data_plot_x)):
-        min_x_val = max(min_x_strain, np.min(data_plot_x[j]))
-        max_x_val = max(min(max_x_strain, np.max(data_plot_x[j])), min_x_val)
-
-        while not linear_sections:
-            linear_sections, coefs = find_linear_section(linear_method, data_plot_x[j], data_plot_y[j],
-                                                      min_x_val, max_x_val, threshold, con1, con2)
-            threshold *= step
-        start, end = linear_sections
-
-        # index_max_strain = np.where(data_plot_x[i] < max_linear_strain, data_plot_x[i], np.inf).argmax()
-
-        # module = (data_plot_x[j][index_max_strain] - data_plot_y[j][1]) / (
-        #         data_plot_x[j][index_max_strain] - data_plot_x[j][1])
-        module = (data_plot_y[j][end] - data_plot_y[j][start]) / (
-                data_plot_x[j][end] - data_plot_x[j][start])
-
-        modules.append(module)
+        start, end = data_plot_intercepts[j]
 
         axs_m[n].plot(data_plot_x[j], data_plot_y[j], label="Data", alpha=0.45)
-        axs_m[n].plot(data_plot_x[j][start:end + 1], data_plot_y[j][start:end + 1], linewidth=3, color="red")
+        axs_m[n].plot(data_plot_x[j][start:end + 1], data_plot_y[j][start:end + 1], color="red", linewidth=3,
+                      label="Linear part")
 
-    axs_m[n].set_title(f"Optimalizovaná detekce lineární části: {coefs[0] if isinstance(coefs, list) else coefs:.6f}",
-                       fontsize=9)
+        axs_m[n].set_title(f"Optimalizovaná detekce lineární části: {np.nanmean(data_plot_coefs):.6f}",
+                           fontsize=9)
+
     fig_m.tight_layout()
 
-    mean_module = np.mean(modules)
-    std_module = np.std(modules)
+    mean_module = np.mean(data_plot_modules)
+    std_module = np.std(data_plot_modules)
 
-    print("\t", mean_module)
-    print("\t", std_module)
+    print(f"{name} Mean module:\t{mean_module:.6f}")
+    print(f"\t\tStd module:\t{std_module:.6f}")
 
-for axes in [ax1, ax2]:
-    axes.grid(color="lightgray", linewidth=0.5, zorder=0)
-    for axis in ['top', 'right']:
-        axes.spines[axis].set_linewidth(0.5)
-        axes.spines[axis].set_color('lightgray')
+    pack_mean_modules[n] = mean_module
+    pack_std_modules[n] = std_module
 
-    if axes.get_xlim()[1] % axes.get_xticks()[-1] == 0:
-        axes.spines['right'].set_visible(False)
-    if axes.get_ylim()[1] % axes.get_yticks()[-1] == 0:
-        axes.spines['top'].set_visible(False)
+    for axes in [ax1, ax2]:
+        axes.grid(color="lightgray", linewidth=0.5, zorder=0)
+        for axis in ['top', 'right']:
+            axes.spines[axis].set_linewidth(0.5)
+            axes.spines[axis].set_color('lightgray')
 
-    axes.yaxis.set_minor_locator(AutoMinorLocator())
-    axes.xaxis.set_minor_locator(AutoMinorLocator())
+        if axes.get_xlim()[1] % axes.get_xticks()[-1] == 0:
+            axes.spines['right'].set_visible(False)
+        if axes.get_ylim()[1] % axes.get_yticks()[-1] == 0:
+            axes.spines['top'].set_visible(False)
 
-    axes.tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
-    axes.tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
+        axes.yaxis.set_minor_locator(AutoMinorLocator())
+        axes.xaxis.set_minor_locator(AutoMinorLocator())
 
-    # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    axes.legend(fontsize=8, bbox_to_anchor=(0.5, -0.4), loc="center", borderaxespad=0, ncol=3)
-    axes.set_xlabel(r"Strain [\%]" if do_tex else "Strain [%]")
-    axes.set_ylabel(r"Stress [$MPa$]" if do_tex else "Stress [MPa]")
+        axes.tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5, color="black")
+        axes.tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
 
-    axes.set_aspect('auto', adjustable='box')
+        # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        axes.legend(fontsize=8, bbox_to_anchor=(0.5, -0.4), loc="center", borderaxespad=0, ncol=3)
+        axes.set_xlabel(r"Strain [\%]" if do_tex else "Strain [%]")
+        axes.set_ylabel(r"Stress [$MPa$]" if do_tex else "Stress [MPa]")
 
-ax2.set_ylim(ax1.get_ylim())
-ax2.set_xlim(ax1.get_xlim())
-fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
-# fig.tight_layout()
-# fig2.tight_layout()
+        axes.set_aspect('auto', adjustable='box')
 
-if save_plot:
-    fig.savefig(f"./{out_put_folder}/tension_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi,
-                bbox_inches='tight')
+    ax2.set_ylim(ax1.get_ylim())
+    ax2.set_xlim(ax1.get_xlim())
+    fig.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
+    fig2.subplots_adjust(bottom=0.3, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
+    # fig.tight_layout()
+    # fig2.tight_layout()
+
+    if save_plot:
+        fig.savefig(f"./{out_put_folder}/tension_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi,
+                    bbox_inches='tight')
     fig2.savefig(f"./{out_put_folder}/tension_finalplot_single.{file_type}", format=file_type, dpi=out_dpi,
                  bbox_inches='tight')
 
-# ##############################################################################
-if not os.path.exists(out_put_folder):
-    os.makedirs(out_put_folder, exist_ok=True)
+    # ##############################################################################
+    if not os.path.exists(out_put_folder):
+        os.makedirs(out_put_folder, exist_ok=True)
 
+n = len(axs_m)
+xlims_m = np.max([axs_m[n].get_xlim() for n in range(n)], axis=0)
+ylims_m = np.max([axs_m[n].get_ylim() for n in range(n)], axis=0)
+for n in range(n):
+    axs_m[n].set_xlim(xlims_m)
+    axs_m[n].set_ylim(ylims_m)
+
+# ##############################################################################
+# Zápis do Excelu
 try:
     excel_writer = pd.ExcelWriter(os.path.join(out_put_folder, excel_file), engine='xlsxwriter')
 except PermissionError as e:
@@ -561,44 +610,58 @@ except (KeyError, Exception) as e:
     exit(11)
 
 # Zápis dat do listů
-for i, data in enumerate([all_datas[j] for j in
-                          np.hstack([type_1_sm, type_2_sm, type_3_sm,
-                                     type_1_la, type_2_la, type_3_la])]):
+for i, data_frame in enumerate([all_datas[j] for j in
+                                np.hstack([type_1_sm, type_2_sm, type_3_sm,
+                                           type_1_la, type_2_la, type_3_la])]):
 
-    if data is None:
+    if data_frame is None:
         continue
     else:
 
-        sheet_name = data[0]
+        sheet_name = data_frame[0]
         sheet_name = sheet_name.replace(f"{data_type}_", "").replace("_1s", "")
+        sheet_name += "_S" if int(sheet_name.split("-")[0]) < 11 else "_L"
 
-        # TODO #########################################################################################################
-        # ##############################################################################################################
-        # TODO #########################################################################################################
         # Uložení textu v listu
         text1 = f"Typ měření: {str(excel_file).replace('.xlsx', '')}"
-        text2 = f"(Měření: {sheet_name})"
-        description = "Obsah jednotlivých listů:"
+
+        if pair_data_by_index:
+            if pair_data_by_displacement:
+                description = "Data - v závislosti na posunu: Data měření a DIC jsou párována na základě posunu"
+            else:
+                description = "Data - v závislosti na čase: Data měření a DIC jsou párována na základě času"
+        else:
+            if pair_data_by_displacement:
+                description = "Data - v závislosti na posunu: Data měření jsou interpolována na základě času z DIC"
+            else:
+                description = "Data - v závislosti na čase: Data měření jsou interpolována na základě posunu z DIC"
 
         # Vytvoření listu pro popis
         df_description = pd.DataFrame({'Popis': [description]})
 
         # Zápis popisu na zvláštní list
-        df_description.to_excel(excel_writer, sheet_name='Popis', index=False, startrow=5)
+        df_description.to_excel(excel_writer, sheet_name='Popis', index=False, startrow=3)
 
         worksheet = excel_writer.sheets['Popis']
         worksheet.write(0, 0, text1)
-        worksheet.write(1, 0, text2)
-        # TODO #########################################################################################################
-        # ##############################################################################################################
-        # TODO #########################################################################################################
+
+        worksheet.write(6, 0, "Youngův modul pružnosti: [MPa]")
+        worksheet.write(i + 7, 1, f'{sheet_name}:')
+        worksheet.write(i + 7, 2, data_frame[3][0])
 
         # Ukládání jednotlivých DataFrame na různá místa
         start_row = 0
         col_start = 0
-        data[1].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
-        col_start += len(data[1].columns)
-        data[2].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
+        data_frame[1].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
+        col_start += len(data_frame[1].columns)
+        data_frame[2].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
+
+worksheet = excel_writer.sheets['Popis']
+worksheet.write(6, 5, f"Průměrné hodnoty: Y | ±STD [MPa]")
+for i in range(len(index_names)):
+    worksheet.write(i + 7, 6, f'{index_names[i]}:')
+    worksheet.write(i + 7, 7, pack_mean_modules[i])
+    worksheet.write(i + 7, 8, pack_std_modules[i])
 
 # Zavření Excel souboru
 excel_writer.close()
