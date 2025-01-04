@@ -1,5 +1,6 @@
 from matplotlib.ticker import AutoMinorLocator
 import matplotlib.pyplot as plt
+from scipy.stats import linregress
 import pandas as pd
 import numpy as np
 import zipfile
@@ -7,6 +8,86 @@ import h5py
 import time
 import cv2
 import os
+
+
+# Funkce pro hledání lineárních úseků
+def find_linear_section(calculation_type, x, y, min_x, max_x, threshold=0.95, constant1=1,
+                        constant2=0.999, min_length=4):
+    i_1 = 0
+    i_2 = 0
+    r_value = 0
+
+    if calculation_type == 1:
+        n_x = len(x)
+        best_score = -np.inf
+        best_section = None
+        best_r = 0
+
+        sorted_ind = np.argsort(x)
+        x = x[sorted_ind]
+        y = y[sorted_ind]
+
+        if min_x < np.min(x) or max_x > np.max(x):
+            raise ValueError("min_x a max_x musí být v rozmezí x")
+
+        max_x_i = np.argmin(np.abs(x - max_x))
+
+        # Projdeme všechny možné úseky
+        for i_1 in range(np.argmin(np.abs(x - min_x)), max_x_i):
+            for i_2 in range(i_1 + 1, max_x_i):
+                # Lineární regrese na úseku [i, j]
+                _, _, r_value, _, _ = linregress(x[i_1:i_2 + 1], y[i_1:i_2 + 1])
+                # slope, intercept, r_value, p_value, std_err
+
+                # Hodnocení úseku: velikost okna a korelační koeficient
+                window_size = i_2 - i_1 + 1
+                if window_size >= min_length and abs(r_value) > threshold:
+                    score = window_size / n_x * constant1 + abs(r_value) * constant2
+
+                    # Uložení nejlepšího úseku
+                    if score > best_score:
+                        best_score = score
+                        best_section = (i_1, i_2)
+                        best_r = r_value
+
+        return best_section, [best_score, abs(best_r)]
+
+    elif calculation_type == 2:
+        ind_min = np.where(x >= min_x)[0][0]
+        ind_max = np.where(x <= max_x)[0][-1] + 1
+        x, y = x[ind_min:ind_max], y[ind_min:ind_max]
+        n_x = len(x)
+
+        linear_sections = []
+        r_coef = []
+
+        while i_1 < n_x - 1:
+            for i_2 in range(i_1 + 1, n_x):
+                # Lineární regrese na úseku [i, j]
+                _, _, r_value, _, _ = linregress(x[i_1:i_2 + 1], y[i_1:i_2 + 1])
+                # slope, intercept, r_value, p_value, std_err
+
+                # Pokud není lineární, ukonči smyčku
+                if abs(r_value) < threshold:
+                    if i_2 - i_1 > 1 and (i_2 - i_1 - 1) >= min_length:  # Přidej pouze úseky delší než 1 bod
+                        linear_sections.append((ind_min + i_1, ind_min + i_2 - 1))
+                        r_coef.append(abs(r_value))
+                    i_1 = i_2  # Posuň začátek na nový úsek
+                    break
+            else:
+                # Pokud jsme prošli až na konec
+                if i_2 - i_1 > 1 and (n_x - i_1 - 1) >= min_length:
+                    linear_sections.append((ind_min + i_1, ind_min + n_x - 1))
+                    r_coef.append(abs(r_value))
+                break
+
+        if not linear_sections:
+            return [], []
+        else:
+            best_index = np.argmax(r_coef)
+            return linear_sections[best_index], r_coef[best_index]
+    else:
+        raise ValueError("Neplatný výpočetní typ")
 
 
 def swap_lists(list1, list2):
@@ -36,6 +117,21 @@ out_dpi = 600
 
 cut_spikes = True
 data_type = "S01"  # "H01" # "H02"  # "S01"  # "M01"
+
+sample_beam_span = 50  # mm
+sample_moment_inertia = (1 / 12 * 15.13 * (2.64 ** 3))  # mm^4
+
+# Najít nejlepší lineární úsek
+linear_method = 1  # 1 - multicriteriální okno, 2 - klouzavé okno
+quality_threshold = 0.9999999 # 1 - 1e-20
+con1 = 1
+con2 = 0.9
+threshold_step = 0.99999
+
+min_linear_window = 4
+
+min_x_value = 0.8
+max_x_value = 2.2
 
 # Název Excel souboru
 excel_file = f'Values_bending.xlsx'
@@ -564,7 +660,6 @@ for exp, current_image_folder in enumerate(images_folders):
 
         experiment_name = current_image_folder
 
-        # TODO
         # Změna názvů typu infillu dle stran hexagonů
         if data_type == "S01" or data_type == "T01":
             if "-II-" in experiment_name:
@@ -599,8 +694,10 @@ for exp, current_image_folder in enumerate(images_folders):
                                              'Force [N]': forces[photo_indexes[beginning:]]}))
 
         if datasets['Forces']:
+            # TODO
             # Vytvoření datových rámce pro listy
-            data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_index:len(distances)],
+            data_frames.append(pd.DataFrame({'Photo': df['Photos'].values[start_index:len(distances)] -
+                                                      np.nanmin(df['Photos'].values[start_index:]) + 1,
                                              'Time [s]': time_stamps,
                                              'Distance [mm]': distances[start_index:],
                                              'Force [N]': forces[start_index:]}))
@@ -666,22 +763,48 @@ elif data_type == "S01":
                np.hstack((data_indexes__I_W, data_indexes__II_W, data_indexes__III_W)),
                np.hstack((data_indexes__I_G, data_indexes__II_G, data_indexes__III_G))
                ]"""
-    indexes = [data_indexes__I_max, data_indexes__II_max, data_indexes__III_max]
+    indexes = [data_indexes__I_O, data_indexes__III_O, data_indexes__II_O,
+               data_indexes__I_max_O, data_indexes__III_max_O,
+               data_indexes__II_max_O]
+    # indexes = [data_indexes__I_max, data_indexes__II_max, data_indexes__III_max]
     # indexes = [data_indexes__I, data_indexes__II, data_indexes__III]
 
 elif data_type == "M01":
     indexes = [data_indexes_glued, data_indexes_whole]
 
 # Vytvoření subplots
-fig, axs = plt.subplots(2, 2, figsize=(12, 6)) if 5 > len(indexes) >= 3 else plt.subplots(1, 2, figsize=(12, 4)) \
-    if len(indexes) == 2 else plt.subplots(1, 1, figsize=(6, 4))
+if len(indexes) == 0:
+    print("No data to plot.")
+    exit(1)
+elif len(indexes) == 1:
+    fig, axs = plt.subplots(1, 1, figsize=(6, 4))
+    fig_m, axs_m = plt.subplots(1, 1, figsize=(6, 4))
+elif len(indexes) == 2:
+    fig, axs = plt.subplots(1, 2, figsize=(12, 4))
+    fig_m, axs_m = plt.subplots(1, 2, figsize=(12, 4))
+elif len(indexes) <= 4:
+    fig, axs = plt.subplots(2, 2, figsize=(12, 6))
+    fig_m, axs_m = plt.subplots(2, 2, figsize=(12, 6))
+elif len(indexes) <= 6:
+    fig, axs = plt.subplots(2, 3, figsize=(12, 5))
+    fig_m, axs_m = plt.subplots(2, 3, figsize=(12, 5))
+else:
+    fig, axs = plt.subplots(3, np.ceil(len(indexes) / 3), figsize=(12, 8))
+    fig_m, axs_m = plt.subplots(3, np.ceil(len(indexes) / 3), figsize=(12, 8))
+    i = int(len(indexes) - (3 * np.ceil(len(indexes) / 3)))
+    if i < 0:
+        axs[i:].remove()
+        axs_m[i:].remove()
+    elif i > 0:
+        print("Error in creating subplots.")
+        exit(2)
+
 try:
     axs = axs.flatten()
+    axs_m = axs_m.flatten()
 except AttributeError:
     axs = [axs]
-
-if len(indexes) == 3:
-    axs[-1].remove()
+    axs_m = [axs_m]
 
 for i in range(len(indexes)):
     try:
@@ -734,109 +857,137 @@ if save_figures:
 
 # Vytvoření subplots
 if mark_linear_part:
-    fig, axs = plt.subplots(2, 2, figsize=(12, 6)) if 5 > len(indexes) >= 3 else plt.subplots(1, 2, figsize=(12, 4)) \
-        if len(indexes) == 2 else plt.subplots(1, 1, figsize=(6, 4))
-    try:
-        axs = axs.flatten()
-    except AttributeError:
-        axs = [axs]
-
-    if len(indexes) == 3:
-        axs[-1].remove()
-
     for i in range(len(indexes)):
         try:
-            [axs[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, c='dodgerblue',
-                         lw=1,
-                         alpha=0.5, zorder=4) for j in indexes[i] if all_datas[j] is not None]
+            [axs_m[i].plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, c='dodgerblue',
+                           lw=1,
+                           alpha=0.5, zorder=4) for j in indexes[i] if all_datas[j] is not None]
         except ValueError:
             pass
 
-        [axs[i].plot(
+        [axs_m[i].plot(
             all_datas[j][-2].iloc[:, 2].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
                     all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
             all_datas[j][-2].iloc[:, 3].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
                     all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
             c='red', lw=1.2, alpha=1, zorder=5) for j in indexes[i] if all_datas[j] is not None]
 
-        axs[i].grid(color="lightgray", linewidth=0.5, zorder=0)
+        axs_m[i].grid(color="lightgray", linewidth=0.5, zorder=0)
         for axis in ['top', 'right']:
-            axs[i].spines[axis].set_linewidth(0.5)
-            axs[i].spines[axis].set_color('lightgray')
+            axs_m[i].spines[axis].set_linewidth(0.5)
+            axs_m[i].spines[axis].set_color('lightgray')
 
-        if axs[i].get_xlim()[1] % axs[i].get_xticks()[-1] == 0:
-            axs[i].spines['right'].set_visible(False)
-        if axs[i].get_ylim()[1] % axs[i].get_yticks()[-1] == 0:
-            axs[i].spines['top'].set_visible(False)
+        if axs_m[i].get_xlim()[1] % axs_m[i].get_xticks()[-1] == 0:
+            axs_m[i].spines['right'].set_visible(False)
+        if axs_m[i].get_ylim()[1] % axs_m[i].get_yticks()[-1] == 0:
+            axs_m[i].spines['top'].set_visible(False)
 
-        axs[i].yaxis.set_minor_locator(AutoMinorLocator())
-        axs[i].xaxis.set_minor_locator(AutoMinorLocator())
+        axs_m[i].yaxis.set_minor_locator(AutoMinorLocator())
+        axs_m[i].xaxis.set_minor_locator(AutoMinorLocator())
 
-        axs[i].tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5,
-                           color="black")
-        axs[i].tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
+        axs_m[i].tick_params(axis='both', which='minor', direction='in', width=0.5, length=2.5, zorder=5,
+                             color="black")
+        axs_m[i].tick_params(axis='both', which='major', direction='in', width=0.8, length=5, zorder=5, color="black")
 
-        # axs[i].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        # axs[i].legend(fontsize=8, bbox_to_anchor=(0.5, -0.25), loc="center", borderaxespad=0, ncol=4)
+        # axs_m[i].legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        # axs_m[i].legend(fontsize=8, bbox_to_anchor=(0.5, -0.25), loc="center", borderaxespad=0, ncol=4)
 
-        axs[i].set_xlabel('Displacement [mm]')
-        axs[i].set_ylabel('Force [N]')
+        axs_m[i].set_xlabel('Displacement [mm]')
+        axs_m[i].set_ylabel('Force [N]')
 
-        axs[i].set_aspect('auto', adjustable='box')
+        axs_m[i].set_aspect('auto', adjustable='box')
 
     # plt.tight_layout()
-    fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
+    fig_m.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
 
     fig, ax = plt.subplots(figsize=(5.2, 3))
 
-    linear_lines = []
+    data_modules = []  # TODO
 
     for i in range(len(indexes)):
-        [ax.plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, c='dodgerblue', lw=1,
-                 alpha=0.5, zorder=4) for j in indexes[i] if all_datas[j] is not None]
-
-        """l1 = np.array([all_datas[j][-2].iloc[:, 2].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
-                all_datas[j][-2].iloc[:, 2].values <= linear_part[1])] for j in indexes[i] if all_datas[j] is not None])
-        l2 = np.array([all_datas[j][-2].iloc[:, 3].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
-                all_datas[j][-2].iloc[:, 2].values <= linear_part[1])] for j in indexes[i] if all_datas[j] is not None])
-
-        [ax.plot(a, b, c='red', lw=1.2, alpha=1, zorder=5) for a, b in zip(l1, l2)]"""
-
-        [ax.plot(all_datas[j][-2].iloc[:, 2].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
-                all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
-                 all_datas[j][-2].iloc[:, 3].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
-                         all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
-                 c='red', lw=1.2, alpha=1, zorder=5) for j in indexes[i] if all_datas[j] is not None]
-
-        """linear_lines.append(np.array(
-            [all_datas[j][-2].iloc[:, 3].values[all_datas[j][-2].iloc[:, 2].values <= linear_part[1]][-1] for j in
-             indexes[i] if all_datas[j] is not None]) * (50 ** 3) / np.array(
-            [all_datas[j][-2].iloc[:, 2].values[all_datas[j][-2].iloc[:, 2].values <= linear_part[1]][-1] for j in
-             indexes[i] if all_datas[j] is not None]) * 48 * (1 / 12 * 15.13 * 2.64 ** 3))"""
-
         if data_type == 'S01':
-            f = np.array([all_datas[j][-2].iloc[:, 3].values[all_datas[j][-2].iloc[:, 2].values <= linear_part[1]][
-                              -1] for j in
-                          indexes[i] if all_datas[j] is not None]) * (50 ** 3)
-            w = np.array([all_datas[j][-2].iloc[:, 2].values[
-                              all_datas[j][-2].iloc[:, 2].values <= linear_part[1]][-1] for j in
-                          indexes[i] if all_datas[j] is not None]) * 48 * (1 / 12 * 15.13 * 2.64 ** 3)
+            # E= F⋅L^3/(48⋅I⋅w)
+
+            module = []
+            for j in indexes[i]:
+
+                y_data = all_datas[j][-2].iloc[:, 3].values[::10]
+                x_data = all_datas[j][-2].iloc[:, 2].values[::10]
+
+                # y_data = np.convolve(y_data, np.ones(30) / 30, mode='valid')
+                # x_data = np.convolve(x_data, np.ones(30) / 30, mode='valid')
+
+                min_x_val = max(min_x_value, np.min(x_data))
+                max_x_val = max(min(max_x_value, np.max(x_data)), min_x_val)
+
+                threshold = quality_threshold
+                step = threshold_step
+                linear_sections = ()
+                coefs = None
+                iter_count = 0
+                abs_inter_count = 0
+
+                while not linear_sections:
+                    if abs_inter_count == 19:
+                        pass
+
+                    linear_sections, coefs = find_linear_section(linear_method, x_data, y_data,
+                                                                 min_x_val, max_x_val, threshold, con1, con2,
+                                                                 min_linear_window)
+                    threshold *= step
+                    iter_count += 1
+                    abs_inter_count += 1
+
+                    if iter_count > 500:
+                        step *= 0.99999
+                        iter_count = 0
+                start, end = linear_sections
+
+                if x_data[start] < min_x_val or x_data[end] > max_x_val:
+                    print(f"\n\033[31;1;21m{all_datas[j][0]}\033[0m")
+                    print(f"\tStart: {x_data[start]:.2f}, End: {x_data[end]:.2f}")
+                    pass
+
+                """f = np.array([all_datas[j][-2].iloc[:, 3].values[all_datas[j][-2].iloc[:, 2].values <= linear_part[1]][
+                                  -1] for j in
+                              indexes[i] if all_datas[j] is not None])
+                w = np.array([all_datas[j][-2].iloc[:, 2].values[
+                                  all_datas[j][-2].iloc[:, 2].values <= linear_part[1]][-1] for j in
+                              indexes[i] if all_datas[j] is not None])"""
+
+                f = np.mean(y_data[start:end])
+                w = np.mean(x_data[start:end])
+
+                e = (f * sample_beam_span ** 3) / (48 * sample_moment_inertia * w)
+
+                print(f"\n{all_datas[j][0]}\tModule:\t{e:.3f}, Iterations: {abs_inter_count}")
+                print(
+                    f"\tStart: {start:03d},\tEnd: {end:03d},\tR: {coefs[1] if isinstance(coefs, list) else coefs: .6f}")
+
+                module.append(e)
+
+                data_modules.append(e)
+
+                ax.plot(x_data, y_data, c='dodgerblue', lw=1, alpha=0.5, zorder=4)
+
+                ax.plot(x_data[start:end], y_data[start:end], c='red', lw=1.2, alpha=1, zorder=5)
+
+            print(f"\n\t {np.mean(module):.3f}")
+            print(f"\t {np.std(module):.3f}")
 
 
         else:
             """f = np.mean([l[-1] - l[0] for l in l1])
             w = np.mean([l[-1] - l[0] for l in l2])"""
-            pass
 
-        try:
-            e = f / w
+            [ax.plot(all_datas[j][-2].iloc[:, 2].values, all_datas[j][-2].iloc[:, 3].values, c='dodgerblue', lw=1,
+                     alpha=0.5, zorder=4) for j in indexes[i] if all_datas[j] is not None]
 
-            linear_lines.append(e)
-
-            print(f"\n\t {np.mean(e):.3f}")
-            print(f"\t {np.std(e):.3f}")
-        except Exception as e:
-            pass
+            [ax.plot(all_datas[j][-2].iloc[:, 2].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
+                    all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
+                     all_datas[j][-2].iloc[:, 3].values[(linear_part[0] <= all_datas[j][-2].iloc[:, 2].values) & (
+                             all_datas[j][-2].iloc[:, 2].values <= linear_part[1])],
+                     c='red', lw=1.2, alpha=1, zorder=5) for j in indexes[i] if all_datas[j] is not None]
 
     ax.grid(color="lightgray", linewidth=0.5, zorder=0)
     for axis in ['top', 'right']:
@@ -1021,44 +1172,47 @@ if data_type == "S01":
         exit(11)
 
     # Zápis dat do listů
-    for i, data in enumerate([all_datas[j] for j in
-                              np.hstack([data_indexes__I_O, data_indexes__III_O, data_indexes__II_O,
-                                         data_indexes__I_max_O, data_indexes__III_max_O, data_indexes__II_max_O])]):
-        sheet_name = data[0]
+    for i, data_frame in enumerate([all_datas[j] for j in
+                                    np.hstack([data_indexes__I_O, data_indexes__III_O, data_indexes__II_O,
+                                               data_indexes__I_max_O, data_indexes__III_max_O,
+                                               data_indexes__II_max_O])]):
+        sheet_name = data_frame[0]
 
         sheet_name = sheet_name.replace(f"{data_type}_", "").replace("-10S", "").replace("_O", "")
 
-        # TODO #########################################################################################################
-        # ##############################################################################################################
-        # TODO #########################################################################################################
         # Uložení textu v listu
         text1 = f"Typ měření: {str(excel_file).replace('.xlsx', '')}"
-        text2 = f"(Měření: {sheet_name})"
-        description = "Obsah jednotlivých listů:"
+        text2 = (
+            "Vzorky byly testovány pouze v elastické oblasti a následně byly vybrané vzorky zatíženy až do oblasti plastické"
+            " | MAX = vzozky zatěžovány až do maximální možné vzdálenosti | N = stejný směr zatěžování jako v předchozím elastickém měření | D = opačný směr zatěžování než v předchozím elastickém měření")
+
+        description = 'Data - Ohybová zkouška deskových vzorků jako funkce síly a průhybu na "prostém nosníku"'
 
         # Vytvoření listu pro popis
         df_description = pd.DataFrame({'Popis': [description]})
 
         # Zápis popisu na zvláštní list
-        df_description.to_excel(excel_writer, sheet_name='Popis', index=False, startrow=5)
+        df_description.to_excel(excel_writer, sheet_name='Popis', index=False, startrow=2)
 
         worksheet = excel_writer.sheets['Popis']
+
         worksheet.write(0, 0, text1)
-        worksheet.write(1, 0, text2)
-        # TODO #########################################################################################################
-        # ##############################################################################################################
-        # TODO #########################################################################################################
+        worksheet.write(4, 0, text2)
+
+        worksheet.write(6, 0, "Modul pružnosti: [MPa]")
+        worksheet.write(i + 7, 1, f'{sheet_name}:')
+        worksheet.write(i + 7, 2, data_modules[i])
 
         # Ukládání jednotlivých DataFrame na různá místa
         start_row = 0
         col_start = 0
-        data[4].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
-        col_start += len(data[4].columns)
-        data[2].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
-        col_start += len(data[2].columns)
-        data[1].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
-        col_start += len(data[1].columns)
-        data[3].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
+        data_frame[4].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
+        col_start += len(data_frame[4].columns)
+        data_frame[2].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
+        col_start += len(data_frame[2].columns)
+        data_frame[1].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
+        col_start += len(data_frame[1].columns)
+        data_frame[3].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
 
     # Zavření Excel souboru
     excel_writer.close()

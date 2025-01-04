@@ -1,6 +1,5 @@
 from matplotlib.ticker import AutoMinorLocator
 import matplotlib.pyplot as plt
-from numba.scripts.generate_lower_listing import description
 from scipy.stats import linregress
 import pandas as pd
 import numpy as np
@@ -67,14 +66,14 @@ def find_linear_section(calculation_type, x, y, min_x, max_x, threshold=0.95, co
                 # Pokud není lineární, ukonči smyčku
                 if abs(r_value) < threshold:
                     if i_2 - i_1 > 1 and (i_2 - i_1 - 1) >= min_length:  # Přidej pouze úseky delší než 1 bod
-                        linear_sections.append((i_1, i_2 - 1))
+                        linear_sections.append((ind_min + i_1, ind_min + i_2 - 1))
                         r_coef.append(abs(r_value))
                     i_1 = i_2  # Posuň začátek na nový úsek
                     break
             else:
                 # Pokud jsme prošli až na konec
                 if i_2 - i_1 > 1 and (n_x - i_1 - 1) >= min_length:
-                    linear_sections.append((i_1, n_x - 1))
+                    linear_sections.append((ind_min + i_1, ind_min + n_x - 1))
                     r_coef.append(abs(r_value))
                 break
 
@@ -97,7 +96,7 @@ out_put_folder = ".outputs"
 excel_file = f'Values_tension.xlsx'
 
 data_type = "T01"
-sample_cross_section_area = (2.64 * 15.13)  # [mm2]
+sample_cross_section_area = (2.64 * 15.13)  # [mm^2]
 
 pair_data_by_displacement = False  # False - podle času // True - podle posunů
 pair_data_by_index = False  # False - interpolace podle času nebo posunů // True - podle indexu času nebo posunů
@@ -105,14 +104,14 @@ swap_II_and_III = True
 
 do_tex = False
 
-save_plot = True
+save_plot = False
 
 file_type = "jpg"
 out_dpi = 600
 
 # Najít nejlepší lineární úsek
 linear_method = 2  # 1 - multicriteriální okno, 2 - klouzavé okno
-quality_threshold = 0.8  # TODO 1 - 1e-20
+quality_threshold = 1 - 1e-20
 con1 = 1
 con2 = 0.98
 threshold_step = 0.9999999
@@ -266,7 +265,7 @@ for inds in indexes:
 
         # Zjistit index, do kterého jsou mezery stejné v rámci tolerance
         same_until = \
-        np.where(~np.isclose(differences, round(np.mean(differences[:len(differences) // 4])), atol=tolerance))[0]
+            np.where(~np.isclose(differences, round(np.mean(differences[:len(differences) // 4])), atol=tolerance))[0]
         if same_until.size > 0:
             if same_until[0] == 0 and same_until.size > 1:
                 breakpoint_index = same_until[1]
@@ -467,7 +466,7 @@ for i in range(len(indexes)):
     axs[i].set_aspect('auto', adjustable='box')
 
 handles, labels = axs[0].get_legend_handles_labels()
-labels = [f"T-{l}" for l in range(len(labels))]
+labels = [f"T-{l + 1:02d}" for l in range(len(labels))]
 fig.legend(handles, labels, fontsize=8, borderaxespad=0, loc='lower center', bbox_to_anchor=(0.5, 0.05), ncol=10)
 
 fig.subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.3, hspace=0.3)
@@ -583,8 +582,8 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
     if save_plot:
         fig.savefig(f"./{out_put_folder}/tension_finalplot_tot.{file_type}", format=file_type, dpi=out_dpi,
                     bbox_inches='tight')
-    fig2.savefig(f"./{out_put_folder}/tension_finalplot_single.{file_type}", format=file_type, dpi=out_dpi,
-                 bbox_inches='tight')
+        fig2.savefig(f"./{out_put_folder}/tension_finalplot_single.{file_type}", format=file_type, dpi=out_dpi,
+                     bbox_inches='tight')
 
     # ##############################################################################
     if not os.path.exists(out_put_folder):
@@ -627,27 +626,29 @@ for i, data_frame in enumerate([all_datas[j] for j in
 
         if pair_data_by_index:
             if pair_data_by_displacement:
-                description = "Data - v závislosti na posunu: Data měření a DIC jsou párována na základě posunu"
+                description = "Data - v závislosti na posunu: Data měření a DIC jsou párována na základě posunu zatěžování z DIC"
             else:
-                description = "Data - v závislosti na čase: Data měření a DIC jsou párována na základě času"
+                description = "Data - v závislosti na čase: Data měření a DIC jsou párována na základě intervalu času pořízení fotek"
         else:
             if pair_data_by_displacement:
-                description = "Data - v závislosti na posunu: Data měření jsou interpolována na základě času z DIC"
+                description = "Data - v závislosti na čase: Data měření jsou interpolována na základě posunu zatěžování z DIC"
             else:
-                description = "Data - v závislosti na čase: Data měření jsou interpolována na základě posunu z DIC"
+                description = "Data - v závislosti na posunu: Data měření jsou interpolována na základě časového intervalu pořízení fotek z DIC"
 
         # Vytvoření listu pro popis
         df_description = pd.DataFrame({'Popis': [description]})
 
         # Zápis popisu na zvláštní list
-        df_description.to_excel(excel_writer, sheet_name='Popis', index=False, startrow=3)
+        df_description.to_excel(excel_writer, sheet_name='Popis', index=False, startrow=2)
 
         worksheet = excel_writer.sheets['Popis']
         worksheet.write(0, 0, text1)
 
-        worksheet.write(6, 0, "Youngův modul pružnosti: [MPa]")
+        worksheet.write(6, 0, "Modul pružnosti: [MPa] | Lineární část: [indexy fotek]")
         worksheet.write(i + 7, 1, f'{sheet_name}:')
         worksheet.write(i + 7, 2, data_frame[3][0])
+        worksheet.write(i + 7, 3, data_frame[3][1][0] + 1)
+        worksheet.write(i + 7, 4, data_frame[3][1][1] + 1)
 
         # Ukládání jednotlivých DataFrame na různá místa
         start_row = 0
@@ -657,11 +658,11 @@ for i, data_frame in enumerate([all_datas[j] for j in
         data_frame[2].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
 
 worksheet = excel_writer.sheets['Popis']
-worksheet.write(6, 5, f"Průměrné hodnoty: Y | ±STD [MPa]")
+worksheet.write(6, 6, f"Průměrné hodnoty: Y | ±STD [MPa]")
 for i in range(len(index_names)):
-    worksheet.write(i + 7, 6, f'{index_names[i]}:')
-    worksheet.write(i + 7, 7, pack_mean_modules[i])
-    worksheet.write(i + 7, 8, pack_std_modules[i])
+    worksheet.write(i + 7, 7, f'{index_names[i]}:')
+    worksheet.write(i + 7, 8, pack_mean_modules[i])
+    worksheet.write(i + 7, 9, pack_std_modules[i])
 
 # Zavření Excel souboru
 excel_writer.close()
