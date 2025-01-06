@@ -3,7 +3,59 @@ import matplotlib.pyplot as plt
 from scipy.stats import linregress
 import pandas as pd
 import numpy as np
+import h5py
 import os
+
+def save_or_load_data(file_path: str, over_write: bool, input0: str, input1: int, input2: float, input3: float,
+                      input4: float, input5: float, input6: int, input7: float, input8: float, input9: int,
+                      new_data=None):
+    # Otevření souboru (vytvoří nový, pokud neexistuje)
+    with h5py.File(file_path, 'a') as f:
+        # Klíč převeden na textový formát s pevnou přesností (aby se předešlo zaokrouhlovacím chybám)
+        input_key = (f"{input0}_{input1:02d}_{input2:.15f}_{input3:.10f}_{input4:.10f}_{input5:.15f}"
+                     f"_{input6:08d}_{input7:.10f}_{input8:.10f}_{input9:08d}")
+
+        # Kontrola, zda klíč existuje
+
+        if input_key in f and new_data is None:
+            print(f"\tData pro {input0}, {input2} nalezena, načítám...")
+
+            group = f[input_key]
+            file_data = {key: [group[key][f"{key}_{i:02d}"][()] for i in range(len(group[key]))] for key in
+                         group.keys()}
+            return file_data
+        elif new_data is not None:
+            # Uložení nových dat, pokud nejsou v souboru a jsou poskytnuta
+
+            # Smazat předchozí data
+            if input_key in f and over_write:
+                del f[input_key]
+                print(f"\tData pro {input0}, {input2} nalezena, přepsání starých dat...")
+            elif not input_key in f:
+                print(f"\tData pro {input0}, {input2} nenalezena, ukládám nová data...")
+            else:
+                print(f"\tData {input0}, {input2} již existují a nepřepisují se.\nNačtení dat {input0}, {input2}:")
+                return save_or_load_data(file_path, over_write, input0, input1, input2, input3,
+                                         input4, input5, input6, input7, input8, input9, None)
+
+            group = f.create_group(input_key)
+            for key, value in new_data.items():
+                subgroup = group.create_group(key)
+                for i, val in enumerate(value):
+                    # Dynamicky určíme dtype na základě typu prvního prvku v seznamu
+                    if isinstance(val, (int, np.int32, np.int64)):
+                        d_type = int # Přiřazení typu int pro celá čísla
+                    elif isinstance(val, (float, np.float32, np.float64)):
+                        d_type = float  # Přiřazení typu float pro desetinná čísla
+                    else:
+                        print(key, val, type(val))
+                        raise ValueError("Neznámý typ dat")
+
+                    # Vytvoření datasetu
+                    subgroup.create_dataset(f"{key}_{i:02d}", data=val, dtype=d_type)
+        else:
+            print("Data nenalezena a žádná nová data nebyla poskytnuta.")
+            return None
 
 
 # Funkce pro hledání lineárních úseků
@@ -16,7 +68,7 @@ def find_linear_section(calculation_type, x, y, min_x, max_x, threshold=0.95, co
     if calculation_type == 1:
         n_x = len(x)
         best_score = -np.inf
-        best_section = None
+        best_section = ()
         best_r = 0
 
         sorted_ind = np.argsort(x)
@@ -29,14 +81,14 @@ def find_linear_section(calculation_type, x, y, min_x, max_x, threshold=0.95, co
         max_x_i = np.argmin(np.abs(x - max_x))
 
         # Projdeme všechny možné úseky
-        for i_1 in range(np.argmin(np.abs(x - min_x)), max_x_i):
+        for i_1 in range(np.argmin(np.abs(x - min_x)) + 1, max_x_i):
             for i_2 in range(i_1 + 1, max_x_i):
                 # Lineární regrese na úseku [i, j]
                 _, _, r_value, _, _ = linregress(x[i_1:i_2 + 1], y[i_1:i_2 + 1])
                 # slope, intercept, r_value, p_value, std_err
 
                 # Hodnocení úseku: velikost okna a korelační koeficient
-                window_size = i_2 - i_1 + 1
+                window_size = i_2 - i_1
                 if window_size >= min_length and abs(r_value) > threshold:
                     score = window_size / n_x * constant1 + abs(r_value) * constant2
 
@@ -89,7 +141,6 @@ def find_linear_section(calculation_type, x, y, min_x, max_x, threshold=0.95, co
 def swap_lists(list1, list2):
     return list2, list1
 
-
 out_put_folder = ".outputs"
 
 # Název Excel souboru
@@ -122,6 +173,10 @@ min_x_strain = -np.inf
 max_x_strain = 0.01
 
 max_data_stain_limiter = np.inf  # [%] np.inf , 3
+
+load_linear_data = True
+overwrite_linear_data = False
+linear_data_file = "linear_data.h5"
 
 total_mean_curve = False
 
@@ -181,6 +236,14 @@ found_strains, found_stresses, modules = [None] * folders_length, [None] * folde
 all_datas = [None] * folders_length
 
 indexes = [type_1_sm, type_2_sm, type_3_sm, type_1_la, type_2_la, type_3_la]
+
+new_linear_data = {}
+if load_linear_data:
+    loaded_data = save_or_load_data(linear_data_file, overwrite_linear_data, data_type, linear_method,
+                                    quality_threshold, con1, con2, threshold_step, min_linear_window, min_x_strain,
+                                    max_x_strain, 0, new_data=None)
+else:
+    loaded_data = None
 
 for inds in indexes:
 
@@ -326,7 +389,7 @@ for inds in indexes:
             continue
 
         # Celá data - DLOUHÁ
-        description = "" if pair_data_by_index else "Interpolated "
+        description = "" if pair_data_by_index else "Indicative "
         data_frames.append(pd.DataFrame({description + 'Photo': data_photos,
                                          'Time [s]': data_time,
                                          'Distance [mm]': data_distances,
@@ -343,27 +406,32 @@ for inds in indexes:
                                          description + 'Strain [-]': found_strain,
                                          description + 'Stress [MPa]': found_stress}))
 
-        min_x_val = max(min_x_strain, np.min(found_strain))
-        max_x_val = max(min(max_x_strain, np.max(found_strain)), min_x_val)
+        if load_linear_data and loaded_data is not None and f"{folder}" in loaded_data:
+            start, end, coefs = loaded_data[f"{folder}"]
+            abs_inter_count = None
+            print(f"\tNačteno: [{folder}]")
+        else:
+            min_x_val = max(min_x_strain, np.min(found_strain))
+            max_x_val = max(min(max_x_strain, np.max(found_strain)), min_x_val)
 
-        threshold = quality_threshold
-        step = threshold_step
-        linear_sections = ()
-        coefs = None
-        iter_count = 0
-        abs_inter_count = 0
+            threshold = quality_threshold
+            step = threshold_step
+            linear_sections = ()
+            coefs = None
+            iter_count = 0
+            abs_inter_count = 0
 
-        while not linear_sections:
-            linear_sections, coefs = find_linear_section(linear_method, found_strain, found_stress,
-                                                         min_x_val, max_x_val, threshold, con1, con2, min_linear_window)
-            threshold *= step
-            iter_count += 1
-            abs_inter_count += 1
+            while not linear_sections:
+                linear_sections, coefs = find_linear_section(linear_method, found_strain, found_stress,
+                                                             min_x_val, max_x_val, threshold, con1, con2, min_linear_window)
+                threshold *= step
+                iter_count += 1
+                abs_inter_count += 1
 
-            if iter_count > 500:
-                step *= 0.99999
-                iter_count = 0
-        start, end = linear_sections
+                if iter_count > 500:
+                    step *= 0.99999
+                    iter_count = 0
+            start, end = linear_sections
 
         module = (found_stress[end] - found_stress[start]) / (found_strain[end] - found_strain[start])
 
@@ -376,6 +444,12 @@ for inds in indexes:
         found_stresses[ind] = found_stress
         modules[ind] = module
         all_datas[ind] = data_frames
+
+        new_linear_data[f"{folder}"] = [start, end, coefs[1] if isinstance(coefs, list) else coefs]
+
+if new_linear_data:
+    save_or_load_data(linear_data_file, overwrite_linear_data, data_type, linear_method, quality_threshold, con1, con2,
+                      threshold_step, min_linear_window, min_x_strain, max_x_strain, 0, new_data=new_linear_data)
 
 mean_module = np.nanmean(modules)
 std_module = np.nanstd(modules)
@@ -484,20 +558,19 @@ plt.tight_layout()
 fig, ax1 = plt.subplots(figsize=(5.2, 3))
 fig2, ax2 = plt.subplots(figsize=(5.2, 3))
 
-indexes = [type_1_sm, type_3_sm, type_2_sm, type_1_la, type_3_la, type_2_la]
+indexes = [type_1_sm, type_2_sm, type_3_sm, type_1_la, type_2_la, type_3_la]
 index_names = ["T01-I-S", "T01-II-S", "T01-III-S", "T01-I-L", "T01-II-L", "T01-III-L"]
-datas_pack = zip(index_names,
-                 [*indexes],
-                 [*colors])
 
-pack_mean_modules = [None] * len(indexes)
-pack_std_modules = [None] * len(indexes)
+pack_indexes = [np.hstack((type_1_sm, type_1_la)), np.hstack((type_2_sm, type_2_la)), np.hstack((type_3_sm, type_3_la))]
+pack_index_names = ["T01-I", "T01-II", "T01-III"]
 
 print("\n")
-for n, (name, curve_index, color) in enumerate(datas_pack):
+all_modules = np.array([None] * np.sum([len(i) for i in indexes]))
+for n, (name, curve_index, color) in enumerate(zip(index_names, [*indexes], [*colors])):
     data_plot_x = [found_strains[j] for j in curve_index if found_strains[j] is not None]
     data_plot_y = [found_stresses[j] for j in curve_index if found_stresses[j] is not None]
     data_plot_modules = [all_datas[j][3][0] for j in curve_index if all_datas[j] is not None]
+    all_modules[[*curve_index]] = data_plot_modules
     data_plot_intercepts = [all_datas[j][3][1] for j in curve_index if all_datas[j] is not None]
     data_plot_coefs = [all_datas[j][3][2][0] if isinstance(all_datas[j][3][2], list)
                        else all_datas[j][3][2] for j in curve_index if all_datas[j] is not None]
@@ -544,9 +617,6 @@ for n, (name, curve_index, color) in enumerate(datas_pack):
 
     print(f"{name} Mean module:\t{mean_module:.6f}")
     print(f"\t\tStd module:\t{std_module:.6f}")
-
-    pack_mean_modules[n] = mean_module
-    pack_std_modules[n] = std_module
 
     for axes in [ax1, ax2]:
         axes.grid(color="lightgray", linewidth=0.5, zorder=0)
@@ -631,9 +701,9 @@ for i, data_frame in enumerate([all_datas[j] for j in
                 description = "Data - v závislosti na čase: Data měření a DIC jsou párována na základě intervalu času pořízení fotek"
         else:
             if pair_data_by_displacement:
-                description = "Data - v závislosti na čase: Data měření jsou interpolována na základě posunu zatěžování z DIC"
+                description = "Data - v závislosti na čase: Data měření jsou interpolována na základě posunu zatěžování z DIC, hodnoty jsou v kompleních datech přiřazeny nejbližší hodnotě posunu"
             else:
-                description = "Data - v závislosti na posunu: Data měření jsou interpolována na základě časového intervalu pořízení fotek z DIC"
+                description = "Data - v závislosti na posunu: Data měření jsou interpolována na základě časového intervalu pořízení fotek z DIC, hodnoty jsou v kompleních datech přiřazeny nejbližší hodnotě času"
 
         # Vytvoření listu pro popis
         df_description = pd.DataFrame({'Popis': [description]})
@@ -658,11 +728,17 @@ for i, data_frame in enumerate([all_datas[j] for j in
         data_frame[2].to_excel(excel_writer, sheet_name=sheet_name, startrow=start_row, startcol=col_start, index=False)
 
 worksheet = excel_writer.sheets['Popis']
-worksheet.write(6, 6, f"Průměrné hodnoty: Y | ±STD [MPa]")
-for i in range(len(index_names)):
+worksheet.write(6, 6, f"Průměrné hodnoty: E | ±STD [MPa]")
+for i in range(len(indexes)):
     worksheet.write(i + 7, 7, f'{index_names[i]}:')
-    worksheet.write(i + 7, 8, pack_mean_modules[i])
-    worksheet.write(i + 7, 9, pack_std_modules[i])
+    worksheet.write(i + 7, 8, np.mean([all_modules[j] for j in indexes[i]]))
+    worksheet.write(i + 7, 9, np.std([all_modules[j] for j in indexes[i]]))
+
+worksheet.write(6, 11, f"Průměrné hodnoty: E | ±STD [MPa]")
+for i in range(len(pack_indexes)):
+    worksheet.write(i + 7, 12, f'{pack_index_names[i]}:')
+    worksheet.write(i + 7, 13, np.mean([all_modules[j] for j in pack_indexes[i]]))
+    worksheet.write(i + 7, 14, np.std([all_modules[j] for j in pack_indexes[i]]))
 
 # Zavření Excel souboru
 excel_writer.close()
