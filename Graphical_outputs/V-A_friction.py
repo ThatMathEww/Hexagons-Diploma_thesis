@@ -15,6 +15,8 @@ show_match = False
 show_graph = True
 plot_real_data = False
 
+save_figures = False
+
 use_averaging = False
 window_size = 3  # Velikost klouzavého průměru
 
@@ -375,8 +377,9 @@ for i, folder in enumerate(folders):
 
         # plt.tight_layout()
         plt.subplots_adjust(right=0.97, left=0.15, top=0.92, bottom=0.12, wspace=1, hspace=1.1)
-        plt.savefig(f"./.outputs/kcof_{os.path.basename(folder)}.{file_type}", format=file_type, dpi=out_dpi,
-                    bbox_inches='tight')
+        if save_figures:
+            plt.savefig(f"./.outputs/kcof_{os.path.basename(folder)}.{file_type}", format=file_type, dpi=out_dpi,
+                        bbox_inches='tight')
         plt.show()
 
 print(f"\nAverage acceleration: {np.mean(accelerations_print):.4f} m/s^2")
